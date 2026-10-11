@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { SCHOOLS, ZONES, type Zone } from '../data';
+import { RIVERS } from '../map/rivers';
 import { acrossWillamette, inZone, samplePoint, ZoneIndex } from './geo';
 import { stream } from './rng';
 
@@ -45,5 +46,13 @@ describe('acrossWillamette', () => {
     expect(acrossWillamette(at('forest-park'), at('rosa-parks'))).toBe(true);
     expect(acrossWillamette(at('rosa-parks'), at('forest-park'))).toBe(true);
     expect(acrossWillamette(at('forest-park'), at('chapman'))).toBe(false);
+  });
+
+  it('holds the river at its ends', () => {
+    const points = RIVERS.find((r) => r.name === 'Willamette')!.points;
+    for (const [x, y] of [points[0], points[points.length - 1]]) {
+      const beyond = y + (y === points[0][1] ? -1 : 1) * 1e5;
+      expect(acrossWillamette([x - 50, beyond], [x + 50, beyond])).toBe(true);
+    }
   });
 });
