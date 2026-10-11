@@ -17,6 +17,7 @@ import {
   normalizeBoundaryEdits,
   sliceCells,
   zoneGrid,
+  zoningYear,
 } from './zones';
 import type { BoundaryEdit, ClosedSchool } from './types';
 
@@ -138,13 +139,13 @@ describe('isContiguous', () => {
 describe('normalizeBoundaryEdits', () => {
   const cell = cellsOf('elementary', 'creston')[0];
 
-  it('keeps valid blocks once, the last edit winning a block', () => {
+  it('keeps valid blocks once per edit, as entered, so undoing a later edit restores an earlier one', () => {
     const edits: BoundaryEdit[] = [
       { level: 'elementary', to: 'atkinson', cells: [cell, cell, cell + 1], grandfather: true },
       { level: 'elementary', to: 'glencoe', cells: [cell], grandfather: false },
     ];
     expect(normalizeBoundaryEdits(edits)).toEqual([
-      { level: 'elementary', to: 'atkinson', cells: [cell + 1], grandfather: true },
+      { level: 'elementary', to: 'atkinson', cells: [cell, cell + 1], grandfather: true },
       { level: 'elementary', to: 'glencoe', cells: [cell], grandfather: false },
     ]);
   });
@@ -215,6 +216,29 @@ describe('closeZones', () => {
   it('is idempotent', () => {
     const once = closeZones(defaultZones(), [closed('peninsula', ['rosa-parks', 1])], new Map());
     expect(closeZones(once, [closed('peninsula', ['rosa-parks', 1])], new Map())).toEqual(once);
+  });
+});
+
+describe('zoningYear', () => {
+  const cell = cellsOf('elementary', 'creston')[0];
+  const edit = (to: string, grandfather: boolean): BoundaryEdit => ({ level: 'elementary', to, cells: [cell], grandfather });
+
+  it("gives a block its last edit's zone and grandfathering", () => {
+    const z = zoningYear(defaultZones(), [], [edit('atkinson', true), edit('glencoe', false)], new Map());
+    expect(z.zones.elementary[cell]).toBe('glencoe');
+    expect(z.changed.elementary.get(cell)).toBe(false);
+  });
+
+  it('ignores an edit into a closed school, leaving the block to the edit before', () => {
+    const closed = { school: 'glencoe', receivers: [{ school: 'atkinson', share: 1 }] };
+    const z = zoningYear(defaultZones(), [closed], [edit('sunnyside', false), edit('glencoe', true)], new Map());
+    expect(z.zones.elementary[cell]).toBe('sunnyside');
+  });
+
+  it('keeps a block that its last edit moves back to its zone', () => {
+    const z = zoningYear(defaultZones(), [], [edit('atkinson', false), edit('creston', false)], new Map());
+    expect(z.zones.elementary[cell]).toBe('creston');
+    expect(z.changed.elementary.has(cell)).toBe(false);
   });
 });
 

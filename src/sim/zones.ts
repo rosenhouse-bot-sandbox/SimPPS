@@ -150,29 +150,34 @@ export function applyEdits(zones: ZoneMap, edits: readonly BoundaryEdit[]): Zone
   return out;
 }
 
-/**
- * Keeps edits into a zone school of their level, with valid cells. A cell belongs to its last edit
- * at a level. Edits left with no cells are dropped.
- */
+/** Keeps edits into a zone school of their level, each valid cell once. Edits with no cells are dropped. */
 export function normalizeBoundaryEdits(edits: readonly BoundaryEdit[]): BoundaryEdit[] {
   const n = zoneGrid().cells.length;
+  return edits.flatMap((e) => {
+    if (!LEVELS.includes(e.level) || !ZONE_SCHOOLS[e.level].has(e.to)) return [];
+    const cells = [...new Set(e.cells)].filter((c) => Number.isInteger(c) && c >= 0 && c < n);
+    return cells.length ? [{ level: e.level, to: e.to, cells, grandfather: !!e.grandfather }] : [];
+  });
+}
+
+/** Each cell kept only in its last edit at a level. */
+function lastEditWins(edits: readonly BoundaryEdit[]): BoundaryEdit[] {
   const claimed: Record<ZoneLevel, Set<number>> = { elementary: new Set(), middle: new Set() };
   const out: BoundaryEdit[] = [];
   for (let i = edits.length - 1; i >= 0; i--) {
     const e = edits[i];
-    if (!LEVELS.includes(e.level) || !ZONE_SCHOOLS[e.level].has(e.to)) continue;
     const taken = claimed[e.level];
-    const cells = e.cells.filter((c) => Number.isInteger(c) && c >= 0 && c < n && !taken.has(c) && taken.add(c));
-    if (cells.length) out.unshift({ level: e.level, to: e.to, cells, grandfather: !!e.grandfather });
+    const cells = e.cells.filter((c) => !taken.has(c) && taken.add(c));
+    if (cells.length) out.unshift({ ...e, cells });
   }
   return out;
 }
 
-/** Edits into open schools, kept to cells not already in the zone. */
-export function effectiveEdits(zones: ZoneMap, edits: readonly BoundaryEdit[], shut: ReadonlySet<SchoolId>): BoundaryEdit[] {
-  return edits.flatMap((e) => {
+/** Edits into open schools, each cell kept in its last such edit if that moves it. */
+function effectiveEdits(zones: ZoneMap, edits: readonly BoundaryEdit[], shut: ReadonlySet<SchoolId>): BoundaryEdit[] {
+  return lastEditWins(edits.filter((e) => !shut.has(e.to))).flatMap((e) => {
     const cells = e.cells.filter((c) => zones[e.level][c] !== e.to);
-    return !shut.has(e.to) && cells.length ? [{ ...e, cells }] : [];
+    return cells.length ? [{ ...e, cells }] : [];
   });
 }
 
