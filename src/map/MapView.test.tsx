@@ -4,7 +4,9 @@ import { HIGH_SCHOOLS, SCHOOLS, ZONES } from '../data';
 import type { SchoolId } from '../sim/types';
 import { SEAT_BANDS, seatColor } from './colors';
 import { fixtureHouseholds, fixtureSchools } from './fixtures';
-import { FALLBACK_SIZE, MapView, type MapViewProps } from './MapView';
+import { defaultZones, zoneGrid } from '../sim';
+import { FALLBACK_SIZE, MAP_BOUNDS, MapView, type MapViewProps, type ZoneEditProps } from './MapView';
+import { fitView, toScreen } from './projection';
 
 const schools = fixtureSchools();
 
@@ -251,5 +253,85 @@ describe('MapView for Close & send', () => {
     renderMap({ households: [mover], flows: true });
     vi.unstubAllGlobals();
     expect(line).toHaveBeenCalled();
+  });
+});
+
+describe('MapView in Zone mode', () => {
+  const zones = defaultZones();
+  const view = fitView(MAP_BOUNDS, FALLBACK_SIZE.w, FALLBACK_SIZE.h);
+  const at = (cell: number) => toScreen(view, zoneGrid().cells[cell].center);
+  const peninsula = zones.elementary.indexOf('peninsula');
+
+  function zoneMap(over: Partial<ZoneEditProps> = {}) {
+    const onStroke = vi.fn();
+    const r = renderMap({ zoneEdit: { level: 'elementary', zones: zones.elementary, target: 'rosa-parks', painted: [], onStroke, ...over } });
+    return { ...r, onStroke };
+  }
+  const d = (container: Element, sel: string) => container.querySelector(sel)?.getAttribute('d') ?? '';
+
+  it('shows the block grid only in Zone mode', () => {
+    expect(renderMap().container.querySelector('[data-testid="zone-grid"]')).toBeNull();
+    cleanup();
+    const { container } = zoneMap();
+    expect(container.querySelector('[data-testid="zone-grid"]')).not.toBeNull();
+    expect(container.querySelectorAll('[data-zone]')).toHaveLength(0);
+  });
+
+  it('paints the block under one finger, even on a tap', () => {
+    const { map, onStroke } = zoneMap();
+    tap(map, at(peninsula));
+    expect(onStroke).toHaveBeenCalledWith([peninsula]);
+  });
+
+  it('paints every block along a drag, live, and hands the stroke over on lift', () => {
+    const { map, container, onStroke } = zoneMap();
+    const [x, y] = at(peninsula);
+    fireEvent.pointerDown(map, { pointerId: 1, clientX: x, clientY: y });
+    fireEvent.pointerMove(map, { pointerId: 1, clientX: x + 30, clientY: y });
+    const live = d(container, '[data-painted]');
+    expect(live).not.toBe('');
+    expect(onStroke).not.toHaveBeenCalled();
+    fireEvent.pointerUp(map, { pointerId: 1, clientX: x + 30, clientY: y });
+    const cells: number[] = onStroke.mock.calls[0][0];
+    expect(cells[0]).toBe(peninsula);
+    expect(cells.length).toBeGreaterThan(2);
+    expect(d(container, '[data-painted]')).toBe('');
+  });
+
+  it('pans with two fingers without painting', () => {
+    const { map, container, onStroke } = zoneMap();
+    const before = badgePositions(container).get('rosa-parks')!;
+    fireEvent.click(screen.getByLabelText('Zoom in'));
+    const zoomed = badgePositions(container).get('rosa-parks')!;
+    fireEvent.pointerDown(map, { pointerId: 1, clientX: 100, clientY: 300 });
+    fireEvent.pointerDown(map, { pointerId: 2, clientX: 200, clientY: 300 });
+    fireEvent.pointerMove(map, { pointerId: 1, clientX: 140, clientY: 300 });
+    fireEvent.pointerMove(map, { pointerId: 2, clientX: 240, clientY: 300 });
+    fireEvent.pointerUp(map, { pointerId: 2, clientX: 240, clientY: 300 });
+    fireEvent.pointerUp(map, { pointerId: 1, clientX: 140, clientY: 300 });
+    expect(onStroke).not.toHaveBeenCalled();
+    expect(badgePositions(container).get('rosa-parks')![0]).toBeCloseTo(zoomed[0] + 40);
+    expect(before).not.toEqual(zoomed);
+    const [x, y] = badgePositions(container).get('peninsula')!;
+    tap(map, [x, y]);
+    expect(onStroke).toHaveBeenCalledTimes(1);
+    expect(onStroke.mock.calls[0][0]).toHaveLength(1);
+  });
+
+  it("highlights painted blocks and moves the target zone's outline to take them in", () => {
+    const { container } = zoneMap();
+    const outline = d(container, '[data-outline="rosa-parks"]');
+    expect(outline).not.toBe('');
+    expect(d(container, '[data-painted]')).toBe('');
+    cleanup();
+    const painted = zoneMap({ painted: [peninsula] }).container;
+    expect(d(painted, '[data-painted]')).not.toBe('');
+    expect(d(painted, '[data-outline="rosa-parks"]')).not.toBe(outline);
+  });
+
+  it('draws middle zones at the middle level', () => {
+    const { container } = zoneMap({ level: 'middle', zones: zones.middle, target: 'gray' });
+    expect(container.querySelector('[data-zone-fill="gray"]')).not.toBeNull();
+    expect(container.querySelector('[data-zone-fill="rosa-parks"]')).toBeNull();
   });
 });

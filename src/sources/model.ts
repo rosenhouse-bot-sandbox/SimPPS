@@ -1,6 +1,7 @@
 import { MEDIAN_SQFT, STATE_PER_STUDENT } from '../sim/budget';
 import { CLOSED_ZONE_CAPTURE_DROPS, FOLLOW_RATES, M } from '../sim/model';
 import { CITYWIDE_INTAKE } from '../sim/population';
+import { CELL_METERS } from '../sim/grid';
 import rightsizing from '../data/rightsizing.json';
 import type { Dials } from '../sim/types';
 import type { Source, SourceLink } from './types';
@@ -263,7 +264,7 @@ export const MODEL_SOURCES: Source[] = [
     key: 'model.closureSavings',
     label: 'Closure savings',
     tag: 'I',
-    explain: `A closed building's plant cost and its principal's office (${M.principalOffice} positions) go. Its other staff follow the kids and fill the staff steps the receivers need; any left over stay on the payroll. Receivers add the homerooms the kids need. The project's closure analysis estimates $0.3-1.5M a school, and PPS estimates $5-20M for its scenarios. This arithmetic puts Scenario A's closures at $0.7-1.7M each and about $17M in all. The chip shows the saving if every kid follows, ±${pct(M.closureSavingsSpread)}, net of building upkeep.`,
+    explain: `A closed building's plant cost and its principal's office (${M.principalOffice} positions) go. Its other staff follow the kids and fill the staff steps the receivers need; any left over stay on the payroll. Receivers add the homerooms the kids need. The project's closure analysis estimates $0.3-1.5M a school, and PPS estimates $5-20M for its scenarios. This arithmetic puts Scenario A's closures at $0.7-1.7M each and about $17M in all. The chip shows the saving if every kid follows, ±${pct(M.closureSavingsSpread)}, net of building upkeep and of busing for new riders after the state's repayment.`,
     links: [DESIGN],
   },
   {
@@ -277,7 +278,7 @@ export const MODEL_SOURCES: Source[] = [
     key: 'model.closureOneTime',
     label: 'Closure, once',
     tag: 'M',
-    explain: `Moving a school costs ${$(M.closureOneTime.lo)}-${$(M.closureOneTime.hi)} once, in the year played. The budget books the middle.`,
+    explain: `Moving a school costs ${$(M.closureOneTime.lo)}-${$(M.closureOneTime.hi)} once, in the year played. The budget books the middle. The chip's Now adds a year of busing for new riders.`,
     links: [DESIGN],
   },
   {
@@ -303,16 +304,51 @@ export const MODEL_SOURCES: Source[] = [
   },
   {
     key: 'model.crowding',
-    label: 'Crowded receivers',
+    label: 'Crowded schools',
     tag: 'M',
-    explain: `A receiver past ${pct(M.crowdingLine)} of its seats sends the arrivals beyond that line on to the nearest PPS school with room.`,
+    explain: `A receiver or new zone school past ${pct(M.crowdingLine)} of its seats sends the arrivals beyond that line on to the nearest PPS school with room.`,
+    links: [DESIGN],
+  },
+  {
+    key: 'model.zoneGrid',
+    label: 'Zone blocks',
+    tag: 'I',
+    explain: `The game draws zones on ${CELL_METERS} m grid squares clipped to the real 53 K-5 zone polygons [F]. A block here is about 4 by 4 city blocks. Each block has a K-5 zone school and a middle zone school, the one at most of its points, and every home on it takes both. Boundary edits and closures move blocks between zones.`,
+    links: [PPS_DATA],
+  },
+  {
+    key: 'model.sliceStay',
+    label: 'Re-zoned kids',
+    tag: 'M',
+    explain: `A kid whose zone school changes under it goes to the new zone school with a ${pct(M.sliceStay)} chance, less the adjustments under "Who follows a closed school" except whole classes. The rest choose like a closed school's kids who don't follow. A grandfathered edit moves no current student: only new kindergartners and 6th graders, and kids outside PPS, use the new zone.`,
+    links: [DESIGN],
+  },
+  {
+    key: 'model.walkLimit',
+    label: 'Walk limit',
+    tag: 'V',
+    explain: `K-5 kids who live more than ${M.walkLimitK5} mile from school ride a bus, and grades 6-8 past ${M.walkLimitMiddle} miles. Distances are straight lines, so real walks are longer.`,
+    links: [DESIGN],
+  },
+  {
+    key: 'model.busing',
+    label: 'New bus riders',
+    tag: 'V',
+    explain: `A new rider costs $${M.busRider.lo.toLocaleString('en-US')}-${M.busRider.hi.toLocaleString('en-US')} a year. A new rider is a kid at its zone school past the walk limit whose zone before any change was within it. The budget books the middle for the kids expected to ride next fall if every kid stays in PPS, counting kindergartners like this year's at the same homes and expected returners. A chip's At maturity counts every re-zoned kid riding, less the state's ${pct(M.busReimbursed.lo)}-${pct(M.busReimbursed.hi)} repayment. Kids whose new zone is closer save nothing here. General-fund transportation is $47.6M [F].`,
+    links: [DESIGN],
+  },
+  {
+    key: 'model.busReimbursement',
+    label: "State's busing repayment",
+    tag: 'V',
+    explain: `The state repays ${pct(M.busReimbursed.lo)}-${pct(M.busReimbursed.hi)} of approved busing a year later. The budget books the middle of last year's new-rider busing.`,
     links: [DESIGN],
   },
   {
     key: 'model.scenarios',
     label: 'PPS scenarios',
     tag: 'F',
-    explain: "Scenario A closes 14 schools and Scenario B 11, with PPS's receivers and shares. Sellwood MS's split is unpublished, so the game splits it evenly [I]. Each building is mothballed until you change it [M]. Program moves, grade-span changes and boundary changes are not modeled yet.",
+    explain: "Scenario A closes 14 schools and Scenario B 11, with PPS's receivers and shares. Sellwood MS's split is unpublished, so the game splits it evenly [I]. Each building is mothballed until you change it [M]. Program moves, grade-span changes and PPS's boundary changes are not modeled yet.",
     links: [RIGHTSIZING],
   },
 ];
@@ -324,5 +360,7 @@ export const DIAL_SOURCES: Source[] = [
   { key: dialSourceKey('gap'), label: 'Gap', tag: 'M', explain: 'Revenue minus costs in the coming year\'s plan, before automatic cuts. It starts at the reported -$65.2M.', links: [DESIGN] },
   { key: dialSourceKey('positionsCut'), label: 'Positions cut', tag: 'M', explain: 'Positions removed by automatic and mid-year cuts in the year just played.', links: [DESIGN] },
   { key: dialSourceKey('reservePct'), label: 'Reserves', tag: 'M', explain: 'Reserves over last year\'s spending. They start at $41.1M, 4.8% of the $862.1M 2026-27 general fund. Below 5% breaches policy; below 3% forces mid-year cuts.', links: [PPS_DATA] },
+  { key: dialSourceKey('walkK5'), label: 'K-5 walkers', tag: 'M', explain: `Simulated PPS K-5 kids within ${M.walkDialMiles} mile of their school, in a straight line.`, links: [DESIGN] },
+  { key: dialSourceKey('newBusRiders'), label: 'New bus riders', tag: 'M', explain: 'Simulated PPS kids at their zone school past the walk limit whose zone before any change was within it.', links: [DESIGN] },
   { key: dialSourceKey('kidsInUrm'), label: 'Kids in URM buildings', tag: 'M', explain: 'Simulated kids in unreinforced-masonry buildings (Holmes 2024) without a full retrofit. In fall 2025 about 4,500 attended URM buildings with no retrofit yet and 1,400 attended ones with a targeted retrofit.', links: [PPS_DATA] },
 ];

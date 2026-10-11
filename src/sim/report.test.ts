@@ -37,6 +37,9 @@ const facts: YearFacts = {
   stateFundingGrowth: null,
   closing: [],
   closures: [],
+  rezonedCells: { elementary: 0, middle: 0 },
+  grandfathered: 'none',
+  rezoned: { kids: 0, zoneSchool: 0, otherPps: 0, left: 0 },
 };
 
 const dials: Dials = {
@@ -47,11 +50,30 @@ const dials: Dials = {
   positionsCut: 0,
   reservePct: 0.048,
   kidsInUrm: 6_500,
+  walkK5: 9_000,
+  newBusRiders: 0,
 };
 
 const detail = (f: YearFacts, title: string) => seasonEvents(f).find((e) => e.title === title)!.detail;
 
 describe('seasonEvents', () => {
+  it('counts re-zoned blocks at both levels and names only the grades a grandfathered edit zones', () => {
+    const at = (rezonedCells: YearFacts['rezonedCells'], grandfathered: YearFacts['grandfathered']) =>
+      detail({ ...facts, rezonedCells, grandfathered }, 'Boundaries change');
+    expect(at({ elementary: 3, middle: 0 }, 'all')).toBe(
+      '3 blocks of 250 m change zones. Current students keep their schools; new kindergartners use the new zones.',
+    );
+    expect(at({ elementary: 0, middle: 1 }, 'all')).toBe(
+      '1 block of 250 m changes zones. Current students keep their schools; new 6th graders use the new zones.',
+    );
+    expect(at({ elementary: 2, middle: 2 }, 'all')).toContain('4 blocks of 250 m change zones. Current students keep their schools; new kindergartners and 6th graders use');
+    expect(at({ elementary: 2, middle: 0 }, 'none')).toBe('2 blocks of 250 m change zones. Kids in them get new zone schools.');
+    expect(at({ elementary: 2, middle: 2 }, 'some')).toBe(
+      '4 blocks of 250 m change zones. Some current students get new zone schools; the rest keep theirs.',
+    );
+    expect(seasonEvents(facts).some((e) => e.title === 'Boundaries change')).toBe(false);
+  });
+
   it('reports the Legislature\'s vote in odd springs only', () => {
     const vote = seasonEvents({ ...facts, stateFundingGrowth: 0.042 }).find((e) => e.sourceKey === 'model.stateFunding')!;
     expect(vote.season).toBe('spring');

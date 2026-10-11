@@ -14,11 +14,13 @@ interface PlanProps {
   start: Start;
   onEdit: (p: Partial<Policy>) => void;
   onSelectSchool: (id: string) => void;
+  /** Opens Zone mode. */
+  onEditBoundary?: () => void;
   onClose: () => void;
 }
 
 /** This year's edits with Undo, and the A–Z menu path to every school. */
-export function PlanPanel({ draft, base, start, onEdit, onSelectSchool, onClose }: PlanProps) {
+export function PlanPanel({ draft, base, start, onEdit, onSelectSchool, onEditBoundary, onClose }: PlanProps) {
   const edits = listEdits(draft, base);
   const notModeled = SCENARIOS[start].notModeled;
   return (
@@ -42,6 +44,11 @@ export function PlanPanel({ draft, base, start, onEdit, onSelectSchool, onClose 
         </ul>
       ) : (
         <p class="note">None yet.</p>
+      )}
+      {onEditBoundary && (
+        <button type="button" class="btn wide" onClick={onEditBoundary}>
+          Edit boundary
+        </button>
       )}
       <h3>Schools A–Z</h3>
       <ul class="az">

@@ -3,7 +3,7 @@ import { fmtMoney, fmtRange, fmtSignedMoney } from '../format';
 import type { Chip as ChipData } from './levers';
 import { Sourced } from './Sourced';
 
-function money(r: Range): string {
+export function money(r: Range): string {
   if (r.lo === r.hi) return fmtSignedMoney(r.lo);
   return r.lo > 0 ? `+${fmtRange(r, fmtMoney)}` : fmtRange(r, fmtMoney);
 }

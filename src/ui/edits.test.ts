@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { DEFAULT_POLICY } from '../sim';
-import type { Closure } from '../sim/types';
+import type { BoundaryEdit, Closure } from '../sim/types';
 import { ballotItems, fmtLevy, listEdits } from './edits';
 
 describe('edits', () => {
@@ -28,6 +28,16 @@ describe('edits', () => {
     expect(listEdits(draft, draft)).toEqual([
       { text: 'Close Peninsula → Rosa Parks', sourceKey: 'model.closureSavings', undo: { closures: [maplewood] } },
       { text: 'Close Maplewood → Hayhurst 70%, Rieke 30% · sold', sourceKey: 'model.closureSavings', undo: { closures: [peninsula] } },
+    ]);
+  });
+
+  it('lists each boundary edit with an undo that drops only it', () => {
+    const elem: BoundaryEdit = { level: 'elementary', to: 'rosa-parks', cells: [1, 2, 3], grandfather: false };
+    const mid: BoundaryEdit = { level: 'middle', to: 'gray', cells: [4], grandfather: true };
+    const draft = { ...DEFAULT_POLICY, boundaryEdits: [elem, mid] };
+    expect(listEdits(draft, draft)).toEqual([
+      { text: 'Rezone 3 blocks → Rosa Parks', sourceKey: 'model.zoneGrid', undo: { boundaryEdits: [mid] } },
+      { text: 'Rezone 1 block → Gray 6-8 · grandfathered', sourceKey: 'model.zoneGrid', undo: { boundaryEdits: [elem] } },
     ]);
   });
 

@@ -31,6 +31,24 @@ export interface ClosedSchool extends Closure {
   staffKept: number;
 }
 
+export type ZoneLevel = 'elementary' | 'middle';
+
+/** Blocks moved into `to`'s zone at one level. It takes effect in summer. */
+export interface BoundaryEdit {
+  level: ZoneLevel;
+  to: SchoolId;
+  /** Each is a zoneGrid() cell id. */
+  cells: number[];
+  /** Current students keep their school and zone; kids entering the level or PPS use the new zone. */
+  grandfather: boolean;
+}
+
+/** Each zoneGrid() cell's zone school, by cell id. */
+export interface ZoneMap {
+  elementary: SchoolId[];
+  middle: SchoolId[];
+}
+
 /** The player's edits for the coming year. */
 export interface Policy {
   /** K-5 class size target, 22–28. Today it is 24. */
@@ -40,6 +58,7 @@ export interface Policy {
   /** Dollars drawn from reserves this year. */
   reserveDraw: number;
   closures: Closure[];
+  boundaryEdits: BoundaryEdit[];
 }
 
 export type HouseholdStatus = 'stayed' | 'moved' | 'left' | 'returned';
@@ -47,6 +66,8 @@ export type HouseholdStatus = 'stayed' | 'moved' | 'left' | 'returned';
 export interface Household {
   id: number;
   pos: Point;
+  /** The zoneGrid() cell holding pos. */
+  cell: number;
   /** Kids per grade, index 0 = K … 8 = grade 8. */
   kids: number[];
   /** The elementary zone school for K-5 kids; the middle zone school for grades 6-8. */
@@ -63,7 +84,7 @@ export interface Household {
   leftThisYear?: boolean;
   /** The school a closure moved the household from this year, for map trails. */
   movedFrom?: SchoolId;
-  /** Times a closure has moved the household. */
+  /** Times a closure or boundary change has moved the household. */
   forcedMoves?: number;
   /** A closed school whose state funding weight the household's kids keep. */
   fundedAs?: SchoolId;
@@ -120,6 +141,10 @@ export interface Dials {
   positionsCut: number;
   reservePct: number;
   kidsInUrm: number;
+  /** PPS K-5 kids within a mile of their school, straight line. */
+  walkK5: number;
+  /** PPS kids riding a bus only because a zone changed. */
+  newBusRiders: number;
 }
 
 export interface SeasonEvent {
@@ -155,6 +180,14 @@ export interface ClosureOutcome {
   guess?: { stayInPps: number; actual: Range; hit: boolean };
 }
 
+/** Where kids went after a boundary change moved them off their zone school. */
+export interface RezoneOutcome {
+  kids: Range;
+  zoneSchool: Range;
+  otherPps: Range;
+  leftPps: Range;
+}
+
 export interface YearReport {
   /** Fall year of the school year that just played (2027 = 2027-28). */
   year: number;
@@ -166,6 +199,8 @@ export interface YearReport {
   /** The June budget that applied. */
   budget: Budget;
   closures: ClosureOutcome[];
+  /** Present when boundary edits moved kids off their zone school. */
+  rezoned?: RezoneOutcome;
 }
 
 export interface GameState {
@@ -177,6 +212,8 @@ export interface GameState {
   budget: Budget;
   dials: Dials;
   policy: Policy;
+  /** Zones after every boundary change and closure so far. */
+  zones: ZoneMap;
   /** Simulation memory. newGame sets it; the UI can ignore it. */
   sim?: SimMemory;
 }
@@ -211,6 +248,8 @@ export interface SimMemory {
   restCost: number;
   /** Closures in force, oldest first. */
   closed: ClosedSchool[];
+  /** Busing dollars booked this year, which the state repays next year. */
+  busing: number;
   /** Hidden cards drawn for this game. */
   cards: { followRate: number; closedZoneCaptureDrop: number };
   /** The do-nothing ghost: same luck, DEFAULT_POLICY every year. */

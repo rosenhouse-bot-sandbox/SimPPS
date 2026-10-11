@@ -1,11 +1,14 @@
 import { useEffect, useMemo, useRef, useState } from 'preact/hooks';
 import { HIGH_SCHOOLS, SCHOOLS, ZONES, type Point } from '../data';
 import { clamp } from '../clamp';
-import type { Household, HouseholdStatus, SchoolId, SchoolState } from '../sim/types';
+import { zoneGrid } from '../sim';
+import type { Household, HouseholdStatus, SchoolId, SchoolState, ZoneLevel } from '../sim/types';
+import { zoneBorders } from './borders';
 import { NO_DATA_COLOR, SEAT_BANDS, WINDOW_COLORS, WINDOW_LABELS, seatColor, utilization } from './colors';
 import { ringsToPath, shortName } from './geometry';
 import { Gestures, type Gesture } from './gestures';
 import { resolveTap } from './hitTest';
+import { strokeCells } from './paint';
 import { drawHouseholds } from './households';
 import { boundsOf, centerOn, clampCenter, fitView, panBy, toScreen, toWorld, zoomAt, type View } from './projection';
 import { RIVERS } from './rivers';
@@ -15,7 +18,18 @@ import './map.css';
 export type Overlay = 'none' | 'seats' | 'families';
 /** Close & send highlights: the school closing, its receivers and schools that could receive. */
 export type Mark = 'closing' | 'receiver' | 'candidate';
-export type ZoneLevel = 'elementary' | 'middle' | 'high';
+export type MapZoneLevel = ZoneLevel | 'high';
+
+/** Zone mode: the block grid, where one finger paints and two pan. */
+export interface ZoneEditProps {
+  level: ZoneLevel;
+  /** Each cell's zone school before this edit. */
+  zones: readonly SchoolId[];
+  target: SchoolId;
+  painted: readonly number[];
+  /** A finished stroke's cells, in paint order. */
+  onStroke: (cells: number[]) => void;
+}
 
 export interface MapViewProps {
   schools: Record<SchoolId, SchoolState>;
@@ -23,7 +37,7 @@ export interface MapViewProps {
   overlay: Overlay;
   selected: SchoolId | null;
   onSelectSchool: (id: SchoolId) => void;
-  zoneLevel: ZoneLevel;
+  zoneLevel: MapZoneLevel;
   /** Each new value centers the camera on that school at neighborhood zoom or closer. */
   focus?: SchoolId | null;
   /** Where the focus lands, as a share of the map's height from the top. */
@@ -33,6 +47,7 @@ export interface MapViewProps {
   links?: [SchoolId, SchoolId][];
   /** Draws closure movers' trails, growing in over FLOW_MS. */
   flows?: boolean;
+  zoneEdit?: ZoneEditProps;
 }
 
 export const FLOW_MS = 1500;
@@ -57,10 +72,55 @@ const BADGE_FILL = '#e9dcb0';
 const MIN_FACTOR = 0.7;
 const MAX_FACTOR = 9;
 
-const zonePaths = new Map<ZoneLevel, string[]>();
-function pathsFor(level: ZoneLevel): string[] {
+const zonePaths = new Map<MapZoneLevel, string[]>();
+function pathsFor(level: MapZoneLevel): string[] {
   if (!zonePaths.has(level)) zonePaths.set(level, ZONES[level].map((z) => ringsToPath(z.rings)));
   return zonePaths.get(level)!;
+}
+
+const ZONE_TONES = ['#2f3d25', '#3a3a24', '#26392f', '#3b3229', '#2c3436', '#35402a'];
+const TARGET_FILL = '#55703f';
+
+let cellPaths: string[] | undefined;
+const cellPath = (id: number) => (cellPaths ??= zoneGrid().cells.map((c) => ringsToPath(c.rings)))[id];
+
+/** One fill path per zone school. */
+function fillPaths(zones: readonly SchoolId[]): Map<SchoolId, string> {
+  const out = new Map<SchoolId, string>();
+  zones.forEach((s, id) => out.set(s, (out.get(s) ?? '') + cellPath(id)));
+  return out;
+}
+
+function ZoneGrid({ edit, stroke }: { edit: ZoneEditProps; stroke: readonly number[] }) {
+  const { level, zones, target, painted } = edit;
+  const fills = useMemo(() => fillPaths(zones), [zones]);
+  const order = useMemo(() => new Map(ZONES[level].map((z, i) => [z.school, i])), [level]);
+  const changed = useMemo(
+    () => [...new Set([...painted, ...stroke])].filter((c) => zones[c] !== target),
+    [zones, target, painted, stroke],
+  );
+  const after = useMemo(() => {
+    const out = [...zones];
+    for (const c of changed) out[c] = target;
+    return out;
+  }, [zones, target, changed]);
+  const grid = useMemo(() => zoneGrid().cells.map((c) => cellPath(c.id)).join(''), []);
+  return (
+    <g data-testid="zone-grid">
+      {[...fills].map(([school, d]) => (
+        <path
+          key={school}
+          data-zone-fill={school}
+          d={d}
+          fill={school === target ? TARGET_FILL : ZONE_TONES[(order.get(school) ?? 0) % ZONE_TONES.length]}
+        />
+      ))}
+      <path class="pps-map-gridlines" d={grid} />
+      <path class="pps-map-painted" data-painted d={changed.map(cellPath).join('')} />
+      <path class="pps-map-borders" d={useMemo(() => zoneBorders(after), [after])} />
+      <path class="pps-map-outline" data-outline={target} d={useMemo(() => zoneBorders(after, (s) => s === target), [after, target])} />
+    </g>
+  );
 }
 
 export function badgeSize(enrollment: number): number {
@@ -68,13 +128,17 @@ export function badgeSize(enrollment: number): number {
 }
 
 export function MapView(props: MapViewProps) {
-  const { schools, households, overlay, selected, onSelectSchool, zoneLevel, focus, focusAt = 0.5, marks = {}, links = [], flows = false } = props;
+  const { schools, households, overlay, selected, onSelectSchool, zoneLevel, focus, focusAt = 0.5, marks = {}, links = [], flows = false, zoneEdit } =
+    props;
   const containerRef = useRef<HTMLDivElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const gestures = useRef(new Gestures());
   const [size, setSize] = useState(FALLBACK_SIZE);
   const [view, setView] = useState<View>(() => fitView(MAP_BOUNDS, FALLBACK_SIZE.w, FALLBACK_SIZE.h));
   const [picker, setPicker] = useState<{ at: Point; ids: SchoolId[] } | null>(null);
+  const [stroke, setStroke] = useState<number[]>([]);
+  const strokeRef = useRef<number[]>([]);
+  gestures.current.paint = !!zoneEdit;
   const fit = useMemo(() => fitView(MAP_BOUNDS, size.w, size.h), [size]);
   const level = snapLevel(view.scale / fit.scale);
 
@@ -211,6 +275,15 @@ export function MapView(props: MapViewProps) {
       });
     }
     if (g.kind === 'pinchEnd') setView((v) => settle(zoomAt(v, fit.scale * levelFactor(snapLevel(v.scale / fit.scale)), g.center)));
+    if (g.kind === 'stroke') {
+      const add = strokeCells(toWorld(view, g.from), toWorld(view, g.to)).filter((c) => !strokeRef.current.includes(c));
+      if (add.length) setStroke((strokeRef.current = [...strokeRef.current, ...add]));
+    }
+    if (g.kind === 'strokeEnd' || g.kind === 'strokeCancel') {
+      const cells = strokeRef.current;
+      setStroke((strokeRef.current = []));
+      if (g.kind === 'strokeEnd' && cells.length) zoneEdit?.onStroke(cells);
+    }
     if (g.kind === 'tap') {
       const tap = resolveTap(badges, g.at);
       if (tap.kind === 'select') onSelectSchool(tap.id);
@@ -247,11 +320,14 @@ export function MapView(props: MapViewProps) {
       class={`pps-map pps-map-${level} pps-map-overlay-${overlay}`}
       onPointerDown={(e) => {
         (e.currentTarget as Element).setPointerCapture?.(e.pointerId);
-        gestures.current.down(e.pointerId, local(e));
+        apply(gestures.current.down(e.pointerId, local(e)));
       }}
       onPointerMove={(e) => apply(gestures.current.move(e.pointerId, local(e)))}
       onPointerUp={(e) => apply(gestures.current.up(e.pointerId, local(e)))}
-      onPointerCancel={(e) => gestures.current.cancel(e.pointerId)}
+      onPointerCancel={(e) => {
+        gestures.current.cancel(e.pointerId);
+        setStroke((strokeRef.current = []));
+      }}
       onWheel={(e) => {
         e.preventDefault();
         zoomTo(stepLevel(level, e.deltaY < 0 ? 1 : -1), local(e));
@@ -259,8 +335,12 @@ export function MapView(props: MapViewProps) {
     >
       <svg class="pps-map-layer" width={size.w} height={size.h} aria-hidden="true">
         <g transform={`matrix(${view.scale} 0 0 ${view.scale} ${view.tx} ${view.ty})`}>
-          <g opacity={overlay === 'families' ? 0.6 : 1}>{zoneLayer}</g>
-          {selectedZone && <path class="pps-map-zone-selected" d={ringsToPath(selectedZone.rings)} />}
+          {zoneEdit ? (
+            <ZoneGrid edit={zoneEdit} stroke={stroke} />
+          ) : (
+            <g opacity={overlay === 'families' ? 0.6 : 1}>{zoneLayer}</g>
+          )}
+          {selectedZone && !zoneEdit && <path class="pps-map-zone-selected" d={ringsToPath(selectedZone.rings)} />}
           {riverLayer}
         </g>
       </svg>

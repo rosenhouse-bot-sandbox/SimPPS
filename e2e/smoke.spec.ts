@@ -123,3 +123,52 @@ test('closes Peninsula into Rosa Parks and reports where the kids went', async (
   await expect(where.locator('.call')).toContainText(/HIT|MISS/);
   await shot(page, 'm2-report');
 });
+
+test('slices 30% of Peninsula into Rosa Parks and reports the re-zoned kids', async ({ page }) => {
+  test.setTimeout(90_000);
+  await page.goto('?seed=p52&start=status-quo');
+  await page.getByRole('button', { name: 'Plan' }).tap();
+  await page.getByRole('button', { name: 'Rosa Parks Elementary School' }).tap();
+  await page.getByRole('button', { name: 'Edit boundary' }).tap();
+  const sheet = page.getByRole('region', { name: 'Zone: Rosa Parks' });
+  await expect(page.getByTestId('zone-grid')).toBeVisible();
+
+  const from = (await page.locator('[data-school="peninsula"] > rect').last().boundingBox())!;
+  const [x, y] = [from.x + from.width / 2, from.y + from.height / 2];
+  await page.mouse.move(x, y);
+  await page.mouse.down();
+  for (let i = 1; i <= 6; i++) await page.mouse.move(x + i * 8, y - i * 4);
+  await page.mouse.up();
+  await expect(page.getByTestId('boundary-chip')).toContainText('blocks');
+  await expect(page.locator('[data-painted]')).not.toHaveAttribute('d', '');
+  await shot(page, 'm3-zone-paint');
+  await sheet.getByRole('button', { name: 'Undo stroke' }).tap();
+  await expect(page.getByTestId('boundary-chip')).toHaveCount(0);
+
+  await sheet.getByRole('button', { name: 'Slice…' }).tap();
+  await sheet.getByRole('combobox', { name: 'Zone' }).selectOption('peninsula');
+  await sheet.getByRole('button', { name: 'More Share' }).tap();
+  await expect(sheet).toContainText('Move the 30% of Peninsula nearest Rosa Parks');
+  await sheet.getByRole('checkbox', { name: /Grandfather/ }).tap();
+  const chip = page.getByTestId('boundary-chip');
+  await expect(chip).toContainText('kids must move');
+  await expect(chip).not.toContainText('\n0 kids must move');
+  expect((await sheet.getByRole('button', { name: 'More Share' }).boundingBox())!.height).toBeGreaterThanOrEqual(44);
+  expect((await sheet.getByRole('button', { name: 'Add to plan' }).boundingBox())!.height).toBeGreaterThanOrEqual(48);
+  expect(await sheet.evaluate((e) => e.scrollWidth <= e.clientWidth)).toBe(true);
+  await sheet.locator('.window-body').evaluate((e) => e.scrollTo(0, 0));
+  await shot(page, 'm3-slice');
+  await sheet.getByRole('button', { name: 'Add to plan' }).tap();
+
+  await hold(page, page.getByRole('button', { name: 'End year (press and hold)' }));
+  await expect(page.getByRole('region', { name: 'Play 2027-28?' })).toContainText(/Rezone \d+ blocks → Rosa Parks/);
+  await hold(page, page.getByRole('button', { name: 'Play the year (press and hold)' }));
+  await page.getByTestId('playback').getByRole('button', { name: 'Skip' }).tap();
+
+  const where = page.getByRole('region', { name: 'Where re-zoned kids went' });
+  for (const row of ['New zone school', 'Other PPS school', 'Left PPS']) await expect(where).toContainText(row);
+  await expect(where).toContainText('~');
+  await expect(page.getByText(/K-5 walkers \d/)).toBeVisible();
+  await where.scrollIntoViewIfNeeded();
+  await shot(page, 'm3-report');
+});

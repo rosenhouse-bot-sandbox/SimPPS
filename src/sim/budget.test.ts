@@ -78,7 +78,7 @@ describe('computeBudget', () => {
   const base = {
     year: 2028,
     schools: { 'rosa-parks': rosaParks },
-    policy: { k5ClassSize: 24, levyRate: 0, reserveDraw: 5_000_000, closures: [] },
+    policy: { k5ClassSize: 24, levyRate: 0, reserveDraw: 5_000_000, closures: [], boundaryEdits: [] },
     reserves: 20_000_000,
     priorSpending: 800_000_000,
     cumulativeCuts: 0,

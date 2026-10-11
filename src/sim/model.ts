@@ -109,6 +109,16 @@ export const M = {
   nonFollowerCharter: 0.1,
   // model.crowding
   crowdingLine: 1.1,
+  // model.sliceStay: the chance a kid re-zoned off its school goes to the new zone school
+  sliceStay: 0.97,
+  // model.walkLimit
+  walkLimitK5: 1,
+  walkLimitMiddle: 1.5,
+  walkDialMiles: 1,
+  // model.busing: dollars a year per new rider
+  busRider: { lo: 1_000, hi: 1_800 },
+  // model.busReimbursement: the share the state repays a year later
+  busReimbursed: { lo: 0.7, hi: 0.9 },
 };
 
 export const METERS_PER_MILE = 1609.34;

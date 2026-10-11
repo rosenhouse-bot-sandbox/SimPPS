@@ -1,6 +1,7 @@
 import { clamp } from '../clamp';
 import { SCHOOLS, ZONES, type Point, type SchoolData } from '../data';
 import { samplePoint, ZoneIndex } from './geo';
+import { cellAt } from './grid';
 import { M, MAX_GRADE, oneKid } from './model';
 import { stream } from './rng';
 import type { Household, SchoolChoice as Choice, SchoolId } from './types';
@@ -76,9 +77,19 @@ function toChoice(counts: Map<SchoolId, number>): Choice {
   return { ids, cum: ids.map((id) => (sum += counts.get(id)!)) };
 }
 
+const middleZoneAt = new Map<number, number>();
+
+/** MIDDLE.find, remembered by position, since homes never move. */
+function findMiddle(pos: Point): number {
+  const key = pos[0] * 1e6 + pos[1];
+  let m = middleZoneAt.get(key);
+  if (m === undefined) middleZoneAt.set(key, (m = MIDDLE.find(pos)));
+  return m;
+}
+
 /** The middle school a home is zoned to. */
 export function middleZoneSchool(pos: Point, elemZoneSchool: SchoolId): SchoolId {
-  const m = MIDDLE.find(pos);
+  const m = findMiddle(pos);
   if (m >= 0) return ZONES.middle[m].school;
   if (SCHOOL_INFO.get(elemZoneSchool)!.hi === MAX_GRADE) return elemZoneSchool;
   let best = MIDDLE_SCHOOLS[0];
@@ -203,6 +214,7 @@ export function generatePopulation(seedHash: number): Population {
     return {
       id,
       pos: h.pos,
+      cell: cellAt(h.pos, h.elemZone),
       kids: oneKid(h.grade),
       zoneSchool,
       school: h.school,

@@ -1,6 +1,7 @@
 import { classesFor, cutCreep, stateWeight } from './budget';
 import { gradeOf, MAX_GRADE } from './model';
 import { SCHOOL_INFO } from './population';
+import { newBusRiders, walkK5 } from './walk';
 import type { ClosedSchool, Dials, GameState, Household, SchoolState } from './types';
 
 /** Each school's kids and homerooms. Cuts remove `homeroomsCut` homerooms across schools. */
@@ -68,5 +69,7 @@ export function computeDials(state: Pick<GameState, 'households' | 'schools' | '
     positionsCut,
     reservePct: state.budget.reservePct,
     kidsInUrm,
+    walkK5: walkK5(state.households),
+    newBusRiders: newBusRiders(state.households),
   };
 }

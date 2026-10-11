@@ -1,5 +1,5 @@
 import { fixtureSchools } from '../map/fixtures';
-import { DEFAULT_POLICY } from '../sim';
+import { DEFAULT_POLICY, defaultZones } from '../sim';
 import type { GameState, YearReport } from '../sim/types';
 
 export const FIXTURE_GAME: GameState = {
@@ -27,8 +27,11 @@ export const FIXTURE_GAME: GameState = {
     positionsCut: 0,
     reservePct: 0.048,
     kidsInUrm: 4_500,
+    walkK5: 9_000,
+    newBusRiders: 0,
   },
   policy: DEFAULT_POLICY,
+  zones: defaultZones(),
 };
 
 export const FIXTURE_REPORT: YearReport = {

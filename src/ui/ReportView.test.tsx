@@ -91,4 +91,42 @@ describe('ReportView', () => {
     render(<ReportView report={{ ...FIXTURE_REPORT, closures: [outcome] }} turn={1} onNext={() => {}} />);
     expect(document.querySelector('.call')).toBeNull();
   });
+
+  it('shows where re-zoned kids went, as sourced ranges', () => {
+    const rezoned = { kids: { lo: 45, hi: 55 }, zoneSchool: { lo: 40, hi: 48 }, otherPps: { lo: 1, hi: 5 }, leftPps: { lo: 0, hi: 3 } };
+    render(<ReportView report={{ ...FIXTURE_REPORT, rezoned }} turn={1} onNext={() => {}} />);
+    const where = screen.getByRole('region', { name: 'Where re-zoned kids went' });
+    expect(where.textContent).toContain('Re-zoned, 45–55~ kids:');
+    const row = (label: string) => screen.getByText(label).closest('.flow') as HTMLElement;
+    expect(within(row('New zone school')).getByRole('button').textContent).toBe('40–48~');
+    expect(within(row('Other PPS school')).getByRole('button').textContent).toBe('1–5~');
+    expect(within(where).getAllByText('Left PPS')).toHaveLength(1);
+    const sources = [...where.querySelectorAll('[data-source]')].map((e) => e.getAttribute('data-source'));
+    expect(sources).toEqual(['model.sliceStay', 'model.sliceStay', 'model.nonFollowers', 'model.nonFollowers']);
+  });
+
+  it('shows no re-zoning section without re-zoned kids', () => {
+    render(<ReportView report={FIXTURE_REPORT} turn={1} onNext={() => {}} />);
+    expect(screen.queryByRole('region', { name: 'Where re-zoned kids went' })).toBeNull();
+  });
+
+  it('shows the Walk dial change for a year with boundary edits', () => {
+    render(<ReportView report={FIXTURE_REPORT} turn={1} onNext={() => {}} walk={{ before: 9_000, after: 9_046 }} />);
+    const walk = screen.getByText(/K-5 walkers/).closest('p')!;
+    expect(walk.textContent).toBe('K-5 walkers 9,000 → 9,046~');
+    expect(walk.querySelector('[data-source]')!.getAttribute('data-source')).toBe('dial.walkK5');
+  });
+
+  it('keeps the Walk dials in the ghost list past the top three', () => {
+    const vsGhost = [
+      ...FIXTURE_REPORT.vsGhost,
+      { dial: 'walkK5' as const, you: 9_100, ghost: 9_000, better: true },
+      { dial: 'newBusRiders' as const, you: 40, ghost: 0, better: false },
+    ];
+    render(<ReportView report={{ ...FIXTURE_REPORT, vsGhost }} turn={1} onNext={() => {}} />);
+    const items = [...document.querySelectorAll('.ghost li')].map((li) => li.textContent);
+    expect(items).toHaveLength(5);
+    expect(items[3]).toBe('▲ K-5 walkers 9,100 vs 9,000~');
+    expect(items[4]).toBe('▼ New bus riders 40 vs 0~');
+  });
 });

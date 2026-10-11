@@ -115,7 +115,7 @@ describe('closure budget lines', () => {
   const base = {
     year: 2027,
     schools: { peninsula: school('peninsula'), 'rosa-parks': school('rosa-parks') },
-    policy: { k5ClassSize: 24, levyRate: 0, reserveDraw: 0, closures: [] },
+    policy: { k5ClassSize: 24, levyRate: 0, reserveDraw: 0, closures: [], boundaryEdits: [] },
     reserves: 0,
     priorSpending: 800_000_000,
     cumulativeCuts: 0,
@@ -198,6 +198,16 @@ describe('closureChip', () => {
     expect(chip.atMaturity.hi).toBeLessThan(1_500_000);
     const lease = closureChip(game, { ...peninsula, building: 'lease' }, [], 24);
     expect((lease.atMaturity.lo + lease.atMaturity.hi) / 2 - net).toBeCloseTo(70_000 * costIndex(2029), 0);
+  });
+
+  it('charges new bus riders now and, net of the repayment, at maturity', () => {
+    const bused = closureChip(game, peninsula, [], 24, 10);
+    expect(bused.busRiders).toBe(10);
+    expect(chip.busRiders).toBe(0);
+    expect(bused.now).toEqual({ lo: -600_000 - 18_000, hi: -300_000 - 10_000 });
+    expect(bused.atMaturity.lo).toBeCloseTo(chip.atMaturity.lo - 10 * 1_800 * 0.3 * costIndex(2029));
+    expect(bused.atMaturity.hi).toBeCloseTo(chip.atMaturity.hi - 10 * 1_000 * 0.1 * costIndex(2029));
+    expect(bused.paysOffIfFewerThan).toBe(Math.floor((net - 10 * 1_400 * 0.2 * costIndex(2029)) / revenuePerStudent(0.2)));
   });
 
   it('pays off if fewer leave PPS than the saving buys in revenue', () => {
@@ -341,6 +351,17 @@ describe('Scenario A over a year', () => {
   const start = newGame({ seed: 'scenario', start: 'scenario-a' });
   const { next, report } = endYear(start, start.policy);
   const movers = next.households.filter((h) => h.movedFrom);
+
+  it('sends each follower who lives in the closed zone to the receiver its block went to', () => {
+    const before = new Map(start.households.map((h) => [h.id, h]));
+    const closures = new Map(start.policy.closures.map((c) => [c.school, c]));
+    const followers = movers.filter((h) => {
+      const c = closures.get(h.movedFrom!);
+      return c && before.get(h.id)!.zoneSchool === c.school && c.receivers.some((r) => r.school === h.school);
+    });
+    expect(followers.length).toBeGreaterThan(1000);
+    expect(followers.filter((h) => h.school !== h.zoneSchool)).toEqual([]);
+  });
 
   it('closes 14 schools and empties them', () => {
     expect(report.closures).toHaveLength(14);

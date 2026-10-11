@@ -30,7 +30,7 @@ describe('model sources', () => {
   });
 
   it('gives every dial a source', () => {
-    const dials: (keyof Dials)[] = ['kids', 'capture', 'kindergartenCapture', 'gap', 'positionsCut', 'reservePct', 'kidsInUrm'];
+    const dials: (keyof Dials)[] = ['kids', 'capture', 'kindergartenCapture', 'gap', 'positionsCut', 'reservePct', 'kidsInUrm', 'walkK5', 'newBusRiders'];
     for (const d of dials) expect(getSource(dialSourceKey(d))).toBeDefined();
   });
 });

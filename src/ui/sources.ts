@@ -33,6 +33,14 @@ export const K = {
   callIt: 'ui.callIt',
   share: 'ui.share',
   scenarios: 'model.scenarios',
+  zoneGrid: 'model.zoneGrid',
+  households: 'model.households',
+  sliceStay: 'model.sliceStay',
+  walkLimit: 'model.walkLimit',
+  busing: 'model.busing',
+  busReimbursement: 'model.busReimbursement',
+  walkK5: dialSourceKey('walkK5'),
+  newBusRiders: dialSourceKey('newBusRiders'),
 } as const;
 
 const UI_SOURCES: Source[] = [

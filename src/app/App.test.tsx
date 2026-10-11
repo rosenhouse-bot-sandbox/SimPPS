@@ -1,6 +1,6 @@
 import { act, cleanup, fireEvent, render, screen } from '@testing-library/preact';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { ZONES } from '../data';
+import { SCHOOLS, ZONES } from '../data';
 import { FALLBACK_SIZE } from '../map/MapView';
 import * as realSim from '../sim';
 import { getSource } from '../sources/registry';
@@ -451,5 +451,110 @@ describe('App', () => {
       'In the plan: takes kids from Peninsula. Change that closure to close this school.',
     );
   });
-});
 
+  describe('Zone mode', { timeout: 30_000 }, () => {
+    const zoneSheet = () => screen.queryByRole('region', { name: /^Zone:/ });
+    function tapAt([x, y]: [number, number]) {
+      const map = document.querySelector('.pps-map')!;
+      fireEvent.pointerDown(map, { pointerId: 1, clientX: x, clientY: y });
+      fireEvent.pointerUp(map, { pointerId: 1, clientX: x, clientY: y });
+    }
+    function choose(name: string, value: string) {
+      const select = screen.getByRole('combobox', { name }) as HTMLSelectElement;
+      select.value = value;
+      act(() => {
+        select.dispatchEvent(new Event('change', { bubbles: true }));
+      });
+    }
+    function openRosaParks() {
+      click('Plan');
+      click('Rosa Parks Elementary School');
+      click('Edit boundary');
+    }
+
+    it('opens from a school sheet on that school, with the block grid', () => {
+      setup();
+      expect(document.querySelector('[data-testid="zone-grid"]')).toBeNull();
+      openRosaParks();
+      expect(zoneSheet()!.getAttribute('aria-label')).toBe('Zone: Rosa Parks');
+      expect(document.querySelector('[data-testid="zone-grid"]')).not.toBeNull();
+      expect(document.querySelector('[data-mark="receiver"]')!.getAttribute('data-school')).toBe('rosa-parks');
+      expect(isFocused(badgeAt('rosa-parks'), 0.18)).toBe(true);
+      click('Close');
+      expect(document.querySelector('[data-testid="zone-grid"]')).toBeNull();
+    });
+
+    it('opens from Plan as the menu path', () => {
+      setup();
+      click('Plan');
+      click('Edit boundary');
+      expect(zoneSheet()).not.toBeNull();
+    });
+
+    it('paints a block with one finger, shows the chip and undoes the stroke', () => {
+      setup();
+      openRosaParks();
+      tapAt(badgeAt('peninsula'));
+      const start = realSim.newGame({ seed: 't' });
+      const cell = realSim.cellAtPoint([SCHOOLS.find((x) => x.id === 'peninsula')!.x, SCHOOLS.find((x) => x.id === 'peninsula')!.y]);
+      const chip = realSim.boundaryChip(start, { level: 'elementary', to: 'rosa-parks', cells: [cell], grandfather: true }, start.policy);
+      expect(screen.getByTestId('boundary-chip').textContent).toContain(`${chip.residents}~ resident kids`);
+      expect(document.querySelector('[data-painted]')!.getAttribute('d')).not.toBe('');
+      click('Undo stroke');
+      expect(screen.queryByTestId('boundary-chip')).toBeNull();
+      expect(document.querySelector('[data-painted]')!.getAttribute('d')).toBe('');
+    });
+
+    it('slices 30% of a zone into the plan, through pre-flight, to the report', () => {
+      setup();
+      openRosaParks();
+      click('Slice…');
+      choose('Zone', 'peninsula');
+      click('More Share');
+      fireEvent.click(screen.getByRole('checkbox', { name: /Grandfather/ }));
+      const start = realSim.newGame({ seed: 't' });
+      const edit = realSim.sliceEdit(start, 'elementary', 'peninsula', 'rosa-parks', 30, false);
+      const chip = realSim.boundaryChip(start, edit, start.policy);
+      expect(screen.getByTestId('boundary-chip').textContent).toContain(`${fmtRange(realSim.modeledRange(chip.kidsMoving))} kids must move`);
+      click('Add to plan');
+      expect(zoneSheet()).toBeNull();
+      const line = `Rezone ${edit.cells.length} blocks → Rosa Parks`;
+      expect(gapBar()).toContain(fmtMoney(realSim.previewBudget(start, { ...start.policy, boundaryEdits: [edit] }).gap));
+      click('Plan');
+      expect(screen.getByRole('button', { name: `Undo ${line}` })).toBeTruthy();
+
+      hold('End year');
+      expect(screen.getByRole('region', { name: 'Play 2027-28?' }).textContent).toContain(line);
+      hold('Play the year');
+      act(() => {
+        vi.advanceTimersByTime(6000);
+      });
+      const { next, report } = realSim.endYear(start, { ...start.policy, boundaryEdits: [edit] });
+      const where = screen.getByRole('region', { name: 'Where re-zoned kids went' });
+      expect(where.textContent).toContain(fmtRange(report.rezoned!.zoneSchool));
+      expect(screen.getByText(/K-5 walkers/).textContent).toContain(`${next.dials.walkK5.toLocaleString('en-US')}`);
+    });
+
+    it('offers no closure of a school that blocks re-zone into in the plan', () => {
+      setup();
+      openRosaParks();
+      click('Slice…');
+      choose('Zone', 'peninsula');
+      click('Add to plan');
+      click('Plan');
+      click('Rosa Parks Elementary School');
+      expect(screen.getByText(/blocks re-zone into this school/)).toBeTruthy();
+      expect(screen.queryByRole('button', { name: 'Close & send' })).toBeNull();
+    });
+
+    it('drops an unfinished boundary at End year', () => {
+      setup();
+      openRosaParks();
+      tapAt(badgeAt('peninsula'));
+      hold('End year');
+      expect(screen.getByRole('region', { name: 'Play 2027-28?' }).textContent).not.toContain('Rezone');
+      click('Back');
+      expect(zoneSheet()).toBeNull();
+    });
+  });
+});

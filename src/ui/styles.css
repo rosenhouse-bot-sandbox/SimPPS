@@ -711,3 +711,71 @@ legend {
 .closure-report .bar {
   max-width: calc(100% - 9ch);
 }
+
+/* Zone mode keeps most of the map in view for painting. */
+.panel.zonesheet {
+  max-height: 64%;
+}
+
+.slice-says {
+  margin: 0 0 4px;
+  max-width: 28ch;
+}
+
+.levels .btn {
+  flex: 1;
+}
+
+.levels .btn[aria-pressed='true'] {
+  border-color: var(--shade) var(--light) var(--light) var(--shade);
+  background: #e6e6d8;
+  font-weight: bold;
+}
+
+.pickrow {
+  justify-content: space-between;
+}
+
+.zonesheet .stepper-label {
+  flex: 1;
+  min-width: 0;
+}
+
+.zonesheet .stepper-label select {
+  width: 100%;
+}
+
+.zonesheet select,
+.pickrow select {
+  flex: 1;
+  max-width: 60%;
+  min-height: var(--step);
+  font: inherit;
+}
+
+.zone-chip .span {
+  grid-column: 1 / -1;
+}
+
+.seat-row {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.seat-row > span:first-child {
+  font-family: var(--body);
+  font-size: 16px;
+}
+
+.zonesheet .actions {
+  position: sticky;
+  bottom: -12px;
+  margin: 12px -12px -12px;
+  padding: 8px 12px 12px;
+  background: var(--face);
+}
+
+.zonesheet .actions .btn {
+  padding: 0 10px;
+}

@@ -196,3 +196,40 @@
 .pps-map-picker .pps-map-picker-close {
   color: #b9b9b9;
 }
+
+.pps-map-gridlines {
+  fill: none;
+  stroke: #000;
+  stroke-opacity: 0.35;
+  stroke-width: 0.5;
+  vector-effect: non-scaling-stroke;
+}
+
+.pps-map-district .pps-map-gridlines {
+  display: none;
+}
+
+.pps-map-painted {
+  fill: #f2d64b;
+  fill-opacity: 0.55;
+  stroke: #f2d64b;
+  stroke-width: 1;
+  vector-effect: non-scaling-stroke;
+}
+
+.pps-map-borders,
+.pps-map-outline {
+  fill: none;
+  stroke-linecap: round;
+  vector-effect: non-scaling-stroke;
+}
+
+.pps-map-borders {
+  stroke: #9fb38c;
+  stroke-width: 1;
+}
+
+.pps-map-outline {
+  stroke: #ffe9a8;
+  stroke-width: 3;
+}
