@@ -1,6 +1,6 @@
 import type { ComponentChildren } from 'preact';
 import { createPortal } from 'preact/compat';
-import { useEffect, useState } from 'preact/hooks';
+import { useEffect, useRef, useState } from 'preact/hooks';
 import { getSource, type Source, type SourceTag } from '../sources/registry';
 import './sources';
 
@@ -34,6 +34,8 @@ export function Sourced({ k, modeled, children }: SourcedProps) {
 
 export function SourcePopover({ k, onClose }: { k: string; onClose: () => void }) {
   const source = getSource(k);
+  const closeButton = useRef<HTMLButtonElement>(null);
+  useEffect(() => closeButton.current?.focus(), []);
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => e.key === 'Escape' && onClose();
     window.addEventListener('keydown', onKey);
@@ -49,7 +51,7 @@ export function SourcePopover({ k, onClose }: { k: string; onClose: () => void }
       >
         <div class="titlebar">
           <span>{source?.label ?? k}</span>
-          <button type="button" class="close" aria-label="Close" onClick={onClose}>
+          <button ref={closeButton} type="button" class="close" aria-label="Close" onClick={onClose}>
             ×
           </button>
         </div>

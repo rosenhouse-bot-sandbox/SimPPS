@@ -25,9 +25,10 @@ describe('Sourced', () => {
     expect(screen.getByRole('dialog').textContent).toContain('[M] model assumption');
   });
 
-  it('closes on Escape', () => {
+  it('takes focus and closes on Escape', () => {
     render(<Sourced k="dial.gap">−$65M</Sourced>);
     fireEvent.click(screen.getByRole('button', { name: '−$65M' }));
+    expect(document.activeElement).toBe(screen.getByRole('button', { name: 'Close' }));
     fireEvent.keyDown(window, { key: 'Escape' });
     expect(screen.queryByRole('dialog')).toBeNull();
   });

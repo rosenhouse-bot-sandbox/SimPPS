@@ -34,7 +34,9 @@ export function Playback({ report, onDone, onSeason, durationMs = 30_000 }: Play
     return () => clearInterval(t);
   }, [paused]);
 
-  useEffect(() => onSeason?.(season.id), [season.id]);
+  useEffect(() => {
+    onSeason?.(season.id);
+  }, [season.id]);
 
   const finish = () => {
     if (done.current) return;
