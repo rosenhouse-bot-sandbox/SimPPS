@@ -41,14 +41,48 @@
   shape-rendering: crispEdges;
 }
 
-.pps-map-badge > rect:not(.pps-map-roof):not(.pps-map-badge-ring) {
+.pps-map-badge > rect:not(.pps-map-roof):not(.pps-map-badge-ring):not(.pps-map-mark) {
   stroke: #0d0d0d;
   stroke-width: 1;
 }
 
-.pps-map-badge.closed > rect {
+.pps-map-badge.closed {
+  opacity: 0.75;
+}
+
+.pps-map-badge.closed > rect:not(.pps-map-mark) {
   stroke: #8a8a8a;
   stroke-dasharray: 2 2;
+}
+
+.pps-map-boards {
+  stroke: #b08a52;
+  stroke-width: 2;
+}
+
+.pps-map .pps-map-mark {
+  fill: none;
+  stroke-width: 2;
+}
+
+.pps-map-mark-closing {
+  stroke: #e66101;
+}
+
+.pps-map-mark-receiver {
+  stroke: #9fd8ff;
+}
+
+.pps-map-mark-candidate {
+  stroke: #9fd8ff;
+  stroke-dasharray: 3 3;
+}
+
+.pps-map-link {
+  stroke: #9fd8ff;
+  stroke-width: 2;
+  stroke-dasharray: 6 4;
+  pointer-events: none;
 }
 
 .pps-map-roof {

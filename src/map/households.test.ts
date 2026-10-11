@@ -14,6 +14,7 @@ function outsidePps(id: number, pos: [number, number]): Household {
 
 function recorder() {
   const rects: { x: number; y: number; color: string }[] = [];
+  const outlines: { x: number; y: number }[] = [];
   const lines: { from: number[]; to: number[] }[] = [];
   let from: number[] = [];
   const ctx: HouseholdCtx = {
@@ -24,6 +25,9 @@ function recorder() {
     fillRect(x, y, w, h) {
       rects.push({ x: x + w / 2, y: y + h / 2, color: ctx.fillStyle as string });
     },
+    strokeRect(x, y, w, h) {
+      outlines.push({ x: x + w / 2, y: y + h / 2 });
+    },
     beginPath() {},
     moveTo(x, y) {
       from = [x, y];
@@ -33,7 +37,7 @@ function recorder() {
     },
     stroke() {},
   };
-  return { ctx, rects, lines };
+  return { ctx, rects, lines, outlines };
 }
 
 const view = { scale: 1, tx: 0, ty: 0 };
@@ -94,5 +98,33 @@ describe('below street level', () => {
     const { ctx, rects } = recorder();
     drawHouseholds(ctx, homes, view, { ...base, level: 'district' });
     expect(rects.map((r) => r.color)).toEqual([WINDOW_COLORS.left, WINDOW_COLORS.stayed]);
+  });
+});
+
+describe('closure flows', () => {
+  const mover = { ...hh(1, [10, 10], 'moved'), movedFrom: 'b' };
+  const leaver = { ...hh(2, [30, 30], 'left', null), movedFrom: 'b' };
+  const other = hh(3, [50, 50], 'moved');
+
+  it("grow a trail from each closed school's mover toward its new school", () => {
+    const { ctx, lines } = recorder();
+    drawHouseholds(ctx, [mover, leaver, other], view, { ...base, level: 'district', flows: 0.5 });
+    expect(lines).toEqual([{ from: [10, 10], to: [50, 10] }]);
+  });
+
+  it("darken each leaver's window with a ring", () => {
+    const { ctx, rects, outlines } = recorder();
+    drawHouseholds(ctx, [mover, leaver], view, { ...base, level: 'neighborhood', flows: 1 });
+    expect(rects.slice(-2)).toEqual([
+      { x: 10, y: 10, color: WINDOW_COLORS.moved },
+      { x: 30, y: 30, color: WINDOW_COLORS.left },
+    ]);
+    expect(outlines).toEqual([{ x: 30, y: 30 }]);
+  });
+
+  it('are left out unless asked for', () => {
+    const { ctx, lines } = recorder();
+    drawHouseholds(ctx, [mover], view, { ...base, level: 'district' });
+    expect(lines).toEqual([]);
   });
 });
