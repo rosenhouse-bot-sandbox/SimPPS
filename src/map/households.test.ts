@@ -4,7 +4,12 @@ import { WINDOW_COLORS } from './colors';
 import { TRAIL_PX, binHouseholds, drawHouseholds, type HouseholdCtx } from './households';
 
 function hh(id: number, pos: [number, number], status: HouseholdStatus, school: string | null = 'a'): Household {
-  return { id, pos, kids: [1], zoneSchool: 'a', school, exitCapacity: 0, loyalty: 0, voice: 0, status };
+  const h: Household = { id, pos, kids: [1], zoneSchool: 'a', school, exitCapacity: 0, loyalty: 0, voice: 0, status };
+  return status === 'left' ? { ...h, leftThisYear: true } : h;
+}
+
+function outsidePps(id: number, pos: [number, number]): Household {
+  return { ...hh(id, pos, 'left', null), leftThisYear: undefined };
 }
 
 function recorder() {
@@ -46,6 +51,12 @@ describe('drawHouseholds at street level', () => {
     ]);
   });
 
+  it('leaves out residents who were outside PPS before this year', () => {
+    const { ctx, rects } = recorder();
+    drawHouseholds(ctx, [outsidePps(1, [10, 10])], view, street);
+    expect(rects).toEqual([]);
+  });
+
   it('draws a short trail from a moved window toward its new school', () => {
     const { ctx, lines } = recorder();
     drawHouseholds(ctx, [hh(1, [10, 10], 'moved')], view, street);
@@ -70,6 +81,12 @@ describe('below street level', () => {
     expect(bins.map((b) => [b.count, b.status])).toEqual([
       [3, 'left'],
       [1, 'stayed'],
+    ]);
+  });
+
+  it('does not bin residents who were outside PPS before this year', () => {
+    expect(binHouseholds([outsidePps(1, [1, 1]), hh(2, [2, 2], 'stayed')], view, 12, 100, 100)).toEqual([
+      { x: 6, y: 6, count: 1, status: 'stayed' },
     ]);
   });
 

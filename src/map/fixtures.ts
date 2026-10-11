@@ -59,6 +59,7 @@ export function fixtureHouseholds(n = 400, seed = 1): Household[] {
       loyalty: rand(),
       voice: rand(),
       status,
+      leftThisYear: status === 'left' || undefined,
     });
   }
   return out;

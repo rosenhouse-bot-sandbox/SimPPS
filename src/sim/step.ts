@@ -131,6 +131,7 @@ export function stepYear(state: GameState, policy: Policy): { next: GameState; f
     const ng = g + 1;
     const next: Household = { ...h, kids: oneKid(ng) };
     delete next.movedAway;
+    delete next.leftThisYear;
     const feeder = ng === 6 ? middleZoneSchool(h.pos, h.zoneSchool) : h.zoneSchool;
     next.zoneSchool = feeder;
     if (h.school !== null) {
@@ -140,6 +141,7 @@ export function stepYear(state: GameState, policy: Policy): { next: GameState; f
       if (draw(seed, year, h.id, D.Leave) < pLeave) {
         next.school = null;
         next.status = 'left';
+        next.leftThisYear = true;
         if (draw(seed, year, h.id, D.Away) < M.awayShare) next.movedAway = true;
         flows.leftPps++;
         const region = HIGH.find(h.pos);

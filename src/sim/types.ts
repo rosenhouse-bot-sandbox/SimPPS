@@ -43,6 +43,8 @@ export interface Household {
   status: HouseholdStatus;
   /** The household left Portland this year. It drops off the map next year. */
   movedAway?: boolean;
+  /** The household's kids left PPS this year. Other 'left' households were outside PPS before. */
+  leftThisYear?: boolean;
 }
 
 export interface SchoolState {

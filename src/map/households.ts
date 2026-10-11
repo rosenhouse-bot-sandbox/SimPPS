@@ -24,6 +24,11 @@ export interface DrawOptions {
 /** Dark windows first so lit ones sit on top. */
 const DRAW_ORDER: HouseholdStatus[] = ['left', 'stayed', 'moved', 'returned'];
 
+/** A dark window means a leaver this year, so residents already outside PPS stay off the map. */
+export function shownOnMap(h: Household): boolean {
+  return h.status !== 'left' || h.leftThisYear === true;
+}
+
 export interface Bin {
   x: number;
   y: number;
@@ -34,6 +39,7 @@ export interface Bin {
 export function binHouseholds(hs: Household[], view: View, cellPx: number, width: number, height: number): Bin[] {
   const cells = new Map<string, { col: number; row: number; counts: Record<HouseholdStatus, number> }>();
   for (const h of hs) {
+    if (!shownOnMap(h)) continue;
     const [x, y] = toScreen(view, h.pos);
     if (x < 0 || y < 0 || x >= width || y >= height) continue;
     const col = Math.floor(x / cellPx);
@@ -68,7 +74,7 @@ function drawWindows(ctx: HouseholdCtx, hs: Household[], view: View, o: DrawOpti
     ctx.strokeStyle = WINDOW_COLORS.moved;
     ctx.lineWidth = 1;
     for (const h of hs) {
-      if (h.status !== status) continue;
+      if (h.status !== status || !shownOnMap(h)) continue;
       const [x, y] = toScreen(view, h.pos);
       if (x < -TRAIL_PX || y < -TRAIL_PX || x > o.width + TRAIL_PX || y > o.height + TRAIL_PX) continue;
       if (status === 'moved' && h.school) drawTrail(ctx, view, [x, y], o.schoolPos(h.school));

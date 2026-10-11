@@ -24,7 +24,7 @@ describe('kCaptureTrend', () => {
 
 describe('the moving roll', () => {
   const start = newGame({ seed: 'moves' });
-  const { next } = endYear(start, DEFAULT_POLICY);
+  const { next, report } = endYear(start, DEFAULT_POLICY);
   const before = new Map(start.households.map((h) => [h.id, h]));
   const continuing = next.households.filter((h) => before.get(h.id)?.school);
 
@@ -41,6 +41,19 @@ describe('the moving roll', () => {
     expect(away.length).toBeGreaterThan(100);
     const ids = new Set(endYear(next, DEFAULT_POLICY).next.households.map((h) => h.id));
     for (const id of away) expect(ids.has(id)).toBe(false);
+  });
+
+  it('marks only this year\'s leavers as having left this year', () => {
+    const marked = next.households.filter((h) => h.leftThisYear);
+    expect(marked).toHaveLength(report.flows.leftPps);
+    for (const h of marked) expect(before.get(h.id)?.school).toBeTruthy();
+    expect(start.households.some((h) => h.leftThisYear)).toBe(false);
+  });
+
+  it('clears the mark a year later', () => {
+    const marked = new Set(next.households.filter((h) => h.leftThisYear).map((h) => h.id));
+    const later = endYear(next, DEFAULT_POLICY).next.households;
+    expect(later.filter((h) => marked.has(h.id) && h.leftThisYear)).toEqual([]);
   });
 
   it('keeps leavers who stay in Portland as residents outside PPS', () => {
