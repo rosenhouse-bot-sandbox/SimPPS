@@ -347,16 +347,54 @@ export function isRiskier(receiver: SchoolId, closed: SchoolId): boolean {
   return risky(receiver) && !risky(closed);
 }
 
-export function followFactors(h: Household, closure: Closure, target: SchoolId): FollowFactors {
+/** Factors for a kid moved off `from` toward `target`. */
+export function moveFactors(h: Household, from: SchoolId, target: SchoolId, wholeClasses: boolean): FollowFactors {
   return {
     miles: miles(h.pos, schoolPos(target)),
     barrier: acrossWillamette(h.pos, schoolPos(target)),
-    riskier: isRiskier(target, closure.school),
+    riskier: isRiskier(target, from),
     movedBefore: (h.forcedMoves ?? 0) > 0,
     loyalty: h.loyalty,
     exitCapacity: h.exitCapacity,
-    wholeClasses: closure.receivers.length === 1,
+    wholeClasses,
   };
+}
+
+export function followFactors(h: Household, closure: Closure, target: SchoolId): FollowFactors {
+  return moveFactors(h, closure.school, target, closure.receivers.length === 1);
+}
+
+/** A forced mover leaves PPS. Only one that leaves for good, not for a charter, may move away. */
+export function leavePps(
+  next: Household,
+  choice: 'charter' | 'left',
+  awayDraw: number,
+  flows: Flows,
+  region: { leavers: number } | null,
+): void {
+  next.school = null;
+  next.status = 'left';
+  next.leftThisYear = true;
+  if (choice === 'left' && awayDraw < M.awayShare) next.movedAway = true;
+  flows.leftPps++;
+  if (region) region.leavers++;
+}
+
+/** model.crowding: arrivals past each school's crowding line, lowest draw first, who must move on. */
+export function crowdedOut<T>(
+  arrivals: ReadonlyMap<SchoolId, T[]>,
+  counts: ReadonlyMap<SchoolId, number>,
+  u: (m: T) => number,
+): [SchoolId, T][] {
+  const out: [SchoolId, T][] = [];
+  for (const [school, arrived] of arrivals) {
+    const line = Math.floor(M.crowdingLine * (SCHOOL_INFO.get(school)!.data.capacity ?? Infinity));
+    const over = (counts.get(school) ?? 0) - line;
+    if (over <= 0) continue;
+    const picked = arrived.map((m) => ({ m, u: u(m) })).sort((a, b) => a.u - b.u).slice(0, over);
+    for (const { m } of picked) out.push([school, m]);
+  }
+  return out;
 }
 
 /** model.followRate: each school's follow rate sits within ±5 points of the card. */
@@ -407,12 +445,7 @@ export function decideClosures(args: {
   const add = (id: SchoolId, n: number) => counts.set(id, (counts.get(id) ?? 0) + n);
 
   const leave = (m: Mover, choice: 'charter' | 'left') => {
-    m.next.school = null;
-    m.next.status = 'left';
-    m.next.leftThisYear = true;
-    if (choice === 'left' && draw(seed, year, m.before.id, D.Away) < M.awayShare) m.next.movedAway = true;
-    flows.leftPps++;
-    if (m.region) m.region.leavers++;
+    leavePps(m.next, choice, draw(seed, year, m.before.id, D.Away), flows, m.region);
     tallies.get(m.closure.school)!.left++;
   };
   const otherPps = (m: Mover, exclude: Set<SchoolId>) => {
@@ -457,19 +490,10 @@ export function decideClosures(args: {
   }
 
   // model.crowding: kids past the line move on to the nearest PPS school with room.
-  for (const [school, arrived] of arrivals) {
-    const line = Math.floor(M.crowdingLine * (SCHOOL_INFO.get(school)!.data.capacity ?? Infinity));
-    const over = (counts.get(school) ?? 0) - line;
-    if (over <= 0) continue;
-    const decide = arrived
-      .map((m) => ({ m, u: draw(seed, year, m.before.id, D.Crowd) }))
-      .sort((a, b) => a.u - b.u)
-      .slice(0, over);
-    for (const { m } of decide) {
-      add(school, -1);
-      tallies.get(m.closure.school)!.receivers[school]--;
-      otherPps(m, new Set([m.closure.school, school]));
-    }
+  for (const [school, m] of crowdedOut(arrivals, counts, (m) => draw(seed, year, m.before.id, D.Crowd))) {
+    add(school, -1);
+    tallies.get(m.closure.school)!.receivers[school]--;
+    otherPps(m, new Set([m.closure.school, school]));
   }
   return [...tallies.values()];
 }

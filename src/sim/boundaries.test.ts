@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { DEFAULT_POLICY, endYear, modeledRange, newGame, normalizePolicy, previewBudget } from '.';
-import { boundaryChip, rezoneFactors, sliceEdit } from './boundaries';
+import { boundaryChip, decideRezoned, rezoneFactors, sliceEdit } from './boundaries';
 import { costIndex } from './budget';
 import { followChance } from './closures';
 import { gradeOf, M } from './model';
@@ -100,6 +100,32 @@ describe('a boundary edit without grandfathering', () => {
     expect(again.report).toEqual(report);
     const strip = (s: GameState) => ({ ...s, sim: { ...s.sim!, ghost: undefined } });
     expect(strip(next.sim!.ghost!)).toEqual(strip(quo.next.sim!.ghost!));
+  });
+});
+
+describe('re-zoned kids who must choose', () => {
+  it('keeps a crowded new zone school at 110% of its seats', () => {
+    const edit = sliceEdit(start, 'elementary', 'atkinson', 'creston', 100, false);
+    const { next } = play(edit);
+    const line = Math.floor(M.crowdingLine * start.schools.creston.capacity);
+    expect(start.schools.creston.enrollment + boundaryChip(start, edit, DEFAULT_POLICY).kidsMoving).toBeGreaterThan(line);
+    expect(next.schools.creston.enrollment).toBeLessThanOrEqual(line);
+    expect(next.households.filter((h) => h.movedFrom === 'atkinson' && h.school !== null && h.school !== 'creston').length).toBeGreaterThan(50);
+  });
+
+  it('lets only kids who leave PPS for good move away, not charter kids', () => {
+    const far = start.households.filter((h) => h.school !== null && gradeOf(h) < 5).slice(0, 4000);
+    const movers = far.map((h) => ({
+      before: { ...h, pos: [1e7, 1e7] as [number, number] },
+      next: { ...h, kids: h.kids, school: null },
+      region: null,
+    }));
+    const flows = { stayed: 0, movedWithinPps: 0, leftPps: 0, cameBack: 0, enteredK: 0, graduated: 0 };
+    const tally = decideRezoned({ seed: 1, year: 2027, closed: new Set(), movers, households: [], flows });
+    const away = movers.filter((m) => m.next.movedAway).length / tally.left;
+    const leaveForGood = 1 - M.nonFollowerOtherPps - M.nonFollowerCharter;
+    expect(tally.zoneSchool).toBe(0);
+    expect(away).toBeCloseTo((M.awayShare * leaveForGood) / (leaveForGood + M.nonFollowerCharter), 1);
   });
 });
 

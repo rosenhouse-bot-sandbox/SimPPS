@@ -304,9 +304,9 @@ export const MODEL_SOURCES: Source[] = [
   },
   {
     key: 'model.crowding',
-    label: 'Crowded receivers',
+    label: 'Crowded schools',
     tag: 'M',
-    explain: `A receiver past ${pct(M.crowdingLine)} of its seats sends the arrivals beyond that line on to the nearest PPS school with room.`,
+    explain: `A receiver or new zone school past ${pct(M.crowdingLine)} of its seats sends the arrivals beyond that line on to the nearest PPS school with room.`,
     links: [DESIGN],
   },
   {
