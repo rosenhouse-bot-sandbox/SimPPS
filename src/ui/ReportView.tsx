@@ -1,4 +1,4 @@
-import type { ClosureOutcome, Dials, Flows, Range, YearReport } from '../sim/types';
+import type { ClosureOutcome, Dials, Flows, Range, RezoneOutcome, YearReport } from '../sim/types';
 import { fmtMoney, fmtPct, fmtRange } from '../format';
 import { nameOf } from './closeSend';
 import { Sourced } from './Sourced';
@@ -98,24 +98,52 @@ function ClosureReport({ c }: { c: ClosureOutcome }) {
   );
 }
 
+function RezoneReport({ r }: { r: RezoneOutcome }) {
+  const of = (r.kids.lo + r.kids.hi) / 2;
+  return (
+    <section class="closure-report" aria-label="Where re-zoned kids went">
+      <p>
+        Re-zoned, <Sourced k={K.sliceStay}>{fmtRange(r.kids)}</Sourced> kids:
+      </p>
+      <dl class="flows">
+        <OutcomeRow label="New zone school" kids={r.zoneSchool} of={of} k={K.sliceStay} />
+        <OutcomeRow label="Other PPS school" kids={r.otherPps} of={of} k={K.nonFollowers} />
+        <OutcomeRow label="Left PPS" kids={r.leftPps} of={of} k={K.nonFollowers} />
+      </dl>
+    </section>
+  );
+}
+
+/** The ghost list shows the three largest gaps, and the Walk dials whenever they differ. */
+const ALWAYS: (keyof Dials)[] = ['walkK5', 'newBusRiders'];
+
 interface ReportProps {
   report: YearReport;
   turn: number;
   onNext: () => void;
+  /** K-5 walkers before and after a year with boundary edits. */
+  walk?: { before: number; after: number };
 }
 
-export function ReportView({ report, turn, onNext }: ReportProps) {
+export function ReportView({ report, turn, onNext, walk }: ReportProps) {
   return (
     <Window title={`DEC ${report.year} · YEAR ${turn}`} class="panel report">
       <h3>Where kids went</h3>
       {report.closures.map((c) => (
         <ClosureReport key={c.school} c={c} />
       ))}
+      {report.rezoned && <RezoneReport r={report.rezoned} />}
+      {walk && (
+        <p>
+          {DIAL_NAMES.walkK5}{' '}
+          <Sourced k={K.walkK5} modeled>{`${exact(walk.before)} → ${exact(walk.after)}`}</Sourced>
+        </p>
+      )}
       <WhereKidsWent flows={report.flows} />
       <h3>Vs. do-nothing ghost</h3>
       {report.vsGhost.length === 0 && <p class="note">No difference yet.</p>}
       <ul class="ghost">
-        {report.vsGhost.slice(0, 3).map((g) => (
+        {report.vsGhost.filter((g, i) => i < 3 || ALWAYS.includes(g.dial)).map((g) => (
           <li key={g.dial}>
             <span aria-label={g.better ? 'better' : 'worse'}>{g.better ? '▲' : '▼'}</span> {DIAL_NAMES[g.dial]}{' '}
             <Sourced k={K.ghost} modeled>
