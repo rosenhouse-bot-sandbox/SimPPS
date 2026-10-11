@@ -61,7 +61,7 @@ export function Playback({ report, onDone, onSeason, durationMs = 30_000 }: Play
             <ul>
               {events.map((e) => (
                 <li key={e.title}>
-                  <Sourced k={e.sourceKey}>
+                  <Sourced k={e.sourceKey} text>
                     <strong>{e.title}</strong> {e.detail}
                   </Sourced>
                 </li>

@@ -89,7 +89,9 @@ export function ReportView({ report, turn, onNext }: ReportProps) {
         <ul>
           {report.headlines.slice(0, 3).map((h) => (
             <li key={h.text}>
-              <Sourced k={h.sourceKey}>{h.text}</Sourced>
+              <Sourced k={h.sourceKey} text>
+                {h.text}
+              </Sourced>
             </li>
           ))}
         </ul>

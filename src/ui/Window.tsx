@@ -1,4 +1,5 @@
 import type { ComponentChildren } from 'preact';
+import { useEffect, useRef } from 'preact/hooks';
 
 interface WindowProps {
   title: string;
@@ -7,9 +8,12 @@ interface WindowProps {
   children: ComponentChildren;
 }
 
+/** Takes focus when it opens. */
 export function Window({ title, onClose, class: cls = '', children }: WindowProps) {
+  const self = useRef<HTMLElement>(null);
+  useEffect(() => self.current?.focus(), []);
   return (
-    <section class={`window ${cls}`} aria-label={title}>
+    <section ref={self} tabIndex={-1} class={`window ${cls}`} aria-label={title}>
       <div class="titlebar">
         <span>{title}</span>
         {onClose && (

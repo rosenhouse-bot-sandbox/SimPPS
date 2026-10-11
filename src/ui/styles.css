@@ -151,6 +151,12 @@ h3,
   top: 4px;
 }
 
+/* The next-year button stays in view on short screens. */
+.panel.report .btn.wide {
+  position: sticky;
+  bottom: -12px;
+}
+
 h3 {
   margin: 12px 0 4px;
   font-size: 22px;
@@ -216,6 +222,20 @@ dl {
 
 .sourced.modeled {
   text-decoration-style: dotted;
+}
+
+.sourced.text {
+  min-height: 0;
+  padding: 0;
+  font: inherit;
+  color: inherit;
+  text-align: left;
+}
+
+/* The design holds lines to 28 characters. */
+.ticker li,
+.bulletin li {
+  max-width: 28ch;
 }
 
 .stepper .stepper-label {
@@ -502,4 +522,8 @@ legend {
 .note.warn,
 .note.warn .sourced {
   color: var(--warn);
+}
+
+.window:focus {
+  outline: none;
 }

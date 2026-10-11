@@ -16,18 +16,26 @@ interface SourcedProps {
   k: string;
   /** Appends "~" and a dotted underline. */
   modeled?: boolean;
+  /** Sets a sentence in the surrounding font instead of the number font. */
+  text?: boolean;
   children: ComponentChildren;
 }
 
-export function Sourced({ k, modeled, children }: SourcedProps) {
+export function Sourced({ k, modeled, text, children }: SourcedProps) {
   const [open, setOpen] = useState(false);
+  const button = useRef<HTMLButtonElement>(null);
+  const cls = ['sourced', modeled && 'modeled', text && 'text'].filter(Boolean).join(' ');
+  const close = () => {
+    setOpen(false);
+    button.current?.focus();
+  };
   return (
     <>
-      <button type="button" class={modeled ? 'sourced modeled' : 'sourced'} data-source={k} onClick={() => setOpen(true)}>
+      <button ref={button} type="button" class={cls} data-source={k} onClick={() => setOpen(true)}>
         {children}
         {modeled ? '~' : null}
       </button>
-      {open && createPortal(<SourcePopover k={k} onClose={() => setOpen(false)} />, document.body)}
+      {open && createPortal(<SourcePopover k={k} onClose={close} />, document.body)}
     </>
   );
 }

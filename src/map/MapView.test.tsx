@@ -95,9 +95,19 @@ describe('MapView', () => {
     expect(screen.queryByRole('dialog')).toBeNull();
   });
 
+  it('keeps the whole district in view when dragged at district zoom', () => {
+    const { container, map } = renderMap();
+    const [x, y] = badgePositions(container).get('rosa-parks')!;
+    fireEvent.pointerDown(map, { pointerId: 1, clientX: x, clientY: y });
+    fireEvent.pointerMove(map, { pointerId: 1, clientX: x + 200, clientY: y + 200 });
+    fireEvent.pointerUp(map, { pointerId: 1, clientX: x + 200, clientY: y + 200 });
+    expect(badgePositions(container).get('rosa-parks')).toEqual([x, y]);
+  });
+
   it('does not select after a drag', () => {
     const onSelectSchool = vi.fn();
     const { container, map } = renderMap({ onSelectSchool });
+    fireEvent.click(screen.getByLabelText('Zoom in'));
     const [x, y] = badgePositions(container).get('rosa-parks')!;
     fireEvent.pointerDown(map, { pointerId: 1, clientX: x, clientY: y });
     fireEvent.pointerMove(map, { pointerId: 1, clientX: x + 40, clientY: y });

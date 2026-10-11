@@ -1,4 +1,4 @@
-import { cleanup, fireEvent, render, screen } from '@testing-library/preact';
+import { act, cleanup, fireEvent, render, screen } from '@testing-library/preact';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { HoldButton } from './HoldButton';
 
@@ -42,6 +42,20 @@ describe('HoldButton', () => {
     fireEvent.click(button);
     vi.advanceTimersByTime(2000);
     expect(onConfirm).not.toHaveBeenCalled();
+  });
+
+  it('says to hold after a short press, then goes back', () => {
+    const { button } = setup();
+    fireEvent.pointerDown(button);
+    act(() => {
+      vi.advanceTimersByTime(200);
+    });
+    fireEvent.pointerUp(button);
+    expect(button.textContent).toBe('Hold');
+    act(() => {
+      vi.advanceTimersByTime(1500);
+    });
+    expect(button.textContent).toBe('End');
   });
 
   it('cancels when the finger slides off', () => {

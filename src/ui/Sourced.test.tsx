@@ -31,6 +31,7 @@ describe('Sourced', () => {
     expect(document.activeElement).toBe(screen.getByRole('button', { name: 'Close' }));
     fireEvent.keyDown(window, { key: 'Escape' });
     expect(screen.queryByRole('dialog')).toBeNull();
+    expect(document.activeElement).toBe(screen.getByRole('button', { name: '−$65M' }));
   });
 
   it('keeps hidden cards hidden', () => {

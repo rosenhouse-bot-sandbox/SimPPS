@@ -14,7 +14,9 @@ export function NewsPanel({ reports, onClose }: { reports: YearReport[]; onClose
           <ul>
             {r.headlines.slice(0, 3).map((h) => (
               <li key={h.text}>
-                <Sourced k={h.sourceKey}>{h.text}</Sourced>
+                <Sourced k={h.sourceKey} text>
+                  {h.text}
+                </Sourced>
               </li>
             ))}
           </ul>

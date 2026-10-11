@@ -67,7 +67,8 @@ export function MapView(props: MapViewProps) {
   const fit = useMemo(() => fitView(MAP_BOUNDS, size.w, size.h), [size]);
   const level = snapLevel(view.scale / fit.scale);
 
-  const settle = (v: View) => clampCenter(v, MAP_BOUNDS, size.w, size.h);
+  /** At district zoom the whole district stays in view. */
+  const settle = (v: View) => (v.scale <= fit.scale * 1.001 ? fit : clampCenter(v, MAP_BOUNDS, size.w, size.h));
   const zoomTo = (target: ZoomLevel, anchor: Point = [size.w / 2, size.h / 2]) =>
     setView((v) => settle(zoomAt(v, fit.scale * levelFactor(target), anchor)));
 
@@ -81,7 +82,10 @@ export function MapView(props: MapViewProps) {
       const old = sizeRef.current;
       if (!w || !h || (old.w === w && old.h === h)) return;
       const keep = measured;
-      setView((v) => (keep ? centerOn(v, toWorld(v, [old.w / 2, old.h / 2]), w, h) : fitView(MAP_BOUNDS, w, h)));
+      const zoomedIn = (v: View) => v.scale > fitView(MAP_BOUNDS, old.w, old.h).scale * 1.001;
+      setView((v) =>
+        keep && zoomedIn(v) ? centerOn(v, toWorld(v, [old.w / 2, old.h / 2]), w, h) : fitView(MAP_BOUNDS, w, h),
+      );
       measured = true;
       sizeRef.current = { w, h };
       setSize(sizeRef.current);

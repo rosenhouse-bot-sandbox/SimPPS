@@ -21,7 +21,9 @@ function List({ items, empty }: { items: EditLine[]; empty: string }) {
     <ul>
       {items.map((t) => (
         <li key={t.text}>
-          <Sourced k={t.sourceKey}>{t.text}</Sourced>
+          <Sourced k={t.sourceKey} text>
+            {t.text}
+          </Sourced>
         </li>
       ))}
     </ul>

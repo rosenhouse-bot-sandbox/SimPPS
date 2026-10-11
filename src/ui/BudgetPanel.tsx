@@ -65,12 +65,14 @@ export function BudgetPanel({ game, draft, plan, onEdit, onClose }: BudgetPanelP
           </p>
           {plan.reservePctAfterDraw < 0.05 && (
             <p class="note warn">
-              <Sourced k={K.reservePct}>Below 5% breaches policy.</Sourced>
+              <Sourced k={K.reservePct} text>
+                Below 5% breaches policy.
+              </Sourced>
             </p>
           )}
           {plan.midYearCuts > 0 && (
             <p class="note warn">
-              <Sourced k={K.midYearCuts}>{`Below 3%: ${plan.midYearCuts.toLocaleString('en-US')} positions cut mid-year.`}</Sourced>
+              <Sourced k={K.midYearCuts} text>{`Below 3%: ${plan.midYearCuts.toLocaleString('en-US')} positions cut mid-year.`}</Sourced>
             </p>
           )}
         </>
