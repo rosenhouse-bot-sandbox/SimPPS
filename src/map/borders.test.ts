@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { ZONES } from '../data';
-import { defaultZones } from '../sim';
+import { cellAtPoint, defaultZones } from '../sim';
 import { gridEdges, zoneBorders } from './borders';
 
 const zones = defaultZones().elementary;
@@ -35,6 +35,20 @@ describe('zone borders', () => {
   it('gives each edge one or two distinct cells', () => {
     for (const e of gridEdges()) {
       expect(e.cells.length === 1 || e.cells[0] !== e.cells[1]).toBe(true);
+    }
+  });
+
+  it('leaves an edge with one cell only at the edge of the district', () => {
+    for (const { a, b, cells } of gridEdges()) {
+      if (cells.length === 2) continue;
+      const len = Math.hypot(b[0] - a[0], b[1] - a[1]);
+      if (len < 1) continue;
+      const [mx, my] = [(a[0] + b[0]) / 2, (a[1] + b[1]) / 2];
+      const [nx, ny] = [(a[1] - b[1]) / len, (b[0] - a[0]) / len];
+      for (const side of [1, -1]) {
+        const c = cellAtPoint([mx + side * 3 * nx, my + side * 3 * ny]);
+        expect([-1, cells[0]]).toContain(c);
+      }
     }
   });
 

@@ -1,4 +1,4 @@
-import { CELL_METERS, zoneGrid } from '../sim';
+import { CELL_METERS, cellAtPoint, zoneGrid } from '../sim';
 import type { SchoolId } from '../sim/types';
 
 /** A ring edge of the block grid, with the one or two cells it borders. */
@@ -13,6 +13,7 @@ const key = (p: [number, number]) => `${Math.round(p[0] * 10)},${Math.round(p[1]
 let edges: GridEdge[] | undefined;
 
 const EPS = 1e-6;
+const PROBE_M = 3;
 /** The grid line a value sits on, or null. */
 const gridLine = (v: number) => {
   const k = Math.round(v / CELL_METERS) * CELL_METERS;
@@ -64,7 +65,22 @@ export function gridEdges(): GridEdge[] {
           else if (e.cells.length === 1 && e.cells[0] !== c.id) e.cells = [e.cells[0], c.id];
         }
       }
-  return (edges = [...byKey.values(), ...sideEdges(lines)]);
+  return (edges = [...byKey.values(), ...sideEdges(lines)].map(pairAcross));
+}
+
+/** Probes across an edge with one cell, since neighboring zones don't always share vertices. */
+function pairAcross(e: GridEdge): GridEdge {
+  if (e.cells.length === 2) return e;
+  const { a, b } = e;
+  const len = Math.hypot(b[0] - a[0], b[1] - a[1]);
+  if (len === 0) return e;
+  const [mx, my] = [(a[0] + b[0]) / 2, (a[1] + b[1]) / 2];
+  const [nx, ny] = [(a[1] - b[1]) / len, (b[0] - a[0]) / len];
+  for (const side of [1, -1]) {
+    const c = cellAtPoint([mx + side * PROBE_M * nx, my + side * PROBE_M * ny]);
+    if (c >= 0 && c !== e.cells[0]) return { ...e, cells: [e.cells[0], c] };
+  }
+  return e;
 }
 
 /** Edges between zones, and around the district, as an SVG path. */
