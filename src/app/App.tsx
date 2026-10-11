@@ -45,7 +45,7 @@ export function App({ sim, seed, playbackMs }: AppProps) {
 
   return (
     <div class="app">
-      <TopBar when={when} dials={planning ? { ...shown.dials, gap: plan.gap } : shown.dials} />
+      <TopBar when={when} dials={s.phase === 'report' ? shown.dials : { ...shown.dials, gap: plan.gap }} />
       <main class="stage">
         <MapSlot
           schools={map.schools}

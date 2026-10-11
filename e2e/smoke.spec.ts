@@ -55,9 +55,13 @@ test('plays a status-quo year on a phone', async ({ page }) => {
 
   const report = page.getByRole('region', { name: /DEC 2027/ });
   await expect(report).toBeVisible();
-  for (const flow of ['Stayed', 'Moved in PPS', 'Left PPS', 'Came back']) await expect(report.locator('.flows')).toContainText(flow);
+  for (const flow of ['Stayed', 'Moved in PPS', 'Came back', 'New kindergartners', 'Kids now', 'Left PPS', 'To high school'])
+    await expect(report.locator('.flows')).toContainText(flow);
   await expect(page.getByRole('region', { name: 'The Bulletin' }).locator('li')).toHaveCount(3);
   await shot(page, 'report');
+  await page.setViewportSize({ width: 360, height: 640 });
+  await expect(page.getByRole('button', { name: 'Plan 2028' })).toBeInViewport();
+  await page.setViewportSize({ width: 390, height: 844 });
 
   await page.getByRole('button', { name: 'Plan 2028' }).tap();
   await expect(page.locator('.topbar')).toContainText('JAN 2028');

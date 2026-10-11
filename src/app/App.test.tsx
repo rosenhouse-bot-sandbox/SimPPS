@@ -88,6 +88,7 @@ describe('App', () => {
     expect(screen.getByTestId('playback').textContent).toContain(
       `remove ${plan.autoCutPositions.toLocaleString('en-US')} positions`,
     );
+    expect(topBar()).toContain(`Gap ${fmtMoney(plan.gap)}`);
   });
 
   it('shows a chip per edited lever', () => {

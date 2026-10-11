@@ -230,12 +230,18 @@ dl {
   font: inherit;
   color: inherit;
   text-align: left;
+  vertical-align: top;
 }
 
-/* The design holds lines to 28 characters. */
+/* The pixel font's "~" reads like an "N". */
+.tilde {
+  font-family: var(--body);
+}
+
+/* The design holds lines to about 28 characters. */
 .ticker li,
 .bulletin li {
-  max-width: 28ch;
+  max-width: 22ch;
 }
 
 .stepper .stepper-label {

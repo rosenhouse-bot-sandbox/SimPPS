@@ -32,10 +32,19 @@ export function Sourced({ k, modeled, text, children }: SourcedProps) {
   return (
     <>
       <button ref={button} type="button" class={cls} data-source={k} onClick={() => setOpen(true)}>
-        {children}
-        {modeled ? '~' : null}
+        {typeof children === 'string' && children.endsWith('~') ? withTilde(children.slice(0, -1)) : children}
+        {modeled ? <span class="tilde">~</span> : null}
       </button>
       {open && createPortal(<SourcePopover k={k} onClose={close} />, document.body)}
+    </>
+  );
+}
+
+function withTilde(text: string) {
+  return (
+    <>
+      {text}
+      <span class="tilde">~</span>
     </>
   );
 }
