@@ -125,6 +125,7 @@ export function receiversFor(closure: Pick<Closure, 'receivers'>, grade: number)
 }
 
 const sum = (xs: number[]) => xs.reduce((a, n) => a + n, 0);
+const mid = (r: Range) => (r.lo + r.hi) / 2;
 
 /** Schools after every kid of the closed school follows to the receivers that serve its grade. */
 export function withArrivals(schools: Record<SchoolId, SchoolState>, closure: Closure): Record<SchoolId, SchoolState> {
@@ -219,14 +220,20 @@ export interface ClosureChip {
   maturesIn: number;
   /** Kids who may leave PPS before lost revenue cancels the saving. */
   paysOffIfFewerThan: number;
+  /** New bus riders next fall if every kid follows its new zone. */
+  busRiders: number;
 }
 
-/** `plan` holds the other closures in the plan; their kids count at shared receivers. */
+/**
+ * `plan` holds the other closures in the plan; their kids count at shared receivers. `busRiders`
+ * cost model.busing now and, net of the state's repayment, at maturity.
+ */
 export function closureChip(
   state: Pick<GameState, 'year' | 'schools' | 'households'>,
   closure: Closure,
   plan: Closure[],
   classSize: number,
+  busRiders = 0,
 ): ClosureChip {
   const schools = effectiveClosures(
     state.schools,
@@ -245,8 +252,11 @@ export function closureChip(
   }
   const maturesIn = state.year + M.closurePhasing.length - 1;
   const upkeep = closure.building === 'mothball' ? M.mothball : 0;
-  const net = (closureSaving(schools, closure, classSize) - upkeep) * costIndex(maturesIn);
+  const later = costIndex(maturesIn);
+  const net = (closureSaving(schools, closure, classSize) - upkeep) * later;
   const index = costIndex(state.year);
+  const { busRider: bus, busReimbursed: repaid } = M;
+  const busNet = (cost: number, back: number) => busRiders * cost * (1 - back) * later;
   return {
     seats: {
       kids: sum(closure.receivers.map((r) => after[r.school].enrollment)),
@@ -254,10 +264,14 @@ export function closureChip(
     },
     kidsMoving: kids.filter((h) => gradeOf(h) < hi).length,
     walkMiles: walkers ? added / walkers : 0,
-    now: { lo: -M.closureOneTime.hi * index, hi: -M.closureOneTime.lo * index },
-    atMaturity: { lo: net * (1 - M.closureSavingsSpread), hi: net * (1 + M.closureSavingsSpread) },
+    now: { lo: -(M.closureOneTime.hi + busRiders * bus.hi) * index, hi: -(M.closureOneTime.lo + busRiders * bus.lo) * index },
+    atMaturity: {
+      lo: net * (1 - M.closureSavingsSpread) - busNet(bus.hi, repaid.lo),
+      hi: net * (1 + M.closureSavingsSpread) - busNet(bus.lo, repaid.hi),
+    },
     maturesIn,
-    paysOffIfFewerThan: Math.max(0, Math.floor(net / stateWeight(closure.school))),
+    paysOffIfFewerThan: Math.max(0, Math.floor((net - busNet(mid(bus), mid(repaid))) / stateWeight(closure.school))),
+    busRiders,
   };
 }
 

@@ -264,7 +264,7 @@ export const MODEL_SOURCES: Source[] = [
     key: 'model.closureSavings',
     label: 'Closure savings',
     tag: 'I',
-    explain: `A closed building's plant cost and its principal's office (${M.principalOffice} positions) go. Its other staff follow the kids and fill the staff steps the receivers need; any left over stay on the payroll. Receivers add the homerooms the kids need. The project's closure analysis estimates $0.3-1.5M a school, and PPS estimates $5-20M for its scenarios. This arithmetic puts Scenario A's closures at $0.7-1.7M each and about $17M in all. The chip shows the saving if every kid follows, ±${pct(M.closureSavingsSpread)}, net of building upkeep.`,
+    explain: `A closed building's plant cost and its principal's office (${M.principalOffice} positions) go. Its other staff follow the kids and fill the staff steps the receivers need; any left over stay on the payroll. Receivers add the homerooms the kids need. The project's closure analysis estimates $0.3-1.5M a school, and PPS estimates $5-20M for its scenarios. This arithmetic puts Scenario A's closures at $0.7-1.7M each and about $17M in all. The chip shows the saving if every kid follows, ±${pct(M.closureSavingsSpread)}, net of building upkeep and of busing for new riders after the state's repayment.`,
     links: [DESIGN],
   },
   {
@@ -278,7 +278,7 @@ export const MODEL_SOURCES: Source[] = [
     key: 'model.closureOneTime',
     label: 'Closure, once',
     tag: 'M',
-    explain: `Moving a school costs ${$(M.closureOneTime.lo)}-${$(M.closureOneTime.hi)} once, in the year played. The budget books the middle.`,
+    explain: `Moving a school costs ${$(M.closureOneTime.lo)}-${$(M.closureOneTime.hi)} once, in the year played. The budget books the middle. The chip's Now adds a year of busing for new riders.`,
     links: [DESIGN],
   },
   {

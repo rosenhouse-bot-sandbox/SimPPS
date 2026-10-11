@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { DEFAULT_POLICY, endYear, modeledRange, newGame, normalizePolicy, previewBudget } from '.';
+import { closureChip, DEFAULT_POLICY, endYear, modeledRange, newGame, normalizePolicy, previewBudget } from '.';
 import { boundaryChip, decideRezoned, planZoning, projectRiders, rezoneFactors, sliceEdit } from './boundaries';
 import { costIndex } from './budget';
 import { followChance } from './closures';
@@ -232,6 +232,14 @@ describe('walk and buses', () => {
     expect(repaid.autoCutPositions + none.autoCutPositions).toBe(0);
     expect(line(repaid, 'busReimbursement')).toBe(800_000);
     expect(repaid.spending).toBeCloseTo(none.spending, 0);
+  });
+
+  it("puts a closure's new riders on its chip", () => {
+    const peninsula = { school: 'peninsula', receivers: [{ school: 'rosa-parks', share: 1 }], building: 'mothball' as const };
+    const riders = -line(previewBudget(start, { ...DEFAULT_POLICY, closures: [peninsula] }), 'busing') / 1_400;
+    expect(riders).toBeGreaterThan(5);
+    expect(closureChip(start, peninsula, [], 24).busRiders).toBeCloseTo(riders, 6);
+    expect(closureChip(start, peninsula, [peninsula], 24).busRiders).toBeCloseTo(riders, 6);
   });
 
   it('counts the expected returners who would ride', () => {

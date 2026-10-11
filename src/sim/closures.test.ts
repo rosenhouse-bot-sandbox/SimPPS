@@ -200,6 +200,16 @@ describe('closureChip', () => {
     expect((lease.atMaturity.lo + lease.atMaturity.hi) / 2 - net).toBeCloseTo(70_000 * costIndex(2029), 0);
   });
 
+  it('charges new bus riders now and, net of the repayment, at maturity', () => {
+    const bused = closureChip(game, peninsula, [], 24, 10);
+    expect(bused.busRiders).toBe(10);
+    expect(chip.busRiders).toBe(0);
+    expect(bused.now).toEqual({ lo: -600_000 - 18_000, hi: -300_000 - 10_000 });
+    expect(bused.atMaturity.lo).toBeCloseTo(chip.atMaturity.lo - 10 * 1_800 * 0.3 * costIndex(2029));
+    expect(bused.atMaturity.hi).toBeCloseTo(chip.atMaturity.hi - 10 * 1_000 * 0.1 * costIndex(2029));
+    expect(bused.paysOffIfFewerThan).toBe(Math.floor((net - 10 * 1_400 * 0.2 * costIndex(2029)) / revenuePerStudent(0.2)));
+  });
+
   it('pays off if fewer leave PPS than the saving buys in revenue', () => {
     expect(chip.paysOffIfFewerThan).toBe(Math.floor(net / revenuePerStudent(0.2)));
   });

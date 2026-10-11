@@ -74,8 +74,11 @@ describe('CloseSendSheet', () => {
     const c = closureChip(game, { school: 'peninsula', receivers: [{ school: 'rosa-parks', share: 1 }], building: 'mothball' }, [], 24);
     expect(c.seats.kids).toBe(399);
     const cells = [...chip().querySelectorAll('dt')].map((dt) => `${dt.textContent} ${dt.nextElementSibling!.textContent}`);
-    expect(cells).toEqual(['Seats 377–421~/594', 'Walk +0.5 mi~', 'Now −$0.3–0.6M~', `At maturity, 2029 ${fmtMoneyRange(c.atMaturity)}`]);
-    expect(chip().querySelector('.pays')!.textContent).toBe(`Pays off if fewer than ${fmtCount(c.paysOffIfFewerThan)}~ leave PPS`);
+    expect(c.busRiders).toBeGreaterThan(0);
+    expect(cells).toEqual(['Seats 377–421~/594', 'Walk +0.5 mi~', `Now ${fmtMoneyRange(c.now)}`, `At maturity, 2029 ${fmtMoneyRange(c.atMaturity)}`]);
+    const pays = chip().querySelector('.pays')!;
+    expect(pays.textContent).toBe(`Pays off if fewer than ${fmtCount(c.paysOffIfFewerThan)}~ leave PPS. ${fmtCount(c.busRiders)}~ new bus riders`);
+    expect([...pays.querySelectorAll('[data-source]')].map((e) => e.getAttribute('data-source'))).toEqual(['ui.paysOff', 'model.busing']);
     expect(screen.getByText('Rosa Parks').closest('.row')!.textContent).toBe('Rosa Parks100%');
   });
 

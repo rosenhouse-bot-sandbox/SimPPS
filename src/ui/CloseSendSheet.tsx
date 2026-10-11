@@ -50,6 +50,11 @@ export function ClosureChipView({ chip }: { chip: ClosureChip }) {
       </dl>
       <p class="pays">
         Pays off if fewer than <Sourced k={K.paysOff}>{`${fmtCount(chip.paysOffIfFewerThan)}~`}</Sourced> leave PPS
+        {chip.busRiders > 0 && (
+          <>
+            . <Sourced k={K.busing}>{`${fmtCount(chip.busRiders)}~`}</Sourced> new bus riders
+          </>
+        )}
       </p>
     </div>
   );

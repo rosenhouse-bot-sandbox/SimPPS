@@ -5,17 +5,17 @@ import { generatePopulation } from './population';
 import { headlines, rezoneOutcome, seasonEvents, versusGhost } from './report';
 import { draw, hashString } from './rng';
 import { buildSchools, computeDials } from './schools';
-import { closureOutcomes, effectiveClosures, normalizeClosures } from './closures';
-import { plannedRiders, planZoning } from './boundaries';
+import { closureChip as chipFor, closureOutcomes, effectiveClosures, normalizeClosures, type ClosureChip } from './closures';
+import { closureRiders, plannedRiders, planZoning } from './boundaries';
 import { defaultZones, normalizeBoundaryEdits } from './zones';
 import { SCENARIOS, type Start } from './scenarios';
 import { familiesDecide, stepYear } from './step';
-import type { Budget, GameState, Household, Policy, SimMemory, YearReport, ZoneMap } from './types';
+import type { Budget, Closure, GameState, Household, Policy, SimMemory, YearReport, ZoneMap } from './types';
 
 export * from './types';
 export { modeledRange } from './range';
 export { legislatureVotes, levyRevenue } from './budget';
-export { canClose, closureChip, receiverCandidates, type ClosureChip } from './closures';
+export { canClose, receiverCandidates, type ClosureChip } from './closures';
 export { boundaryChip, sliceEdit, type BoundaryChip } from './boundaries';
 export {
   CELL_METERS,
@@ -32,6 +32,11 @@ export { walkLimit } from './walk';
 export { SCENARIOS, type Start } from './scenarios';
 export { FATE_DONE } from './report';
 export const MOTHBALL_PER_YEAR = M.mothball;
+
+/** A closure's chip, its new bus riders included. */
+export function closureChip(state: GameState, closure: Closure, plan: Closure[], classSize: number): ClosureChip {
+  return chipFor(state, closure, plan, classSize, closureRiders(state, closure, plan));
+}
 
 export const DEFAULT_POLICY: Policy = { k5ClassSize: 24, levyRate: 1.99, reserveDraw: 0, closures: [], boundaryEdits: [] };
 

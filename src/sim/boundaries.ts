@@ -46,6 +46,14 @@ export function plannedRiders(households: readonly Household[], plan: ReturnType
   return projectRiders(households, plan.zoning, plan.closed, plan.closingNow);
 }
 
+/** New bus riders next fall that `closure` adds to the plan's other closures. */
+export function closureRiders(state: GameState, closure: Closure, plan: Closure[]): number {
+  const others = plan.filter((c) => c.school !== closure.school);
+  const riders = (closures: Closure[]) =>
+    plannedRiders(state.households, planZoning(state, effectiveClosures(state.schools, normalizeClosures(closures)), []));
+  return riders([...others, closure]) - riders(others);
+}
+
 /**
  * Next fall's new bus riders: continuing kids, kindergartners like this year's at the same homes,
  * and the expected returners. Kids who must move, change levels or lose a closing zone school go
