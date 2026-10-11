@@ -1,4 +1,4 @@
-import type { Point, Zone } from '../data';
+import type { Point, Ring, Zone } from '../data';
 import { onRiver, RIVERS } from '../map/rivers';
 
 interface Box {
@@ -27,16 +27,25 @@ function boxOf(zone: Zone): Box {
 }
 
 /** Even-odd rule over all rings, so inner rings are holes and separate rings are parts. */
-export function inZone([px, py]: Point, zone: Zone): boolean {
+export function inZone(p: Point, zone: Zone): boolean {
   const b = boxOf(zone);
+  const px = p[0];
+  const py = p[1];
   if (px < b.minX || px > b.maxX || py < b.minY || py > b.maxY) return false;
   let inside = false;
-  for (const ring of zone.rings) {
-    for (let i = 0, j = ring.length - 1; i < ring.length; j = i++) {
-      const [xi, yi] = ring[i];
-      const [xj, yj] = ring[j];
-      if (yi > py !== yj > py && px < ((xj - xi) * (py - yi)) / (yj - yi) + xi) inside = !inside;
-    }
+  for (const ring of zone.rings) inside = inRing(px, py, ring) !== inside;
+  return inside;
+}
+
+/** Even-odd crossings of one ring, indexed rather than destructured so it stays fast for any number kind. */
+export function inRing(px: number, py: number, ring: Ring): boolean {
+  let inside = false;
+  for (let i = 0, j = ring.length - 1; i < ring.length; j = i++) {
+    const xi = ring[i][0];
+    const yi = ring[i][1];
+    const xj = ring[j][0];
+    const yj = ring[j][1];
+    if (yi > py !== yj > py && px < ((xj - xi) * (py - yi)) / (yj - yi) + xi) inside = !inside;
   }
   return inside;
 }
