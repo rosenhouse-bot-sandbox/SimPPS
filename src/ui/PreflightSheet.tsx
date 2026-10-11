@@ -1,8 +1,7 @@
-import type { Policy, Range } from '../sim/types';
+import type { Budget, Policy } from '../sim/types';
 import { ballotItems, listEdits } from './edits';
-import { fmtGap } from './GapBar';
+import { fmtCount, fmtMoney } from './format';
 import { HoldButton } from './HoldButton';
-import { autoCutPositions, midpoint } from './levers';
 import { Sourced } from './Sourced';
 import { K } from './sources';
 import { Window } from './Window';
@@ -11,7 +10,8 @@ interface PreflightProps {
   year: number;
   draft: Policy;
   base: Policy;
-  gap: Range;
+  /** The sim's plan for the draft. */
+  budget: Budget;
   onBack: () => void;
   onConfirm: () => void;
 }
@@ -28,8 +28,9 @@ function List({ items, empty }: { items: string[]; empty: string }) {
   );
 }
 
-export function PreflightSheet({ year, draft, base, gap, onBack, onConfirm }: PreflightProps) {
-  const cuts = autoCutPositions(midpoint(gap));
+export function PreflightSheet({ year, draft, base, budget, onBack, onConfirm }: PreflightProps) {
+  const cuts = budget.autoCutPositions;
+  const covered = Math.min(draft.reserveDraw, budget.reserves, Math.max(0, -budget.gap));
   return (
     <div class="scrim">
       <Window title={`Play ${year}-${String(year + 1).slice(2)}?`} class="panel sheet" onClose={onBack}>
@@ -37,15 +38,18 @@ export function PreflightSheet({ year, draft, base, gap, onBack, onConfirm }: Pr
         <List items={listEdits(draft, base)} empty="None. The year plays as it stands." />
         <h3>Gap</h3>
         <p>
-          <Sourced k={K.gap}>{fmtGap(gap)}</Sourced>
+          <Sourced k={K.gap}>{fmtMoney(budget.gap)}</Sourced>
+          {covered > 0 && (
+            <>
+              . Reserves cover <Sourced k={K.reserveDraw}>{fmtMoney(covered)}</Sourced>.
+            </>
+          )}
         </p>
         <h3>Automatic cuts</h3>
         <p>
           {cuts > 0 ? (
             <>
-              <Sourced k={K.autoCuts} modeled>
-                {cuts}
-              </Sourced>{' '}
+              <Sourced k={K.autoCuts}>{fmtCount(cuts)}</Sourced>{' '}
               positions in June
             </>
           ) : (

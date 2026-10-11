@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
-import { DEFAULT_POLICY } from '../sim';
-import { autoCutPositions, classSizeChip, clamp, levyChip, previewGap, reserveChip } from './levers';
+import { DEFAULT_POLICY, newGame, previewBudget, type Policy } from '../sim';
+import { M } from '../sim/model';
+import { classSizeChip, clamp, levyChip, reserveChip } from './levers';
 
 describe('lever arithmetic', () => {
   it('prices a class size step at $3-5M a year, now and at maturity', () => {
@@ -19,18 +20,34 @@ describe('lever arithmetic', () => {
     expect(c.atMaturity.hi).toBe(0);
   });
 
-  it('adds every edit to the gap', () => {
-    const draft = { ...DEFAULT_POLICY, k5ClassSize: 25, reserveDraw: 2e6 };
-    expect(previewGap(-65e6, draft, DEFAULT_POLICY)).toEqual({ lo: -60e6, hi: -58e6 });
-  });
-
-  it('turns a shortfall into positions', () => {
-    expect(autoCutPositions(-43_400_000)).toBe(280);
-    expect(autoCutPositions(1)).toBe(0);
-  });
-
   it('clamps', () => {
     expect(clamp(30, 22, 28)).toBe(28);
     expect(clamp(20, 22, 28)).toBe(22);
+  });
+});
+
+describe('lever chips against the sim', () => {
+  const game = newGame({ seed: 'chips' });
+  const base = previewBudget(game, DEFAULT_POLICY);
+  const delta = (p: Partial<Policy>) => previewBudget(game, { ...DEFAULT_POLICY, ...p }).gap - base.gap;
+
+  it.each([22, 23, 25, 26, 28])('brackets the sim for K-5 class size %i', (size) => {
+    const chip = classSizeChip(size, 24).now;
+    const sim = delta({ k5ClassSize: size });
+    expect(sim).toBeGreaterThanOrEqual(chip.lo);
+    expect(sim).toBeLessThanOrEqual(chip.hi);
+  });
+
+  it.each([0, 1, 1.89, 2])('agrees in sign and rough size for a levy of $%d', (rate) => {
+    const chip = levyChip(rate, 1.99).now.lo;
+    const ratio = delta({ levyRate: rate }) / chip;
+    expect(ratio).toBeGreaterThan(0.5);
+    expect(ratio).toBeLessThan(2);
+  });
+
+  it('agrees on the positions a reserve draw saves', () => {
+    const draw = 10e6;
+    const saved = base.autoCutPositions - previewBudget(game, { ...DEFAULT_POLICY, reserveDraw: draw }).autoCutPositions;
+    expect(saved * M.positionCost).toBeCloseTo(reserveChip(draw).now.lo, -6);
   });
 });

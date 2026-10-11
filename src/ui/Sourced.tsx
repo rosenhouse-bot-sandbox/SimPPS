@@ -23,7 +23,7 @@ export function Sourced({ k, modeled, children }: SourcedProps) {
   const [open, setOpen] = useState(false);
   return (
     <>
-      <button type="button" class={modeled ? 'sourced modeled' : 'sourced'} onClick={() => setOpen(true)}>
+      <button type="button" class={modeled ? 'sourced modeled' : 'sourced'} data-source={k} onClick={() => setOpen(true)}>
         {children}
         {modeled ? '~' : null}
       </button>

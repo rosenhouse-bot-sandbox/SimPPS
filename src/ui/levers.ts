@@ -1,4 +1,4 @@
-import type { Policy, Range } from '../sim/types';
+import type { Range } from '../sim/types';
 
 export const CLASS_SIZE = { min: 22, max: 28, step: 1 } as const;
 /** Oregon's local-option limit is unverified [V]. */
@@ -9,8 +9,6 @@ export const RESERVE_STEP = 1_000_000;
 const CLASS_SIZE_SAVING: Range = { lo: 3_000_000, hi: 5_000_000 };
 /** $1.99 per $1,000 projects $103.9M [F]. */
 const LEVY_PER_DOLLAR_RATE = 103_900_000 / 1.99;
-/** Automatic cuts cost about $155K a position [I]. */
-export const POSITION_COST = 155_000;
 
 /** Arithmetic for one edit. Dollars per year; positive helps the gap. */
 export interface Chip {
@@ -47,27 +45,4 @@ export function levyChip(rate: number, base: number): Chip {
 /** A reserve draw helps once. */
 export function reserveChip(draw: number): Chip {
   return { seats: '—', walk: '—', now: point(draw), atMaturity: point(0) };
-}
-
-/** The draft's effect on this year's gap, measured against the policy in force. */
-export function draftDelta(draft: Policy, base: Policy): Range {
-  const chips = [
-    classSizeChip(draft.k5ClassSize, base.k5ClassSize),
-    levyChip(draft.levyRate, base.levyRate),
-    reserveChip(draft.reserveDraw),
-  ];
-  return chips.reduce((sum, c) => ({ lo: sum.lo + c.now.lo, hi: sum.hi + c.now.hi }), point(0));
-}
-
-export function previewGap(gap: number, draft: Policy, base: Policy): Range {
-  const d = draftDelta(draft, base);
-  return { lo: gap + d.lo, hi: gap + d.hi };
-}
-
-export function autoCutPositions(gap: number): number {
-  return gap >= 0 ? 0 : Math.round(-gap / POSITION_COST);
-}
-
-export function midpoint(r: Range): number {
-  return (r.lo + r.hi) / 2;
 }

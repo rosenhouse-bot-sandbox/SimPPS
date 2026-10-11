@@ -1,7 +1,6 @@
 import { SCHOOLS } from '../data';
 import { DEFAULT_POLICY } from '../sim';
-import type { GameState, Policy, SchoolState, YearReport } from '../sim/types';
-import type { Sim } from '../app/machine';
+import type { GameState, SchoolState, YearReport } from '../sim/types';
 
 function schoolState(id: string, enrollment: number, capacity: number): SchoolState {
   const perGrade = Math.round(enrollment / 6);
@@ -46,7 +45,7 @@ export const FIXTURE_REPORT: YearReport = {
   year: 2027,
   events: [
     { season: 'spring', title: 'Lottery runs', detail: 'Entering families choose schools.' },
-    { season: 'spring', title: 'Budget closes', detail: 'June cuts reach every school.', sourceKey: 'calc.autoCuts' },
+    { season: 'spring', title: 'Budget closes', detail: 'June cuts reach every school.', sourceKey: 'model.autoCuts' },
     { season: 'summer', title: 'Buildings stay put', detail: 'No closures take effect.' },
     { season: 'fall', title: 'Families settle', detail: 'Movers choose new schools.' },
     { season: 'october', title: 'Classes form', detail: 'Blended classes rise in small schools.' },
@@ -60,13 +59,4 @@ export const FIXTURE_REPORT: YearReport = {
     { dial: 'capture', you: 0.765, ghost: 0.766, better: false },
   ],
   headlines: ['CUTS REACH EVERY SCHOOL', 'Kindergarten sign-ups dip', 'Reserves fall below policy', 'A fourth headline'],
-};
-
-/** A stand-in sim that returns the fixtures. */
-export const FIXTURE_SIM: Sim = {
-  newGame: ({ seed }) => ({ ...FIXTURE_GAME, seed }),
-  endYear: (state: GameState, policy: Policy) => ({
-    next: { ...state, year: state.year + 1, policy },
-    report: { ...FIXTURE_REPORT, year: state.year },
-  }),
 };

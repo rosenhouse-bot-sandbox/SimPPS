@@ -1,10 +1,12 @@
-import type { GameState, Policy, YearReport } from '../sim/types';
+import type { Budget, GameState, Policy, Season, YearReport } from '../sim/types';
 
 export type Phase = 'plan' | 'preflight' | 'playing' | 'report';
 
 export interface Sim {
   newGame(opts: { seed: string }): GameState;
   endYear(state: GameState, policy: Policy): { next: GameState; report: YearReport };
+  previewBudget(state: GameState, policy: Policy): Budget;
+  normalizePolicy(policy: Policy): Policy;
 }
 
 /** One played year. A later milestone branches from `start`. */
@@ -45,11 +47,20 @@ export function lastTurn(s: AppState): Turn | undefined {
   return s.history[s.history.length - 1];
 }
 
+const DECIDED: Season[] = ['fall', 'october', 'winter'];
+
+/** Families decide in fall, so the map shows the year's outcome from then on. */
+export function mapState(s: AppState, season: Season): GameState {
+  const turn = lastTurn(s);
+  if (turn && (s.phase === 'report' || (s.phase === 'playing' && DECIDED.includes(season)))) return turn.end;
+  return s.game;
+}
+
 export function makeReducer(sim: Sim) {
   return function reduce(s: AppState, a: Action): AppState {
     switch (a.type) {
       case 'edit':
-        return s.phase === 'plan' ? { ...s, draft: { ...s.draft, ...a.policy } } : s;
+        return s.phase === 'plan' ? { ...s, draft: sim.normalizePolicy({ ...s.draft, ...a.policy }) } : s;
       case 'preflight':
         return s.phase === 'plan' ? { ...s, phase: 'preflight' } : s;
       case 'back':

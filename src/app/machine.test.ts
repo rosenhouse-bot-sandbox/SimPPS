@@ -1,9 +1,9 @@
 import { describe, expect, it, vi } from 'vitest';
 import * as sim from '../sim';
-import { initApp, makeReducer, type Action, type AppState } from './machine';
+import { initApp, makeReducer, mapState, type Action, type AppState } from './machine';
 
 function run(actions: Action[], spy = vi.fn(sim.endYear)) {
-  const reduce = makeReducer({ newGame: sim.newGame, endYear: spy });
+  const reduce = makeReducer({ ...sim, endYear: spy });
   return actions.reduce<AppState>(reduce, initApp(sim, 'test'));
 }
 
@@ -19,6 +19,12 @@ describe('app state machine', () => {
     expect(run([{ type: 'edit', policy: { k5ClassSize: 26 } }]).draft.k5ClassSize).toBe(26);
     const s = run([{ type: 'preflight' }, { type: 'edit', policy: { k5ClassSize: 26 } }]);
     expect(s.draft.k5ClassSize).toBe(24);
+  });
+
+  it('keeps the draft inside the sim\'s bounds', () => {
+    const s = run([{ type: 'edit', policy: { k5ClassSize: 40, levyRate: -1 } }]);
+    expect(s.draft.k5ClassSize).toBe(28);
+    expect(s.draft.levyRate).toBe(0);
   });
 
   it('goes back from pre-flight to plan', () => {
@@ -66,5 +72,22 @@ describe('app state machine', () => {
     ]);
     expect(s.history[0].policy.reserveDraw).toBe(5e6);
     expect(s.draft.reserveDraw).toBe(0);
+  });
+});
+
+describe('mapState', () => {
+  const playing = run([{ type: 'preflight' }, { type: 'confirm' }]);
+  const turn = playing.history[0];
+
+  it('shows the planned state before the year plays', () => {
+    const s = run([]);
+    expect(mapState(s, 'spring')).toBe(s.game);
+  });
+
+  it('shows where kids went from fall on', () => {
+    expect(mapState(playing, 'summer')).toBe(turn.start);
+    expect(mapState(playing, 'fall')).toBe(turn.end);
+    expect(mapState(playing, 'winter')).toBe(turn.end);
+    expect(mapState({ ...playing, phase: 'report' }, 'spring')).toBe(turn.end);
   });
 });

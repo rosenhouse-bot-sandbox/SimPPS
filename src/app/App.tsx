@@ -3,7 +3,6 @@ import type { Season } from '../sim/types';
 import { BudgetPanel } from '../ui/BudgetPanel';
 import { GapBar } from '../ui/GapBar';
 import { LayersPanel } from '../ui/LayersPanel';
-import { previewGap } from '../ui/levers';
 import { NewsPanel } from '../ui/NewsPanel';
 import { PlanPanel } from '../ui/PlanPanel';
 import { Playback, SEASONS } from '../ui/Playback';
@@ -12,7 +11,7 @@ import { ReportView } from '../ui/ReportView';
 import { SchoolSheet } from '../ui/SchoolSheet';
 import { Toolbar, type Tool } from '../ui/Toolbar';
 import { TopBar } from '../ui/TopBar';
-import { initApp, lastTurn, makeReducer, type Sim } from './machine';
+import { initApp, lastTurn, makeReducer, mapState, type Sim } from './machine';
 import { MapSlot, type Overlay, type ZoneLevel } from './MapSlot';
 
 interface AppProps {
@@ -26,13 +25,17 @@ export function App({ sim, seed, playbackMs }: AppProps) {
   const [s, dispatch] = useReducer(reduce, undefined, () => initApp(sim, seed));
   const [tool, setTool] = useState<Tool>('map');
   const [selected, setSelected] = useState<string | null>(null);
+  const [listed, setListed] = useState<string | null>(null);
   const [overlay, setOverlay] = useState<Overlay>('none');
   const [zoneLevel, setZoneLevel] = useState<ZoneLevel>('elementary');
   const [season, setSeason] = useState<Season>('spring');
 
   const turn = lastTurn(s);
   const shown = s.phase === 'report' && turn ? turn.end : s.game;
-  const gap = previewGap(s.game.budget.gap, s.draft, s.game.policy);
+  const plan = useMemo(() => sim.previewBudget(s.game, s.draft), [sim, s.game, s.draft]);
+  const map = mapState(s, season);
+  const focus =
+    s.phase === 'playing' && turn ? (turn.report.events.find((e) => e.season === season && e.school)?.school ?? null) : listed;
   const planning = s.phase === 'plan' || s.phase === 'preflight';
   const close = () => setTool('map');
   const when =
@@ -47,12 +50,13 @@ export function App({ sim, seed, playbackMs }: AppProps) {
       <TopBar when={when} dials={shown.dials} />
       <main class="stage">
         <MapSlot
-          schools={shown.schools}
-          households={shown.households}
+          schools={map.schools}
+          households={map.households}
           overlay={overlay}
           selected={selected}
           onSelectSchool={setSelected}
           zoneLevel={zoneLevel}
+          focus={focus}
         />
         {planning && tool === 'budget' && (
           <BudgetPanel game={s.game} draft={s.draft} onEdit={(policy) => dispatch({ type: 'edit', policy })} onClose={close} />
@@ -63,6 +67,7 @@ export function App({ sim, seed, playbackMs }: AppProps) {
             base={s.game.policy}
             onSelectSchool={(id) => {
               setSelected(id);
+              setListed(id);
               close();
             }}
             onClose={close}
@@ -94,7 +99,7 @@ export function App({ sim, seed, playbackMs }: AppProps) {
           />
         )}
       </main>
-      {planning && <GapBar gap={gap} />}
+      {planning && <GapBar budget={plan} />}
       <Toolbar
         active={tool}
         onPick={setTool}
@@ -106,7 +111,7 @@ export function App({ sim, seed, playbackMs }: AppProps) {
           year={s.game.year}
           draft={s.draft}
           base={s.game.policy}
-          gap={gap}
+          budget={plan}
           onBack={() => dispatch({ type: 'back' })}
           onConfirm={() => dispatch({ type: 'confirm' })}
         />
