@@ -313,7 +313,7 @@ export const MODEL_SOURCES: Source[] = [
     key: 'model.zoneGrid',
     label: 'Zone blocks',
     tag: 'I',
-    explain: `The game draws zones on ${CELL_METERS} m grid squares clipped to the real 53 K-5 zone polygons [F]. Each block has a K-5 zone school and a middle zone school, the one at most of its points. A home on a block still on today's middle zone keeps its own middle zone. Boundary edits and closures move blocks between zones.`,
+    explain: `The game draws zones on ${CELL_METERS} m grid squares clipped to the real 53 K-5 zone polygons [F]. A block here is about 4 by 4 city blocks. Each block has a K-5 zone school and a middle zone school, the one at most of its points, and every home on it takes both. Boundary edits and closures move blocks between zones.`,
     links: [PPS_DATA],
   },
   {
