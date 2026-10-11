@@ -64,4 +64,14 @@ describe('SchoolSheet', () => {
     expect(screen.queryByText('Simulated')).toBeNull();
     expect(screen.queryByText('Enrollment')).toBeNull();
   });
+
+  it('offers Edit boundary while planning', () => {
+    const onEditBoundary = vi.fn();
+    render(<SchoolSheet id="rosa-parks" state={FIXTURE_GAME.schools['rosa-parks']} onClose={() => {}} onEditBoundary={onEditBoundary} />);
+    fireEvent.click(screen.getByRole('button', { name: 'Edit boundary' }));
+    expect(onEditBoundary).toHaveBeenCalled();
+    cleanup();
+    render(<SchoolSheet id="rosa-parks" state={FIXTURE_GAME.schools['rosa-parks']} onClose={() => {}} />);
+    expect(screen.queryByRole('button', { name: 'Edit boundary' })).toBeNull();
+  });
 });

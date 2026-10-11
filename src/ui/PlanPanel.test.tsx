@@ -8,10 +8,20 @@ afterEach(cleanup);
 
 const peninsula: Closure = { school: 'peninsula', receivers: [{ school: 'rosa-parks', share: 1 }], building: 'mothball' };
 
-function setup(start: 'status-quo' | 'scenario-a' = 'status-quo') {
+function setup(start: 'status-quo' | 'scenario-a' = 'status-quo', onEditBoundary?: () => void) {
   const onEdit = vi.fn();
   const draft = { ...DEFAULT_POLICY, k5ClassSize: 25, closures: [peninsula] };
-  render(<PlanPanel draft={draft} base={DEFAULT_POLICY} start={start} onEdit={onEdit} onSelectSchool={() => {}} onClose={() => {}} />);
+  render(
+    <PlanPanel
+      draft={draft}
+      base={DEFAULT_POLICY}
+      start={start}
+      onEdit={onEdit}
+      onSelectSchool={() => {}}
+      onEditBoundary={onEditBoundary}
+      onClose={() => {}}
+    />,
+  );
   return onEdit;
 }
 
@@ -35,5 +45,12 @@ describe('PlanPanel', () => {
     cleanup();
     setup();
     expect(screen.queryByText(/Not modeled/)).toBeNull();
+  });
+
+  it('opens Zone mode from Edit boundary', () => {
+    const onEditBoundary = vi.fn();
+    setup('status-quo', onEditBoundary);
+    fireEvent.click(screen.getByRole('button', { name: 'Edit boundary' }));
+    expect(onEditBoundary).toHaveBeenCalled();
   });
 });

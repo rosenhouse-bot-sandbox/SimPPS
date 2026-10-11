@@ -1,6 +1,6 @@
 import { fmtMoney } from '../format';
 import { FATE_DONE } from '../sim';
-import type { Closure, Policy } from '../sim/types';
+import type { BoundaryEdit, Closure, Policy } from '../sim/types';
 import { nameOf } from './closeSend';
 import { K } from './sources';
 
@@ -16,6 +16,11 @@ export function closureText(c: Closure): string {
   return `Close ${nameOf(c.school)} → ${to.join(', ')}${c.building === 'mothball' ? '' : ` · ${FATE_DONE[c.building]}`}`;
 }
 
+export function boundaryText(e: BoundaryEdit): string {
+  const blocks = `${e.cells.length} block${e.cells.length === 1 ? '' : 's'}`;
+  return `Rezone ${blocks} → ${nameOf(e.to)}${e.level === 'middle' ? ' 6-8' : ''}${e.grandfather ? ' · grandfathered' : ''}`;
+}
+
 export function fmtLevy(rate: number): string {
   return rate === 0 ? 'lapse' : `$${rate.toFixed(2)}`;
 }
@@ -27,6 +32,8 @@ export function listEdits(draft: Policy, base: Policy): EditLine[] {
     sourceKey: K.closureSavings,
     undo: { closures: draft.closures.filter((x) => x !== c) },
   }));
+  for (const e of draft.boundaryEdits)
+    out.push({ text: boundaryText(e), sourceKey: K.zoneGrid, undo: { boundaryEdits: draft.boundaryEdits.filter((x) => x !== e) } });
   if (draft.k5ClassSize !== base.k5ClassSize)
     out.push({
       text: `K-5 class size ${base.k5ClassSize} → ${draft.k5ClassSize}`,

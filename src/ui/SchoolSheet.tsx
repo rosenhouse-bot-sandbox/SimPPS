@@ -55,9 +55,11 @@ interface SchoolSheetProps {
   closing?: Closure;
   /** Schools the plan closes into this one. */
   receivesFrom?: string[];
+  /** Offered while planning, for an open school with a zone. */
+  onEditBoundary?: () => void;
 }
 
-export function SchoolSheet({ id, state, onClose, onCloseSend, closing, receivesFrom = [] }: SchoolSheetProps) {
+export function SchoolSheet({ id, state, onClose, onCloseSend, closing, receivesFrom = [], onEditBoundary }: SchoolSheetProps) {
   const school = SCHOOLS.find((s) => s.id === id);
   if (!school) return null;
   return (
@@ -83,6 +85,11 @@ export function SchoolSheet({ id, state, onClose, onCloseSend, closing, receives
       {onCloseSend && (
         <button type="button" class="btn primary wide" onClick={onCloseSend}>
           {closing ? 'Change closure' : 'Close & send'}
+        </button>
+      )}
+      {onEditBoundary && (
+        <button type="button" class="btn wide" onClick={onEditBoundary}>
+          Edit boundary
         </button>
       )}
       <dl>
