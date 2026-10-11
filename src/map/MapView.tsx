@@ -2,7 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'preact/hooks';
 import { HIGH_SCHOOLS, SCHOOLS, ZONES, type Point } from '../data';
 import { clamp } from '../clamp';
 import { zoneGrid } from '../sim';
-import type { Household, HouseholdStatus, SchoolId, SchoolState } from '../sim/types';
+import type { Household, HouseholdStatus, SchoolId, SchoolState, ZoneLevel } from '../sim/types';
 import { zoneBorders } from './borders';
 import { NO_DATA_COLOR, SEAT_BANDS, WINDOW_COLORS, WINDOW_LABELS, seatColor, utilization } from './colors';
 import { ringsToPath, shortName } from './geometry';
@@ -18,11 +18,11 @@ import './map.css';
 export type Overlay = 'none' | 'seats' | 'families';
 /** Close & send highlights: the school closing, its receivers and schools that could receive. */
 export type Mark = 'closing' | 'receiver' | 'candidate';
-export type ZoneLevel = 'elementary' | 'middle' | 'high';
+export type MapZoneLevel = ZoneLevel | 'high';
 
 /** Zone mode: the block grid, where one finger paints and two pan. */
 export interface ZoneEditProps {
-  level: 'elementary' | 'middle';
+  level: ZoneLevel;
   /** Each cell's zone school before this edit. */
   zones: readonly SchoolId[];
   target: SchoolId;
@@ -37,7 +37,7 @@ export interface MapViewProps {
   overlay: Overlay;
   selected: SchoolId | null;
   onSelectSchool: (id: SchoolId) => void;
-  zoneLevel: ZoneLevel;
+  zoneLevel: MapZoneLevel;
   /** Each new value centers the camera on that school at neighborhood zoom or closer. */
   focus?: SchoolId | null;
   /** Where the focus lands, as a share of the map's height from the top. */
@@ -72,8 +72,8 @@ const BADGE_FILL = '#e9dcb0';
 const MIN_FACTOR = 0.7;
 const MAX_FACTOR = 9;
 
-const zonePaths = new Map<ZoneLevel, string[]>();
-function pathsFor(level: ZoneLevel): string[] {
+const zonePaths = new Map<MapZoneLevel, string[]>();
+function pathsFor(level: MapZoneLevel): string[] {
   if (!zonePaths.has(level)) zonePaths.set(level, ZONES[level].map((z) => ringsToPath(z.rings)));
   return zonePaths.get(level)!;
 }

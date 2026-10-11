@@ -77,7 +77,7 @@ function cellMiddles(cells: ZoneCell[], elementary: SchoolId[]): SchoolId[] {
 
 let defaults: ZoneMap | undefined;
 
-/** Today's zones. Don't mutate it. */
+/** Returns today's zones, which callers must not mutate. */
 export function defaultZones(): ZoneMap {
   if (!defaults) {
     const { cells } = zoneGrid();
@@ -236,7 +236,7 @@ export function homesByCell(households: readonly Household[]): Map<number, numbe
 
 /** "The N% of zone X nearest school Y": zone X's cells nearest Y, holding as near N% of its homes as whole cells allow. */
 export function sliceCells(
-  state: Pick<GameState, 'households'> & { zones?: ZoneMap },
+  state: Pick<GameState, 'households' | 'zones'>,
   level: ZoneLevel,
   from: SchoolId,
   nearest: SchoolId,
@@ -244,7 +244,7 @@ export function sliceCells(
 ): number[] {
   if (!SCHOOL_INFO.has(nearest)) return [];
   const { cells } = zoneGrid();
-  const map = (state.zones ?? defaultZones())[level];
+  const map = state.zones[level];
   const homes = homesByCell(state.households);
   const y = schoolPos(nearest);
   const ids = map

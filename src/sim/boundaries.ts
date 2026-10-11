@@ -85,7 +85,7 @@ export function projectRiders(
   return Math.round(n);
 }
 
-/** Arithmetic for a boundary edit. It never predicts family choices. */
+/** A boundary chip shows arithmetic and never predicts family choices. */
 export interface BoundaryChip {
   /** Each touched school's kids now and next fall if every moved kid follows the new zone. */
   seats: { school: SchoolId; before: Range; after: Range; capacity: number }[];

@@ -1,4 +1,4 @@
-import type { Overlay, ZoneLevel } from '../app/MapSlot';
+import type { MapZoneLevel, Overlay } from '../app/MapSlot';
 import { Window } from './Window';
 
 const OVERLAYS: { id: Overlay; label: string }[] = [
@@ -7,7 +7,7 @@ const OVERLAYS: { id: Overlay; label: string }[] = [
   { id: 'families', label: 'Families' },
 ];
 
-const LEVELS: { id: ZoneLevel; label: string }[] = [
+const LEVELS: { id: MapZoneLevel; label: string }[] = [
   { id: 'elementary', label: 'Elementary' },
   { id: 'middle', label: 'Middle' },
   { id: 'high', label: 'High' },
@@ -39,9 +39,9 @@ function Choice<T extends string>({
 
 interface LayersProps {
   overlay: Overlay;
-  zoneLevel: ZoneLevel;
+  zoneLevel: MapZoneLevel;
   onOverlay: (o: Overlay) => void;
-  onZoneLevel: (z: ZoneLevel) => void;
+  onZoneLevel: (z: MapZoneLevel) => void;
   onClose: () => void;
 }
 

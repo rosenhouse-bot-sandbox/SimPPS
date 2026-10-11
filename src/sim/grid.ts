@@ -41,7 +41,7 @@ const ySides = (y0: number, y1: number): Side[] => [
   [(p) => p[1] <= y1, (a, b) => lerp(a, b, (y1 - a[1]) / (b[1] - a[1]))],
 ];
 
-/** Sutherland-Hodgman against half-planes. */
+/** Clips the ring to each half-plane in turn (Sutherland-Hodgman). */
 function clip(ring: Ring, sides: Side[]): Ring {
   let out = ring;
   for (const [inside, cross] of sides) {

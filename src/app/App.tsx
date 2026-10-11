@@ -2,7 +2,7 @@ import { useMemo, useReducer, useState } from 'preact/hooks';
 import { ZONES } from '../data';
 import type { Mark } from '../map/MapView';
 import type { Start } from '../sim';
-import type { BoundaryEdit, Closure, SchoolId, Season, ZoneLevel as EditLevel } from '../sim/types';
+import type { BoundaryEdit, Closure, SchoolId, Season, ZoneLevel } from '../sim/types';
 import { NEARBY, startDraft, toggleReceiver, withNames, type CloseDraft } from '../ui/closeSend';
 import { CloseSendSheet } from '../ui/CloseSendSheet';
 import { StartPicker } from '../ui/StartPicker';
@@ -20,7 +20,7 @@ import { TopBar } from '../ui/TopBar';
 import { addStroke, sliceSources, startZoneDraft, targets, toEdit, type ZoneDraft } from '../ui/zoneEdit';
 import { ZoneSheet } from '../ui/ZoneSheet';
 import { DECIDED, initApp, lastTurn, makeReducer, mapState, type Sim } from './machine';
-import { MapSlot, type Overlay, type ZoneLevel } from './MapSlot';
+import { MapSlot, type MapZoneLevel, type Overlay } from './MapSlot';
 
 interface AppProps {
   sim: Sim;
@@ -61,7 +61,7 @@ export function App({ sim, seed, start = 'status-quo', onStart, playbackMs }: Ap
   const [selected, setSelected] = useState<string | null>(null);
   const [listed, setListed] = useState<string | null>(null);
   const [overlay, setOverlay] = useState<Overlay>('none');
-  const [zoneLevel, setZoneLevel] = useState<ZoneLevel>('elementary');
+  const [zoneLevel, setZoneLevel] = useState<MapZoneLevel>('elementary');
   const [season, setSeason] = useState<Season>('spring');
   const [zoneDraft, setZoneDraft] = useState<ZoneDraft | null>(null);
 
@@ -77,7 +77,7 @@ export function App({ sim, seed, start = 'status-quo', onStart, playbackMs }: Ap
     () => new Set([...Object.keys(s.game.schools).filter((id) => !s.game.schools[id].open), ...s.draft.closures.map((c) => c.school)]),
     [s.game, s.draft],
   );
-  const targetsFor = (level: EditLevel) => targets(level, shut);
+  const targetsFor = (level: ZoneLevel) => targets(level, shut);
   const planned = useMemo(() => (zoning ? sim.plannedZones(s.game, s.draft) : null), [sim, s.game, s.draft, !!zoning]);
   const zoneEdit = useMemo(() => {
     if (!zoning || !planned) return null;
@@ -89,9 +89,9 @@ export function App({ sim, seed, start = 'status-quo', onStart, playbackMs }: Ap
     () => (zoneEdit?.cells.length ? sim.boundaryChip(s.game, zoneEdit, s.draft) : null),
     [sim, s.game, s.draft, zoneEdit],
   );
-  const hasZone = (id: SchoolId) => !shut.has(id) && (['elementary', 'middle'] as const).some((l) => ZONES[l].some((z) => z.school === id));
+  const hasZone = (id: SchoolId) => (['elementary', 'middle'] as const).some((l) => targetsFor(l).some((t) => t.id === id));
   const editBoundary = (id: SchoolId | null) => {
-    const level: EditLevel = id && !ZONES.elementary.some((z) => z.school === id) ? 'middle' : 'elementary';
+    const level: ZoneLevel = id && !ZONES.elementary.some((z) => z.school === id) ? 'middle' : 'elementary';
     const to = id && hasZone(id) ? id : targetsFor(level)[0].id;
     setSelected(null);
     setCloseDraft(null);

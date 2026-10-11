@@ -37,9 +37,9 @@ export type ZoneLevel = 'elementary' | 'middle';
 export interface BoundaryEdit {
   level: ZoneLevel;
   to: SchoolId;
-  /** Ids of zoneGrid() cells. */
+  /** Each is a zoneGrid() cell id. */
   cells: number[];
-  /** Current students keep their school; only kindergartners and 6th graders use the new zone. */
+  /** Current students keep their school and zone; kids entering the level or PPS use the new zone. */
   grandfather: boolean;
 }
 
