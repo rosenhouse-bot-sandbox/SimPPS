@@ -1,11 +1,12 @@
 import { describe, expect, it } from 'vitest';
 import { DEFAULT_POLICY, endYear, modeledRange, newGame, normalizePolicy, previewBudget } from '.';
-import { boundaryChip, decideRezoned, projectRiders, rezoneFactors, sliceEdit } from './boundaries';
+import { boundaryChip, decideRezoned, planZoning, projectRiders, rezoneFactors, sliceEdit } from './boundaries';
 import { costIndex } from './budget';
 import { followChance } from './closures';
 import { gradeOf, M } from './model';
 import type { BoundaryEdit, GameState, Household, Policy } from './types';
 import { homesByCell, sliceCells, zoningYear } from './zones';
+import { ridesNewBus } from './walk';
 
 const start = newGame({ seed: 'bounds' });
 const quo = endYear(start, DEFAULT_POLICY);
@@ -233,9 +234,23 @@ describe('walk and buses', () => {
     expect(repaid.spending).toBeCloseTo(none.spending, 0);
   });
 
+  it('counts the expected returners who would ride', () => {
+    const edit = sliceEdit(start, 'elementary', 'lent', 'chapman', 100, false);
+    const { zoning, closed, closingNow } = planZoning(start, [], [edit]);
+    const outside = start.households.filter((h) => h.school === null && gradeOf(h) < 5 && !h.movedAway);
+    const riding = outside.filter((h) => ridesNewBus(h, gradeOf(h) + 1, 'chapman', 'chapman') && edit.cells.includes(h.cell));
+    expect(riding.length * M.returnRate).toBeGreaterThan(1);
+    expect(projectRiders(outside, zoning, closed, closingNow)).toBe(Math.round(riding.length * M.returnRate));
+  });
+
   it('charges buses for kids a closure re-zones', () => {
     const peninsula = { school: 'peninsula', receivers: [{ school: 'rosa-parks', share: 1 }], building: 'mothball' as const };
-    expect(line(previewBudget(start, { ...DEFAULT_POLICY, closures: [peninsula] }), 'busing')).toBeLessThan(0);
+    const riders = -line(previewBudget(start, { ...DEFAULT_POLICY, closures: [peninsula] }), 'busing') / 1_400;
+    const followersWhoRide = start.households.filter(
+      (h) => h.school === 'peninsula' && h.zoneSchool === 'peninsula' && gradeOf(h) < 8 && ridesNewBus(h, gradeOf(h) + 1, 'rosa-parks', 'rosa-parks'),
+    ).length;
+    expect(followersWhoRide).toBeGreaterThan(5);
+    expect(riders).toBeGreaterThanOrEqual(followersWhoRide);
   });
 
   it('books no buses without a change', () => {
