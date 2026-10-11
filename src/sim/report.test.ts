@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { headlines, seasonEvents, versusGhost } from './report';
 import type { YearFacts } from './step';
-import type { Budget, Dials } from './types';
+import type { Budget, Dials, ElectionOutcome } from './types';
 
 const plan: Budget = {
   lines: [],
@@ -40,6 +40,7 @@ const facts: YearFacts = {
   rezonedCells: { elementary: 0, middle: 0 },
   grandfathered: 'none',
   rezoned: { kids: 0, zoneSchool: 0, otherPps: 0, left: 0 },
+  election: null,
 };
 
 const dials: Dials = {
@@ -52,6 +53,7 @@ const dials: Dials = {
   kidsInUrm: 6_500,
   walkK5: 9_000,
   newBusRiders: 0,
+  trust: 35,
 };
 
 const detail = (f: YearFacts, title: string) => seasonEvents(f).find((e) => e.title === title)!.detail;
@@ -151,6 +153,46 @@ describe('seasonEvents', () => {
     expect(detail({ ...facts, midYearCuts: 40 }, 'Mid-year cuts')).toBe(
       'Reserves fell below 3%, so 40 more positions go.',
     );
+  });
+});
+
+describe('levy votes', () => {
+  const vote = (e: Partial<ElectionOutcome>): YearFacts => ({
+    ...facts,
+    election: { rate: 1.99, when: 'may', renewal: true, yes: 0.737, passed: true, ...e },
+  });
+  const event = (f: YearFacts) => seasonEvents(f).find((e) => e.sourceKey === 'model.election')!;
+
+  it('counts a May vote in spring, before the June budget', () => {
+    const events = seasonEvents(vote({}));
+    const at = events.findIndex((e) => e.sourceKey === 'model.election');
+    expect(events[at]).toMatchObject({ season: 'spring', title: 'Voters renew the levy: 74% yes' });
+    expect(at).toBeLessThan(events.findIndex((e) => e.title.startsWith('June budget')));
+  });
+
+  it('counts a November vote in winter', () => {
+    expect(event(vote({ when: 'november' })).season).toBe('winter');
+  });
+
+  it('says what a failure costs', () => {
+    expect(event(vote({ passed: false, yes: 0.46 }))).toMatchObject({
+      title: 'Levy fails: 46% yes',
+      detail: 'The levy expires, so the June budget loses its revenue.',
+    });
+    expect(event(vote({ passed: false, yes: 0.46, renewal: false, rate: 1.8 })).detail).toBe("Today's levy stays in force.");
+    expect(event(vote({ passed: false, yes: 0.46, when: 'november' })).detail).toBe('It can run again in May.');
+  });
+
+  it('names a new rate when voters approve it', () => {
+    expect(event(vote({ renewal: false, rate: 1.8, yes: 0.6 })).title).toBe('Voters approve a $1.80 levy: 60% yes');
+  });
+
+  it('leads the Bulletin with the vote', () => {
+    expect(headlines(vote({ passed: false, yes: 0.46 }), dials, dials)[0]).toEqual({
+      text: 'Levy fails with 46% yes',
+      sourceKey: 'model.election',
+    });
+    expect(headlines(vote({}), dials, dials)[0].text).toBe('Voters renew the levy with 74% yes');
   });
 });
 

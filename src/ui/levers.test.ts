@@ -34,10 +34,14 @@ describe('lever chips against the sim', () => {
     expect(sim).toBeLessThanOrEqual(chip.hi + lumps);
   });
 
-  it.each([0, 0.5, 1, 1.89, 2])('matches the sim for a levy of $%d', (rate) => {
-    const chip = levyChip(rate, 1.99).now;
-    expect(chip.lo).toBe(chip.hi);
-    expect(chip.lo).toBeCloseTo(delta({ levyRate: rate }), 0);
+  it.each([0, 0.5, 1, 1.89, 2])('matches the sim for a levy of $%d, election bill included', (rate) => {
+    const plan = previewBudget(game, { ...DEFAULT_POLICY, levyRate: rate });
+    const bill = -(plan.lines.find((l) => l.key === 'election')?.amount ?? 0);
+    expect(bill > 0).toBe(rate > 0);
+    const chip = levyChip(rate, 1.99, bill);
+    expect(chip.now.lo).toBe(chip.now.hi);
+    expect(chip.now.lo).toBeCloseTo(delta({ levyRate: rate }), 0);
+    expect(chip.atMaturity.lo).toBeCloseTo(chip.now.lo + bill, 0);
   });
 
   it('agrees on the positions a reserve draw saves', () => {

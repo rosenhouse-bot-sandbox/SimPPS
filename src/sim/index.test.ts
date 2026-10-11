@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import { richLevy } from './fixtures';
 import { HIGH_SCHOOLS, SCHOOLS } from '../data';
 import { getSource } from '../sources/registry';
 import { DEFAULT_POLICY, endYear, newGame, plannedZones, previewBudget, sliceCells, type GameState, type Policy } from '.';
@@ -235,7 +236,7 @@ describe('endYear', () => {
   it('takes some cut positions out of classrooms', () => {
     const noCuts = { ...DEFAULT_POLICY, levyRate: 5 };
     const cut = endYear(start, DEFAULT_POLICY).next;
-    const uncut = endYear(start, noCuts).next;
+    const uncut = endYear(richLevy(start), noCuts).next;
     const total = (s: GameState, key: 'homerooms' | 'blendedHomerooms') =>
       Object.values(s.schools).reduce((a, x) => a + x[key], 0);
     const removed = total(uncut, 'homerooms') - total(cut, 'homerooms');
@@ -247,7 +248,7 @@ describe('endYear', () => {
   it('saves the same total for cuts whether they fall in classrooms or elsewhere', () => {
     const noCuts = { ...DEFAULT_POLICY, levyRate: 5 };
     const cut = endYear(start, DEFAULT_POLICY).next;
-    const uncut = endYear(start, noCuts).next;
+    const uncut = endYear(richLevy(start), noCuts).next;
     const line = (s: GameState, key: string) => s.budget.lines.find((l) => l.key === key)?.amount ?? 0;
     const saved = line(cut, 'earlierCuts') + line(cut, 'homerooms') - line(uncut, 'homerooms');
     const expected = cut.sim!.cumulativeCuts * 155_000 * 1.035;

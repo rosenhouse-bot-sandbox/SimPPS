@@ -42,7 +42,7 @@ export function buildSchools(
   return schools;
 }
 
-export function computeDials(state: Pick<GameState, 'households' | 'schools' | 'budget'>, positionsCut: number): Dials {
+export function computeDials(state: Pick<GameState, 'households' | 'schools' | 'budget'>, positionsCut: number, trust: number): Dials {
   let residents = 0;
   let inPps = 0;
   let kResidents = 0;
@@ -71,5 +71,6 @@ export function computeDials(state: Pick<GameState, 'households' | 'schools' | '
     kidsInUrm,
     walkK5: walkK5(state.households),
     newBusRiders: newBusRiders(state.households),
+    trust,
   };
 }

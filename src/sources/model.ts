@@ -1,5 +1,5 @@
 import { MEDIAN_SQFT, STATE_PER_STUDENT } from '../sim/budget';
-import { CLOSED_ZONE_CAPTURE_DROPS, FOLLOW_RATES, M } from '../sim/model';
+import { CLOSED_ZONE_CAPTURE_DROPS, FOLLOW_RATES, M, REVEAL_AFTER_YEARS } from '../sim/model';
 import { CITYWIDE_INTAKE } from '../sim/population';
 import { CELL_METERS } from '../sim/grid';
 import rightsizing from '../data/rightsizing.json';
@@ -20,6 +20,19 @@ const WW_GAP: SourceLink = {
   url: 'https://www.wweek.com/news/schools/2026/04/28/portland-public-schools-faces-56-million-budget-deficit-as-superintendent-proposes-336-layoffs/',
 };
 const RIGHTSIZING: SourceLink = { title: `PPS, ${rightsizing.source.title}`, url: rightsizing.source.url };
+const LEVY_2019: SourceLink = { title: 'Multnomah County, Measure 26-207, Nov 2019', url: 'https://multco.us/elections/measure-26-207-november-2019-special-election' };
+const LEVY_2024: SourceLink = {
+  title: 'PPS, proposed 2024 levy renewal',
+  url: 'https://www.pps.net/about/portland-public-schools-information/proposed-2024-local-option-levy-renewal',
+};
+const STANFORD: SourceLink = {
+  title: 'Pearman, The Fiscal Consequences of School Closures in California (2026)',
+  url: 'https://www.gettingdowntofacts.com/sites/default/files/The%20Fiscal%20Consequences%20of%20School%20Closures%20in%20CA%20Evidence%20from%20a%20Statewide%20Synthetic%20Difference-in-Differences%20Design.pdf',
+};
+const EDWEEK: SourceLink = {
+  title: 'EdWeek, Jun 2026',
+  url: 'https://www.edweek.org/leadership/closing-a-school-dont-expect-to-save-money-a-new-study-warns/2026/06',
+};
 const DESIGN: SourceLink = { title: 'SimPPS design (issue #1)', url: 'https://github.com/rosenhouse-bot-sandbox/SimPPS/issues/1' };
 
 const $ = (n: number) => `$${(n / 1e6).toFixed(1)}M`;
@@ -190,6 +203,34 @@ export const MODEL_SOURCES: Source[] = [
     links: [PPS_DATA],
   },
   {
+    key: 'model.levyTerm',
+    label: 'Levy term',
+    tag: 'V',
+    explain: `Oregon limits an operating levy to ${M.levyYears} years [F]. PPS planned a May 2024 vote to renew the levy for 2025-2030, so the game ends it in June ${M.levyThrough + 1}. The 2024 result is unverified. A renewal can go on the November ballot before the last year or the May ballot after it. A rate change also needs a vote; a lapse needs none.`,
+    links: [LEVY_2024],
+  },
+  {
+    key: 'model.election',
+    label: 'Levy election',
+    tag: 'V',
+    explain: `The yes share starts at ${pct(M.yesBase)}, PPS's Nov 2019 renewal result [F]; the 2024 result is unverified. Each point of family trust above or below 35 moves it ${pts(M.yesPerTrustPoint)} points, each $0.10 above $${M.levyRate} costs ${pts(M.yesPerDime)} and each failure since the last pass costs ${pts(M.yesPerFailure)} [M]. The vote lands within ${pts(M.yesNoise)} points of that, with the same luck for the ghost. The poll shows ±${pts(M.pollSpread)} points. A measure passes at 50%. Abandoned upgrades are not modeled yet.`,
+    links: [LEVY_2019, DESIGN],
+  },
+  {
+    key: 'model.electionBill',
+    label: 'Election bill',
+    tag: 'V',
+    explain: `The county bills the district for each measure. The game books ${$(M.electionBill)}, an unverified guess.`,
+    links: [DESIGN],
+  },
+  {
+    key: 'model.trust',
+    label: 'Family trust',
+    tag: 'M',
+    explain: `Each high school region's families start at ${M.trustStart.lo}-${M.trustStart.hi} on a 0-100 scale. A closure costs ${M.trustClosure} points, split among regions by where its kids live. A region where a kid moves a second time loses ${M.trustMovedTwice}. A region with no forced moves gains ${M.trustCalmYear} a year. Trust moves levy votes.`,
+    links: [DESIGN],
+  },
+  {
     key: 'model.compression',
     label: 'Measure 5 compression',
     tag: 'M',
@@ -242,22 +283,22 @@ export const MODEL_SOURCES: Source[] = [
     key: 'model.followRate',
     label: 'Follow a closed school',
     tag: 'M',
-    explain: 'The share of a closed school\'s kids who follow it to a receiver. Anchors disagree: PPS says ">93% stayed"; Bridger fell from 752 to 446; Stanford found about 287 kids lost per closure. Each game draws one value, and each school varies ±5 points. Most adjustments under "Who follows a closed school" lower a kid\'s chance, so fewer kids follow than the card says, and even the 95% card keeps fewer kids in PPS than PPS reports.',
-    links: [DESIGN],
+    explain: 'The share of a closed school\'s kids who follow it to a receiver. Anchors disagree: PPS says ">93% stayed" after past consolidations, with no published method [F]; Bridger\'s combined enrollment fell from 752 to 446 after its merger [N]; a Stanford study of California found about 287 students lost per closure [F]. Each game draws one value, and each school varies ±5 points. Most adjustments under "Who follows a closed school" lower a kid\'s chance, so fewer kids follow than the card says, and even the 95% card keeps fewer kids in PPS than PPS reports.',
+    links: [RIGHTSIZING, STANFORD, EDWEEK, DESIGN],
     hidden: {
       outcomes: FOLLOW_RATES.map((value) => ({ value, label: pct(value), weight: 1 })),
-      revealAfterYears: 3,
+      revealAfterYears: REVEAL_AFTER_YEARS,
     },
   },
   {
     key: 'model.closedZoneCapture',
     label: "Closed zone's kindergarten capture",
     tag: 'M',
-    explain: "How far kindergarten capture falls in a closed school's zone. Each game draws one value.",
+    explain: "How far kindergarten capture falls in a closed school's zone. No study measures it, so the card spans no drop to 5 points. Each game draws one value.",
     links: [DESIGN],
     hidden: {
       outcomes: CLOSED_ZONE_CAPTURE_DROPS.map((value) => ({ value, label: `-${Math.round(value * 100)} points`, weight: 1 })),
-      revealAfterYears: 3,
+      revealAfterYears: REVEAL_AFTER_YEARS,
     },
   },
   {
@@ -362,5 +403,6 @@ export const DIAL_SOURCES: Source[] = [
   { key: dialSourceKey('reservePct'), label: 'Reserves', tag: 'M', explain: 'Reserves over last year\'s spending. They start at $41.1M, 4.8% of the $862.1M 2026-27 general fund. Below 5% breaches policy; below 3% forces mid-year cuts.', links: [PPS_DATA] },
   { key: dialSourceKey('walkK5'), label: 'K-5 walkers', tag: 'M', explain: `Simulated PPS K-5 kids within ${M.walkDialMiles} mile of their school, in a straight line.`, links: [DESIGN] },
   { key: dialSourceKey('newBusRiders'), label: 'New bus riders', tag: 'M', explain: 'Simulated PPS kids at their zone school past the walk limit whose zone before any change was within it.', links: [DESIGN] },
+  { key: dialSourceKey('trust'), label: 'Trust', tag: 'M', explain: 'Family trust, 0-100, averaged over simulated households by region. See Family trust.', links: [DESIGN] },
   { key: dialSourceKey('kidsInUrm'), label: 'Kids in URM buildings', tag: 'M', explain: 'Simulated kids in unreinforced-masonry buildings (Holmes 2024) without a full retrofit. In fall 2025 about 4,500 attended URM buildings with no retrofit yet and 1,400 attended ones with a targeted retrofit.', links: [PPS_DATA] },
 ];

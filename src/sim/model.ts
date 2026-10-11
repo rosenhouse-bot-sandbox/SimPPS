@@ -119,6 +119,29 @@ export const M = {
   busRider: { lo: 1_000, hi: 1_800 },
   // model.busReimbursement: the share the state repays a year later
   busReimbursed: { lo: 0.7, hi: 0.9 },
+  // model.trust: points on a 0-100 scale
+  trustStart: { lo: 30, hi: 40 },
+  trustClosure: 8,
+  trustMovedTwice: 5,
+  trustCalmYear: 2,
+  // model.levyTerm: the fall year of the levy's last school year
+  levyThrough: 2029,
+  levyYears: 5,
+  // model.election
+  yesBase: 0.77,
+  yesPerTrustPoint: 0.004,
+  /** Per $0.10 per $1,000 above today's rate. */
+  yesPerDime: 0.015,
+  yesPerFailure: 0.04,
+  yesNoise: 0.04,
+  pollSpread: 0.05,
+  // model.electionBill
+  electionBill: 500_000,
 };
+
+/** The report that reveals the hidden cards comes after this many played years. */
+export const REVEAL_AFTER_YEARS = 3;
+/** Each hidden card in SimMemory['cards'] and its source key. */
+export const HIDDEN_CARDS = { followRate: 'model.followRate', closedZoneCaptureDrop: 'model.closedZoneCapture' } as const;
 
 export const METERS_PER_MILE = 1609.34;

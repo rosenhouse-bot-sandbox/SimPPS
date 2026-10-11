@@ -32,9 +32,10 @@ export function classSizeChip(size: number, base: number): Chip {
   return { seats: '—', walk: '—', now: delta, atMaturity: delta };
 }
 
-export function levyChip(rate: number, base: number): Chip {
-  const delta = point(levyRevenue(rate) - levyRevenue(base));
-  return { seats: '—', walk: '—', now: delta, atMaturity: delta };
+/** A new rate pays an election bill once and assumes the vote passes. */
+export function levyChip(rate: number, base: number, electionBill = 0): Chip {
+  const delta = levyRevenue(rate) - levyRevenue(base);
+  return { seats: '—', walk: '—', now: point(delta - electionBill), atMaturity: point(delta) };
 }
 
 /** A reserve draw helps once. */

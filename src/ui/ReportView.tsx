@@ -31,6 +31,7 @@ const DIAL_NAMES: Record<keyof Dials, string> = {
   kidsInUrm: 'Kids in URM',
   walkK5: 'K-5 walkers',
   newBusRiders: 'New bus riders',
+  trust: 'Trust',
 };
 
 function exact(n: number): string {

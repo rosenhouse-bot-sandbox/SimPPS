@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import { richLevy } from './fixtures';
 import { DEFAULT_POLICY, endYear, newGame } from '.';
 import { M } from './model';
 import { kCaptureTrend, leaveChance, worseYear } from './step';
@@ -71,8 +72,8 @@ describe('class size', () => {
   it('moves only K-5 families', () => {
     const start = newGame({ seed: 'class' });
     const noCuts = { ...DEFAULT_POLICY, levyRate: 5 };
-    const base = endYear(start, noCuts).next.households;
-    const big = endYear(start, { ...noCuts, k5ClassSize: 28 }).next.households;
+    const base = endYear(richLevy(start), noCuts).next.households;
+    const big = endYear(richLevy(start), { ...noCuts, k5ClassSize: 28 }).next.households;
     const left = (hs: typeof base, lo: number, hi: number) =>
       hs.filter((h) => h.status === 'left' && h.kids.slice(lo, hi + 1).includes(1)).length;
     expect(left(big, 1, 5)).toBeGreaterThan(left(base, 1, 5));
@@ -107,13 +108,13 @@ describe('a worse year', () => {
 
   it('sends more middle graders away when positions are cut', () => {
     const cut = endYear(start, DEFAULT_POLICY).next.households;
-    const uncut = endYear(start, noCuts).next.households;
+    const uncut = endYear(richLevy(start), noCuts).next.households;
     expect(leftInGrades(cut, 7, 8)).toBeGreaterThan(leftInGrades(uncut, 7, 8));
   });
 
   it('draws fewer kindergartners at class size 28', () => {
-    const at24 = endYear(start, noCuts).next.dials.kindergartenCapture;
-    const at28 = endYear(start, { ...noCuts, k5ClassSize: 28 }).next.dials.kindergartenCapture;
+    const at24 = endYear(richLevy(start), noCuts).next.dials.kindergartenCapture;
+    const at28 = endYear(richLevy(start), { ...noCuts, k5ClassSize: 28 }).next.dials.kindergartenCapture;
     expect(at28).toBeLessThan(at24);
   });
 });

@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import { richLevy } from './fixtures';
 import { DEFAULT_POLICY, endYear, modeledRange, newGame } from '.';
 import { computeBudget, costIndex, otherStaff, revenuePerStudent } from './budget';
 import {
@@ -115,7 +116,8 @@ describe('closure budget lines', () => {
   const base = {
     year: 2027,
     schools: { peninsula: school('peninsula'), 'rosa-parks': school('rosa-parks') },
-    policy: { k5ClassSize: 24, levyRate: 0, reserveDraw: 0, closures: [], boundaryEdits: [] },
+    policy: { k5ClassSize: 24, reserveDraw: 0, closures: [] },
+    levyRate: 0,
     reserves: 0,
     priorSpending: 800_000_000,
     cumulativeCuts: 0,
@@ -317,7 +319,7 @@ describe('Close & send over the years', () => {
   it('saves about what the chip promised once mature, if revenue is set aside', () => {
     const atMaturity = closureChip(start, peninsula, [], 24).atMaturity;
     const noCuts = { ...DEFAULT_POLICY, levyRate: 5 };
-    const play = (p: typeof policy) => [p, noCuts, noCuts].reduce((s, x) => endYear(s, x).next, start);
+    const play = (p: typeof policy) => [p, noCuts, noCuts].reduce((s, x) => endYear(s, x).next, richLevy(start));
     const y3 = play({ ...noCuts, closures: [peninsula] });
     const q3 = play(noCuts);
     const cost = (b: typeof start.budget) => b.lines.filter((l) => l.amount < 0 && l.key !== 'restCost').reduce((a, l) => a + l.amount, 0);
@@ -527,6 +529,7 @@ function budgetArgs(game: GameState) {
     restRevenue: sim.restRevenue,
     restCost: sim.restCost,
     stateFunding: 1,
+    levyRate: 1.99,
     closed: sim.closed,
   };
 }
