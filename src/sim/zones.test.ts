@@ -102,6 +102,10 @@ describe('sliceCells', () => {
     for (const c of slice) expect(defaultZones().middle[c]).toBe('hosford');
   });
 
+  it('takes nothing toward a school it does not know', () => {
+    expect(sliceCells(start, 'elementary', 'creston', 'nowhere', 50)).toEqual([]);
+  });
+
   it('takes nothing at 0% and the whole zone at 100%', () => {
     expect(sliceCells(start, 'elementary', 'creston', 'atkinson', 0)).toEqual([]);
     expect(new Set(sliceCells(start, 'elementary', 'creston', 'atkinson', 100))).toEqual(new Set(cellsOf('elementary', 'creston')));

@@ -2,7 +2,7 @@ import { ZONES, type Point } from '../data';
 import { nearestOpen, receiversFor, renormalize, schoolPos } from './closures';
 import { inRing } from './geo';
 import { CELL_METERS, zoneGrid, neighbors, type ZoneCell } from './grid';
-import { middleZoneSchool } from './population';
+import { middleZoneSchool, SCHOOL_INFO } from './population';
 import type { BoundaryEdit, Closure, GameState, Household, SchoolId, ZoneLevel, ZoneMap } from './types';
 
 export { CELL_METERS, cellAt, cellAtPoint, neighbors, zoneGrid, type ZoneCell, type ZoneGrid } from './grid';
@@ -230,6 +230,7 @@ export function sliceCells(
   nearest: SchoolId,
   percent: number,
 ): number[] {
+  if (!SCHOOL_INFO.has(nearest)) return [];
   const { cells } = zoneGrid();
   const map = (state.zones ?? defaultZones())[level];
   const homes = homesByCell(state.households);
