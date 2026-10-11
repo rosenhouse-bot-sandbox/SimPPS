@@ -10,7 +10,7 @@ import { projectRiders } from './boundaries';
 import { defaultZones, normalizeBoundaryEdits, zoningYear } from './zones';
 import { SCENARIOS, type Start } from './scenarios';
 import { familiesDecide, stepYear } from './step';
-import type { Budget, GameState, Household, Policy, SimMemory, YearReport } from './types';
+import type { Budget, GameState, Household, Policy, SimMemory, YearReport, ZoneMap } from './types';
 
 export * from './types';
 export { modeledRange } from './range';
@@ -141,6 +141,13 @@ export function previewBudget(state: GameState, policy: Policy): Budget {
     busRiders: projectRiders(state.households, zoning, closed, new Set(closing.map((c) => c.school))),
     busingLastYear: sim.busing,
   });
+}
+
+/** Each cell's zone school next fall under `policy`: its closures, then its boundary edits. */
+export function plannedZones(state: GameState, policy: Policy): ZoneMap {
+  const plan = normalizePolicy(policy);
+  const closed = [...state.sim!.closed, ...effectiveClosures(state.schools, plan.closures)];
+  return zoningYear(state.zones, closed, plan.boundaryEdits).zones;
 }
 
 /** Plays a year for the player and for the do-nothing ghost (model.ghost). */

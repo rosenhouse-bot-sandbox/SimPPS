@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { HIGH_SCHOOLS, SCHOOLS } from '../data';
 import { getSource } from '../sources/registry';
-import { DEFAULT_POLICY, endYear, newGame, previewBudget, type GameState, type Policy } from '.';
+import { DEFAULT_POLICY, endYear, newGame, plannedZones, previewBudget, sliceCells, type GameState, type Policy } from '.';
 import { classesFor } from './budget';
 import { gradeOf } from './model';
 import { SCHOOL_INFO } from './population';
@@ -349,5 +349,21 @@ describe('endYear', () => {
     endYear(s, { ...DEFAULT_POLICY, k5ClassSize: 25 });
     const { user, system } = process.cpuUsage(t0);
     expect((user + system) / 1000).toBeLessThan(300);
+  });
+});
+
+describe('plannedZones', () => {
+  it("applies the plan's closures, then its boundary edits", () => {
+    const state = newGame({ seed: 't' });
+    const cells = sliceCells(state, 'elementary', 'rosa-parks', 'james-john', 20);
+    const plan: Policy = {
+      ...DEFAULT_POLICY,
+      closures: [{ school: 'peninsula', receivers: [{ school: 'rosa-parks', share: 1 }], building: 'mothball' }],
+      boundaryEdits: [{ level: 'elementary', to: 'james-john', cells, grandfather: true }],
+    };
+    const zones = plannedZones(state, plan);
+    expect(zones.elementary).not.toContain('peninsula');
+    expect(cells.map((c) => zones.elementary[c])).toEqual(cells.map(() => 'james-john'));
+    expect(state.zones.elementary).toContain('peninsula');
   });
 });
