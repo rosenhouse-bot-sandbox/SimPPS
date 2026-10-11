@@ -131,3 +131,18 @@ describe('policy bounds', () => {
     expect(at40.next.policy.k5ClassSize).toBe(28);
   });
 });
+
+describe('citywide intake', () => {
+  it('draws ACCESS first graders only from kids already in another PPS school', () => {
+    const start = newGame({ seed: 'intake' });
+    const before = new Map(start.households.map((h) => [h.id, h]));
+    const { next } = endYear(start, DEFAULT_POLICY);
+    const joined = next.households.filter((h) => h.school === 'access-academy' && before.get(h.id)?.school !== 'access-academy');
+    expect(joined.length).toBeGreaterThan(0);
+    for (const h of joined) {
+      const prev = before.get(h.id)!;
+      expect(prev.school).not.toBeNull();
+      expect(prev.status).not.toBe('left');
+    }
+  });
+});

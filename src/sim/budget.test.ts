@@ -119,6 +119,7 @@ describe('computeBudget', () => {
     const stateRevenue = amount(flat, 'stateK8')! + M.otherStudents * STATE_PER_STUDENT;
     expect(amount(up, 'stateFunding')).toBeCloseTo(0.05 * stateRevenue, 0);
     expect(up.gap - flat.gap).toBeCloseTo(0.05 * stateRevenue, 0);
+    expect(up.spending).toBeCloseTo(flat.spending - (up.autoCutPositions - flat.autoCutPositions) * 155_000 * 1.035, 0);
   });
 
   it('cuts positions for the shortfall left after the reserve draw', () => {
