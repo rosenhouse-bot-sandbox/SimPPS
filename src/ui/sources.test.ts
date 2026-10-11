@@ -7,7 +7,7 @@ describe('UI source keys', () => {
     for (const k of Object.values(K)) expect(getSource(k), k).toBeDefined();
   });
 
-  it('use the sim\'s source unless the UI owns the number', () => {
-    for (const k of Object.values(K)) expect(k, k).toMatch(/^(ui|dial|model)\./);
+  it('use the sim\'s or pps-data\'s source unless the UI owns the number', () => {
+    for (const k of Object.values(K)) expect(k, k).toMatch(/^(ui|dial|model|field)\./);
   });
 });

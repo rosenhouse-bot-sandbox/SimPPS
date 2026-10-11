@@ -1,8 +1,9 @@
 import { fmtMoney } from '../format';
 import { M } from './model';
+import { SCHOOL_INFO } from './population';
 import { dialSourceKey } from '../sources/model';
 import type { YearFacts } from './step';
-import type { Dials, Headline, SeasonEvent, YearReport } from './types';
+import type { BuildingFate, Dials, Headline, SeasonEvent, YearReport } from './types';
 
 function count(n: number): string {
   return Math.round(n).toLocaleString('en-US');
@@ -12,9 +13,43 @@ function pct(x: number): string {
   return `${Math.round(x * 100)}%`;
 }
 
+function list(items: string[]): string {
+  return items.length < 2 ? items.join('') : `${items.slice(0, -1).join(', ')} and ${items[items.length - 1]}`;
+}
+
+/** A closed building's fate, as in "Its building is mothballed". */
+export const FATE_DONE: Record<BuildingFate, string> = { mothball: 'mothballed', lease: 'leased', sell: 'sold' };
+
+/** Summer names the closed buildings. Fall gives no counts: the Bulletin tells no story about a real school's families. */
+function closureEvents(f: YearFacts): SeasonEvent[] {
+  if (f.closing.length === 0) return [];
+  const name = (id: string) => SCHOOL_INFO.get(id)!.data.name;
+  const n = f.closing.length;
+  const fates = new Set(f.closing.map((c) => c.building));
+  const buildings =
+    fates.size === 1
+      ? `${n === 1 ? 'Its building is' : 'Their buildings are'} ${FATE_DONE[f.closing[0].building]}.`
+      : `${list(f.closing.map((c) => `${name(c.school)} is ${FATE_DONE[c.building]}`))}.`;
+  return [
+    {
+      season: 'summer',
+      title: `${n} school${n === 1 ? ' closes' : 's close'}`,
+      detail: `${list(f.closing.map((c) => name(c.school)))} ${n === 1 ? 'closes' : 'close'}. ${buildings}`,
+      sourceKey: 'model.buildingFate',
+    },
+    {
+      season: 'fall',
+      title: `Families of the closed school${n === 1 ? '' : 's'} decide`,
+      detail: 'Their kids choose new schools. The report shows where they went.',
+      sourceKey: 'model.followRate',
+    },
+  ];
+}
+
 export function seasonEvents(f: YearFacts): SeasonEvent[] {
   const cuts = f.autoCuts > 0 ? ` Automatic cuts remove ${count(f.autoCuts)} positions by seniority and spare IEP services.` : '';
   const draw = f.reserveDraw > 0 ? ` Reserves cover ${fmtMoney(f.reserveDraw)}.` : '';
+  const [closes, decide] = closureEvents(f);
   const events: SeasonEvent[] = [
     {
       season: 'spring',
@@ -38,6 +73,7 @@ export function seasonEvents(f: YearFacts): SeasonEvent[] {
       detail: `The gap is ${fmtMoney(f.plan.gap)}.${draw}${cuts}`,
       sourceKey: 'model.autoCuts',
     },
+    ...(closes ? [closes] : []),
     {
       season: 'summer',
       title: 'Eighth graders move on',
@@ -50,6 +86,7 @@ export function seasonEvents(f: YearFacts): SeasonEvent[] {
       detail: `~${count(f.flows.leftPps)} kids left PPS, ~${count(f.flows.cameBack)} came back and ~${count(f.flows.movedWithinPps)} changed schools.`,
       sourceKey: 'model.movingRoll',
     },
+    ...(decide ? [decide] : []),
     {
       season: 'october',
       title: 'Classes form',

@@ -9,7 +9,7 @@ const BIN_PX = 12;
 
 export type HouseholdCtx = Pick<
   CanvasRenderingContext2D,
-  'fillStyle' | 'strokeStyle' | 'lineWidth' | 'clearRect' | 'fillRect' | 'beginPath' | 'moveTo' | 'lineTo' | 'stroke'
+  'fillStyle' | 'strokeStyle' | 'lineWidth' | 'clearRect' | 'fillRect' | 'strokeRect' | 'beginPath' | 'moveTo' | 'lineTo' | 'stroke'
 >;
 
 export interface DrawOptions {
@@ -19,6 +19,8 @@ export interface DrawOptions {
   emphasize: boolean;
   flickerOn: boolean;
   schoolPos: (id: SchoolId) => Point | undefined;
+  /** Share, 0-1, of each closure trail drawn from home to receiver. Omitted draws none. */
+  flows?: number;
 }
 
 /** Dark windows first so lit ones sit on top. */
@@ -61,6 +63,37 @@ export function drawHouseholds(ctx: HouseholdCtx, hs: Household[], view: View, o
   ctx.clearRect(0, 0, o.width, o.height);
   if (o.level === 'street') drawWindows(ctx, hs, view, o);
   else drawBins(ctx, binHouseholds(hs, view, BIN_PX, o.width, o.height), o.emphasize);
+  if (o.flows !== undefined) drawFlows(ctx, hs, view, o.flows, o);
+}
+
+const FLOW_PX = 4;
+/** The moved window color, faded so many trails don't hide the map. */
+export const TRAIL_COLOR = 'rgba(159, 216, 255, 0.55)';
+
+/** A closure's movers: lit trails grow toward their new school, and leavers' windows go dark. */
+function drawFlows(ctx: HouseholdCtx, hs: Household[], view: View, k: number, o: DrawOptions): void {
+  const movers = hs.filter((h) => h.movedFrom !== undefined);
+  ctx.strokeStyle = TRAIL_COLOR;
+  ctx.lineWidth = 1;
+  for (const h of movers) {
+    const target = h.school ? o.schoolPos(h.school) : undefined;
+    if (!target) continue;
+    const [x, y] = toScreen(view, h.pos);
+    const [tx, ty] = toScreen(view, target);
+    ctx.beginPath();
+    ctx.moveTo(x, y);
+    ctx.lineTo(x + (tx - x) * k, y + (ty - y) * k);
+    ctx.stroke();
+  }
+  for (const h of movers) {
+    const [x, y] = toScreen(view, h.pos);
+    ctx.fillStyle = h.school ? WINDOW_COLORS.moved : WINDOW_COLORS.left;
+    ctx.fillRect(x - FLOW_PX / 2, y - FLOW_PX / 2, FLOW_PX, FLOW_PX);
+    if (!h.school) {
+      ctx.strokeStyle = WINDOW_COLORS.moved;
+      ctx.strokeRect(x - FLOW_PX / 2, y - FLOW_PX / 2, FLOW_PX, FLOW_PX);
+    }
+  }
 }
 
 function colorOf(status: HouseholdStatus, flickerOn: boolean): string {

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { fmtCount, fmtMoney, fmtPct, fmtRange, fmtSignedMoney } from './format';
+import { fmtCount, fmtMiles, fmtMoney, fmtMoneyRange, fmtPct, fmtRange, fmtSignedMoney } from './format';
 
 describe('format', () => {
   it('formats money compactly with a real minus sign', () => {
@@ -21,5 +21,17 @@ describe('format', () => {
     expect(fmtRange({ lo: 190, hi: 225 })).toBe('190–225~');
     expect(fmtRange({ lo: 5, hi: 5 })).toBe('5~');
     expect(fmtRange({ lo: -61_200_000, hi: -59_200_000 }, fmtMoney)).toBe('−$61.2M to −$59.2M~');
+  });
+
+  it('shows a money range in one unit with its sign', () => {
+    expect(fmtMoneyRange({ lo: -600_000, hi: -300_000 })).toBe('−$0.3–0.6M~');
+    expect(fmtMoneyRange({ lo: 958_876, hi: 1_297_303 })).toBe('+$1–1.3M~');
+    expect(fmtMoneyRange({ lo: -100_000, hi: 50_000 })).toBe('−$0.1M to +$0.1M~');
+  });
+
+  it('shows miles to one decimal with a sign when asked', () => {
+    expect(fmtMiles(0.474)).toBe('0.5 mi');
+    expect(fmtMiles(0.474, true)).toBe('+0.5 mi');
+    expect(fmtMiles(-0.21, true)).toBe('−0.2 mi');
   });
 });

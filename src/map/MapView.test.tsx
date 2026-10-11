@@ -171,6 +171,13 @@ describe('MapView', () => {
     expect(container.querySelectorAll('[data-school] text').length).toBeGreaterThan(0);
   });
 
+  it('can place the focus school higher, above a sheet', () => {
+    const { container } = renderMap({ focus: 'rosa-parks', focusAt: 0.25 });
+    const [x, y] = badgePositions(container).get('rosa-parks')!;
+    expect(x).toBeCloseTo(FALLBACK_SIZE.w / 2);
+    expect(y).toBeCloseTo(FALLBACK_SIZE.h / 4);
+  });
+
   it('fills a measured container and centers the focus school in it', () => {
     vi.spyOn(HTMLElement.prototype, 'clientWidth', 'get').mockReturnValue(500);
     vi.spyOn(HTMLElement.prototype, 'clientHeight', 'get').mockReturnValue(300);
@@ -204,5 +211,45 @@ describe('MapView', () => {
     } finally {
       vi.useRealTimers();
     }
+  });
+});
+
+describe('MapView for Close & send', () => {
+  it('boards up and dims a closed school', () => {
+    const closed = { ...schools, peninsula: { ...schools.peninsula, open: false, enrollment: 0 } };
+    const { container } = renderMap({ schools: closed });
+    const badge = container.querySelector('[data-school="peninsula"]')!;
+    expect(badge.classList.contains('closed')).toBe(true);
+    expect(badge.querySelector('.pps-map-boards')).toBeTruthy();
+    expect(badge.querySelector('title')!.textContent).toBe('Peninsula Elementary School (closed)');
+    expect(container.querySelector('[data-school="rosa-parks"] .pps-map-boards')).toBeNull();
+  });
+
+  it('marks the closing school, receivers and candidates, and links them', () => {
+    const { container } = renderMap({
+      marks: { peninsula: 'closing', 'rosa-parks': 'receiver', sitton: 'candidate' },
+      links: [['peninsula', 'rosa-parks']],
+    });
+    for (const [id, mark] of [['peninsula', 'closing'], ['rosa-parks', 'receiver'], ['sitton', 'candidate']])
+      expect(container.querySelector(`[data-school="${id}"] .pps-map-mark-${mark}`), id).toBeTruthy();
+    expect(container.querySelectorAll('.pps-map-mark')).toHaveLength(3);
+    const link = container.querySelector('[data-link="peninsula>rosa-parks"]')!;
+    const [px, py] = badgePositions(container).get('peninsula')!;
+    expect([Number(link.getAttribute('x1')), Number(link.getAttribute('y1'))]).toEqual([px, py]);
+  });
+
+  it('draws closure trails at district zoom when flows are on', () => {
+    const fill = vi.fn();
+    const line = vi.fn();
+    const ctx = { setTransform() {}, clearRect() {}, fillRect: fill, strokeRect() {}, beginPath() {}, moveTo() {}, lineTo: line, stroke() {} };
+    vi.mocked(HTMLCanvasElement.prototype.getContext).mockReturnValue(ctx as unknown as CanvasRenderingContext2D);
+    const mover = { ...fixtureHouseholds(1)[0], school: 'rosa-parks', status: 'moved' as const, movedFrom: 'peninsula' };
+    renderMap({ households: [mover] });
+    expect(line).not.toHaveBeenCalled();
+    cleanup();
+    vi.stubGlobal('requestAnimationFrame', undefined);
+    renderMap({ households: [mover], flows: true });
+    vi.unstubAllGlobals();
+    expect(line).toHaveBeenCalled();
   });
 });

@@ -71,6 +71,7 @@ describe('computeBudget', () => {
     enrollment: 144,
     byGrade: [24, 24, 24, 24, 24, 24, 0, 0, 0],
     capacity: 594,
+    stateRevenue: 144 * revenuePerStudent(0.6294),
     homerooms: 6,
     blendedHomerooms: 0,
   };
@@ -85,6 +86,7 @@ describe('computeBudget', () => {
     restRevenue: 0,
     restCost: 0,
     stateFunding: 1,
+    closed: [],
   };
   const amount = (b: ReturnType<typeof computeBudget>, key: string) => b.lines.find((l) => l.key === key)?.amount;
 

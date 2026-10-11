@@ -35,6 +35,8 @@ const facts: YearFacts = {
   blended: 137,
   crowded: 3,
   stateFundingGrowth: null,
+  closing: [],
+  closures: [],
 };
 
 const dials: Dials = {
@@ -74,6 +76,52 @@ describe('seasonEvents', () => {
     expect(detail(facts, 'Classes form')).toBe(
       '~137 of ~690 K-5 homerooms are blended. Cuts have taken ~85 homerooms, so classes run larger. 3 schools are over capacity.',
     );
+  });
+
+  it('closes schools in summer and tallies their kids in fall', () => {
+    const closing = (school: string) => ({
+      school,
+      receivers: [{ school: 'rosa-parks', share: 1 }],
+      building: 'mothball' as const,
+      year: 2027,
+      saving: 0,
+      staffKept: 0,
+    });
+    const tally = (school: string, receiver: number, otherPps: number, left: number) => ({
+      school,
+      kids: receiver + otherPps + left,
+      receivers: { 'rosa-parks': receiver },
+      otherPps,
+      left,
+    });
+    const f = {
+      ...facts,
+      closing: [closing('peninsula'), closing('woodmere')],
+      closures: [tally('peninsula', 180, 12, 20), tally('woodmere', 150, 10, 30)],
+    };
+    expect(detail(f, '2 schools close')).toBe(
+      'Peninsula Elementary School and Woodmere Elementary School close. Their buildings are mothballed.',
+    );
+    expect(detail(f, 'Families of the closed schools decide')).toBe('Their kids choose new schools. The report shows where they went.');
+    expect(seasonEvents(f).length - seasonEvents(facts).length).toBe(2);
+    const one = { ...f, closing: [closing('peninsula')], closures: [tally('peninsula', 180, 12, 20)] };
+    expect(detail(one, '1 school closes')).toBe('Peninsula Elementary School closes. Its building is mothballed.');
+    expect(detail(one, 'Families of the closed school decide')).toBe('Their kids choose new schools. The report shows where they went.');
+    const mixed = { ...f, closing: [closing('peninsula'), { ...closing('woodmere'), building: 'sell' as const }] };
+    expect(detail(mixed, '2 schools close')).toBe(
+      'Peninsula Elementary School and Woodmere Elementary School close. Peninsula Elementary School is mothballed and Woodmere Elementary School is sold.',
+    );
+  });
+
+  it('gives no counts for a closed school\'s families before the report', () => {
+    const f = {
+      ...facts,
+      closing: [{ school: 'peninsula', receivers: [{ school: 'rosa-parks', share: 1 }], building: 'mothball' as const, year: 2027, saving: 0, staffKept: 0 }],
+      closures: [{ school: 'peninsula', kids: 212, receivers: { 'rosa-parks': 180 }, otherPps: 12, left: 20 }],
+    };
+    const fall = seasonEvents(f).filter((e) => e.season === 'fall' && e.title !== 'Families decide');
+    expect(fall).toHaveLength(1);
+    expect(fall[0].detail).not.toMatch(/\d/);
   });
 
   it('adds mid-year cuts only when they happen', () => {

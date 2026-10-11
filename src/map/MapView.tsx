@@ -13,6 +13,8 @@ import { levelFactor, snapLevel, stepLevel, type ZoomLevel } from './zoom';
 import './map.css';
 
 export type Overlay = 'none' | 'seats' | 'families';
+/** Close & send highlights: the school closing, its receivers and schools that could receive. */
+export type Mark = 'closing' | 'receiver' | 'candidate';
 export type ZoneLevel = 'elementary' | 'middle' | 'high';
 
 export interface MapViewProps {
@@ -24,7 +26,16 @@ export interface MapViewProps {
   zoneLevel: ZoneLevel;
   /** Each new value centers the camera on that school at neighborhood zoom or closer. */
   focus?: SchoolId | null;
+  /** Where the focus lands, as a share of the map's height from the top. */
+  focusAt?: number;
+  marks?: Partial<Record<SchoolId, Mark>>;
+  /** Closed or closing school to receiver. */
+  links?: [SchoolId, SchoolId][];
+  /** Draws closure movers' trails, growing in over FLOW_MS. */
+  flows?: boolean;
 }
+
+export const FLOW_MS = 1500;
 
 /** Used until the container reports a size, and in jsdom. */
 export const FALLBACK_SIZE = { w: 360, h: 640 };
@@ -57,7 +68,7 @@ export function badgeSize(enrollment: number): number {
 }
 
 export function MapView(props: MapViewProps) {
-  const { schools, households, overlay, selected, onSelectSchool, zoneLevel, focus } = props;
+  const { schools, households, overlay, selected, onSelectSchool, zoneLevel, focus, focusAt = 0.5, marks = {}, links = [], flows = false } = props;
   const containerRef = useRef<HTMLDivElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const gestures = useRef(new Gestures());
@@ -106,9 +117,9 @@ export function MapView(props: MapViewProps) {
     setView((v) => {
       const { w, h } = sizeRef.current;
       const scale = Math.max(v.scale, fitView(MAP_BOUNDS, w, h).scale * levelFactor('neighborhood'));
-      return centerOn({ ...v, scale }, at, w, h);
+      return centerOn({ ...v, scale }, at, w, h * 2 * focusAt);
     });
-  }, [focus]);
+  }, [focus, focusAt]);
 
   const badges = useMemo(
     () =>
@@ -121,8 +132,9 @@ export function MapView(props: MapViewProps) {
   );
   const onScreen = (x: number, y: number) => x > -60 && y > -30 && x < size.w + 60 && y < size.h + 30;
 
-  const showHouseholds = level === 'street' || overlay === 'families';
+  const showHouseholds = level === 'street' || overlay === 'families' || flows;
   const flickerOn = useRef(true);
+  const flowShare = useRef(0);
   const redraw = useRef(() => {});
   redraw.current = () => {
     const canvas = canvasRef.current;
@@ -139,6 +151,7 @@ export function MapView(props: MapViewProps) {
       emphasize: overlay === 'families',
       flickerOn: flickerOn.current,
       schoolPos,
+      flows: flows ? flowShare.current : undefined,
     });
   };
 
@@ -149,6 +162,26 @@ export function MapView(props: MapViewProps) {
     canvas.height = Math.round(size.h * dpr);
   }, [size]);
   useEffect(() => redraw.current(), [households, view, size, level, overlay]);
+
+  useEffect(() => {
+    flowShare.current = 0;
+    if (!flows) return;
+    if (prefersReducedMotion() || typeof requestAnimationFrame !== 'function') {
+      flowShare.current = 1;
+      redraw.current();
+      return;
+    }
+    let start: number | null = null;
+    let id = 0;
+    const tick = (t: number) => {
+      start ??= t;
+      flowShare.current = Math.min(1, (t - start) / FLOW_MS);
+      redraw.current();
+      if (flowShare.current < 1) id = requestAnimationFrame(tick);
+    };
+    id = requestAnimationFrame(tick);
+    return () => cancelAnimationFrame(id);
+  }, [flows, households]);
 
   const anyReturned = useMemo(() => households.some((h) => h.status === 'returned'), [households]);
   useEffect(() => {
@@ -233,6 +266,14 @@ export function MapView(props: MapViewProps) {
       </svg>
       <canvas ref={canvasRef} class="pps-map-layer pps-map-households" style={{ width: size.w, height: size.h }} />
       <svg class="pps-map-layer" width={size.w} height={size.h} role="img" aria-label="Map of PPS schools">
+        {links.map(([from, to]) => {
+          const a = schoolPos(from);
+          const b = schoolPos(to);
+          if (!a || !b) return null;
+          const [x1, y1] = toScreen(view, a);
+          const [x2, y2] = toScreen(view, b);
+          return <line key={`${from}>${to}`} data-link={`${from}>${to}`} class="pps-map-link" x1={x1} y1={y1} x2={x2} y2={y2} />;
+        })}
         {HIGH_SCHOOLS.map((h) => {
           const [x, y] = toScreen(view, [h.x, h.y]);
           if (!onScreen(x, y)) return null;
@@ -249,12 +290,22 @@ export function MapView(props: MapViewProps) {
           const s = badgeSize(b.enrollment);
           const open = b.state?.open ?? true;
           const fill = !open ? '#2a2a2a' : overlay === 'seats' ? seatColor(b.state ? utilization(b.state) : null) : BADGE_FILL;
+          const mark = marks[b.id];
+          const h = s / 2;
           return (
-            <g key={b.id} data-school={b.id} class={`pps-map-badge${open ? '' : ' closed'}`} transform={`translate(${b.x} ${b.y})`}>
-              <title>{b.name}</title>
-              {b.id === selected && <rect class="pps-map-badge-ring" x={-s / 2 - 3} y={-s / 2 - 3} width={s + 6} height={s + 6} />}
-              <rect x={-s / 2} y={-s / 2} width={s} height={s} fill={fill} />
-              {overlay === 'none' && open && <rect class="pps-map-roof" x={-s / 2} y={-s / 2} width={s} height={3} />}
+            <g
+              key={b.id}
+              data-school={b.id}
+              data-mark={mark}
+              class={`pps-map-badge${open ? '' : ' closed'}`}
+              transform={`translate(${b.x} ${b.y})`}
+            >
+              <title>{open ? b.name : `${b.name} (closed)`}</title>
+              {mark && <rect class={`pps-map-mark pps-map-mark-${mark}`} x={-h - 5} y={-h - 5} width={s + 10} height={s + 10} />}
+              {b.id === selected && <rect class="pps-map-badge-ring" x={-h - 3} y={-h - 3} width={s + 6} height={s + 6} />}
+              <rect x={-h} y={-h} width={s} height={s} fill={fill} />
+              {overlay === 'none' && open && <rect class="pps-map-roof" x={-h} y={-h} width={s} height={3} />}
+              {!open && <path class="pps-map-boards" d={`M${-h} ${-h / 2}L${h} ${h / 2}M${-h} ${h / 2}L${h} ${-h / 2}`} />}
               {level !== 'district' && <text y={s / 2 + 11}>{shortName(b.name)}</text>}
             </g>
           );

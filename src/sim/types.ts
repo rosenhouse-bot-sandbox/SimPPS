@@ -9,10 +9,26 @@ export interface Range {
   hi: number;
 }
 
+export type BuildingFate = 'mothball' | 'lease' | 'sell';
+
+/** Close a school and send its kids to 1-2 receivers. It takes effect in summer. */
 export interface Closure {
   school: SchoolId;
+  /** Shares sum to 1. */
   receivers: { school: SchoolId; share: number }[];
-  building: 'mothball' | 'lease' | 'sell';
+  /** A sold building can't reopen. */
+  building: BuildingFate;
+  /** The player's "Call it": how many of the school's kids stay in PPS. */
+  guess?: number;
+}
+
+/** A closure in force since fall `year`. */
+export interface ClosedSchool extends Closure {
+  year: number;
+  /** Yearly gross saving at maturity if all follow, in 2027-28 dollars. */
+  saving: number;
+  /** Staff positions that followed the kids beyond the receivers' new staff steps. */
+  staffKept: number;
 }
 
 /** The player's edits for the coming year. */
@@ -45,6 +61,12 @@ export interface Household {
   movedAway?: boolean;
   /** The household's kids left PPS this year. Other 'left' households were outside PPS before. */
   leftThisYear?: boolean;
+  /** The school a closure moved the household from this year, for map trails. */
+  movedFrom?: SchoolId;
+  /** Times a closure has moved the household. */
+  forcedMoves?: number;
+  /** A closed school whose state funding weight the household's kids keep. */
+  fundedAs?: SchoolId;
 }
 
 export interface SchoolState {
@@ -54,8 +76,12 @@ export interface SchoolState {
   /** Enrollment per grade, index 0 = K … 8 = grade 8. */
   byGrade: number[];
   capacity: number;
+  /** State K-8 revenue its kids bring, by each kid's funding weight. */
+  stateRevenue: number;
   homerooms: number;
   blendedHomerooms: number;
+  /** Set when a closure has emptied the building. */
+  closed?: { year: number; building: BuildingFate };
 }
 
 export interface BudgetLine {
@@ -118,6 +144,17 @@ export interface Headline {
   sourceKey: string;
 }
 
+/** Where a closed school's kids went. Kids are those still in its grades this fall. */
+export interface ClosureOutcome {
+  school: SchoolId;
+  kids: Range;
+  receivers: { school: SchoolId; kids: Range }[];
+  otherPps: Range;
+  leftPps: Range;
+  /** The player's "Call it", scored against the kids who stayed in PPS. */
+  guess?: { stayInPps: number; actual: Range; hit: boolean };
+}
+
 export interface YearReport {
   /** Fall year of the school year that just played (2027 = 2027-28). */
   year: number;
@@ -128,6 +165,7 @@ export interface YearReport {
   headlines: Headline[];
   /** The June budget that applied. */
   budget: Budget;
+  closures: ClosureOutcome[];
 }
 
 export interface GameState {
@@ -171,6 +209,8 @@ export interface SimMemory {
   /** The lumped rest of the general fund, in 2027-28 dollars. */
   restRevenue: number;
   restCost: number;
+  /** Closures in force, oldest first. */
+  closed: ClosedSchool[];
   /** Hidden cards drawn for this game. */
   cards: { followRate: number; closedZoneCaptureDrop: number };
   /** The do-nothing ghost: same luck, DEFAULT_POLICY every year. */

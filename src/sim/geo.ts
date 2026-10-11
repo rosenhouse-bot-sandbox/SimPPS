@@ -1,5 +1,5 @@
 import type { Point, Zone } from '../data';
-import { onRiver } from '../map/rivers';
+import { onRiver, RIVERS } from '../map/rivers';
 
 interface Box {
   minX: number;
@@ -60,4 +60,20 @@ export class ZoneIndex {
   find(p: Point): number {
     return this.zones.findIndex((z) => inZone(p, z));
   }
+}
+
+const WILLAMETTE = RIVERS.find((r) => r.name === 'Willamette')!.points;
+
+/** The Willamette's x at a given y, held at its ends. Its points run north to south. */
+function willametteX(y: number): number {
+  const i = WILLAMETTE.findIndex(([, py]) => py >= y);
+  if (i <= 0) return WILLAMETTE[i < 0 ? WILLAMETTE.length - 1 : 0][0];
+  const [ax, ay] = WILLAMETTE[i - 1];
+  const [bx, by] = WILLAMETTE[i];
+  return ax + ((bx - ax) * (y - ay)) / (by - ay);
+}
+
+/** True when the Willamette runs between two points. */
+export function acrossWillamette(a: Point, b: Point): boolean {
+  return a[0] < willametteX(a[1]) !== b[0] < willametteX(b[1]);
 }

@@ -1,7 +1,9 @@
 import type { ComponentChildren } from 'preact';
 import { SCHOOLS, type SchoolData } from '../data';
-import { modeledRange } from '../sim';
-import type { SchoolState } from '../sim/types';
+import { FATE_DONE, modeledRange } from '../sim';
+import type { Closure, SchoolState } from '../sim/types';
+import { nameOf } from './closeSend';
+import { closureText } from './edits';
 import { fmtCount, fmtMoney, fmtPct, fmtRange } from '../format';
 import { Sourced } from './Sourced';
 import { K } from './sources';
@@ -47,19 +49,48 @@ interface SchoolSheetProps {
   id: string;
   state: SchoolState | undefined;
   onClose: () => void;
+  /** Offered while planning, for a school that can close. */
+  onCloseSend?: () => void;
+  /** This school's closure in the plan. */
+  closing?: Closure;
+  /** Schools the plan closes into this one. */
+  receivesFrom?: string[];
 }
 
-export function SchoolSheet({ id, state, onClose }: SchoolSheetProps) {
+export function SchoolSheet({ id, state, onClose, onCloseSend, closing, receivesFrom = [] }: SchoolSheetProps) {
   const school = SCHOOLS.find((s) => s.id === id);
   if (!school) return null;
   return (
     <Window title={school.name} onClose={onClose} class="panel sheet">
+      {state?.closed && (
+        <p class="note">
+          <Sourced k={K.buildingFate} text>{`Closed in ${state.closed.year}, ${FATE_DONE[state.closed.building]}.`}</Sourced>
+        </p>
+      )}
+      {closing && (
+        <p class="note">
+          In the plan:{' '}
+          <Sourced k={K.closureSavings} text>
+            {closureText(closing)}
+          </Sourced>
+        </p>
+      )}
+      {receivesFrom.length > 0 && (
+        <p class="note">
+          In the plan: takes kids from {receivesFrom.map(nameOf).join(' and ')}. Change that closure to close this school.
+        </p>
+      )}
+      {onCloseSend && (
+        <button type="button" class="btn primary wide" onClick={onCloseSend}>
+          {closing ? 'Change closure' : 'Close & send'}
+        </button>
+      )}
       <dl>
         {schoolFacts(school).map((f) => (
           <Fact key={f.column} {...f} />
         ))}
       </dl>
-      {state && (
+      {state?.open && (
         <>
           <h3>Simulated</h3>
           <dl>

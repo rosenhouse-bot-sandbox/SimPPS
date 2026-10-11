@@ -84,4 +84,31 @@ export const M = {
   startGap: -65_200_000,
   // model.midYearCuts
   midYearFloor: 0.03,
+  // model.closureSavings
+  closureSavingsSpread: 0.15,
+  /** Positions: a principal and an office manager. */
+  principalOffice: 2,
+  // model.closurePhasing: the share of a closure's saving in its first, second and third year
+  closurePhasing: [0, 0.5, 1],
+  // model.closureOneTime
+  closureOneTime: { lo: 300_000, hi: 600_000 },
+  // model.buildingFate
+  mothball: 70_000,
+  // model.followRate
+  followSchoolSpread: 0.05,
+  // model.followAdjustments
+  followPerMilePastOne: 0.03,
+  followBarrier: 0.04,
+  followRiskier: 0.03,
+  followMovedTwice: 0.08,
+  followLoyal: 0.05,
+  followExit: 0.04,
+  followWholeClasses: 0.03,
+  // model.nonFollowers
+  nonFollowerOtherPps: 0.35,
+  nonFollowerCharter: 0.1,
+  // model.crowding
+  crowdingLine: 1.1,
 };
+
+export const METERS_PER_MILE = 1609.34;

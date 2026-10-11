@@ -344,8 +344,10 @@ describe('endYear', () => {
   it('steps a year, ghost included, in under 300 ms', () => {
     const s = newGame({ seed: 'speed' });
     endYear(s, DEFAULT_POLICY);
-    const t0 = performance.now();
+    // CPU time, so other test workers sharing the machine don't fail it.
+    const t0 = process.cpuUsage();
     endYear(s, { ...DEFAULT_POLICY, k5ClassSize: 25 });
-    expect(performance.now() - t0).toBeLessThan(300);
+    const { user, system } = process.cpuUsage(t0);
+    expect((user + system) / 1000).toBeLessThan(300);
   });
 });

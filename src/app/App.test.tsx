@@ -4,7 +4,7 @@ import { ZONES } from '../data';
 import { FALLBACK_SIZE } from '../map/MapView';
 import * as realSim from '../sim';
 import { getSource } from '../sources/registry';
-import { fmtCount, fmtMoney, fmtPct } from '../format';
+import { fmtCount, fmtMoney, fmtPct, fmtRange } from '../format';
 import { App } from './App';
 import type { Sim } from './machine';
 
@@ -26,7 +26,7 @@ function hold(name: string) {
   });
 }
 
-function click(name: string) {
+function click(name: string | RegExp) {
   fireEvent.click(screen.getByRole('button', { name }));
 }
 
@@ -44,8 +44,9 @@ function badgeAt(id: string): [number, number] {
   return [Number(x), Number(y)];
 }
 
-function isCentered([x, y]: [number, number]): boolean {
-  return Math.abs(x - FALLBACK_SIZE.w / 2) < 0.5 && Math.abs(y - FALLBACK_SIZE.h / 2) < 0.5;
+/** Sheets cover the lower map, so the focus sits at 30% of its height. */
+function isFocused([x, y]: [number, number], at = 0.3): boolean {
+  return Math.abs(x - FALLBACK_SIZE.w / 2) < 0.5 && Math.abs(y - FALLBACK_SIZE.h * at) < 0.5;
 }
 
 function setup(sim: Sim = realSim) {
@@ -110,12 +111,12 @@ describe('App', () => {
     expect(less.disabled).toBe(true);
   });
 
-  it('opens a school from the A–Z list and centers the map on it', () => {
+  it('opens a school from the A–Z list and brings it into view above the sheet', () => {
     setup();
     click('Plan');
     click('Rosa Parks Elementary School');
     expect(screen.getByRole('region', { name: 'Rosa Parks Elementary School' })).toBeTruthy();
-    expect(isCentered(badgeAt('rosa-parks'))).toBe(true);
+    expect(isFocused(badgeAt('rosa-parks'))).toBe(true);
   });
 
   it('plays a full year: hold End, review, hold to play, report, next January', () => {
@@ -240,4 +241,215 @@ describe('App', () => {
     expect(keys.size).toBeGreaterThan(20);
     for (const k of keys) expect(getSource(k), k).toBeDefined();
   });
+
+  describe('Close & send', { timeout: 20_000 }, () => {
+    function openPeninsula() {
+      click('Plan');
+      click('Peninsula Elementary School');
+      click('Close & send');
+    }
+
+    function tapBadge(id: string) {
+      const [x, y] = badgeAt(id);
+      const map = document.querySelector('.pps-map')!;
+      fireEvent.pointerDown(map, { pointerId: 1, clientX: x, clientY: y });
+      fireEvent.pointerUp(map, { pointerId: 1, clientX: x, clientY: y });
+    }
+
+    const marked = (mark: string) => [...document.querySelectorAll(`[data-mark="${mark}"]`)].map((e) => e.getAttribute('data-school'));
+
+    it('highlights candidates on the map and takes a receiver from a map tap', () => {
+      setup();
+      openPeninsula();
+      expect(marked('closing')).toEqual(['peninsula']);
+      expect(marked('candidate')).toContain('rosa-parks');
+      expect(marked('candidate')).toHaveLength(5);
+      expect(isFocused(badgeAt('peninsula'))).toBe(true);
+      tapBadge('rosa-parks');
+      expect(screen.getByRole('button', { name: /Rosa Parks/ }).getAttribute('aria-pressed')).toBe('true');
+      expect(marked('receiver')).toEqual(['rosa-parks']);
+      expect(document.querySelector('[data-link="peninsula>rosa-parks"]')).toBeTruthy();
+    });
+
+    it('puts the closure in the plan with Undo, in pre-flight and in the report', () => {
+      setup();
+      openPeninsula();
+      click(/Rosa Parks/);
+      click('Next >');
+      click('Next >');
+      click('Close it');
+      click('Call it');
+      expect(screen.queryByTestId('closure-chip')).toBeNull();
+      expect(screen.getByText(/In the plan/).textContent).toBe('In the plan: Close Peninsula → Rosa Parks');
+      const start = realSim.newGame({ seed: 't' });
+      const closure = { school: 'peninsula', receivers: [{ school: 'rosa-parks', share: 1 }], building: 'mothball' as const };
+      expect(gapBar()).toContain(fmtMoney(realSim.previewBudget(start, { ...start.policy, closures: [closure] }).gap));
+
+      click('Plan');
+      click('Undo Close Peninsula → Rosa Parks');
+      expect(screen.getByText('None yet.')).toBeTruthy();
+      click('Peninsula Elementary School');
+      click('Close & send');
+      click(/Rosa Parks/);
+      click('Next >');
+      click('Next >');
+      click('Close it');
+      click('Call it');
+      click('Plan');
+      click('Sitton Elementary School');
+      expect(isFocused(badgeAt('sitton'))).toBe(true);
+
+      hold('End year');
+      expect(screen.getByRole('region', { name: 'Play 2027-28?' }).textContent).toContain('Close Peninsula → Rosa Parks');
+      hold('Play the year');
+      expect(document.querySelector('[data-link="peninsula>rosa-parks"]')).toBeTruthy();
+      act(() => {
+        vi.advanceTimersByTime(1000);
+      });
+      expect(isFocused(badgeAt('peninsula'), 0.5)).toBe(true);
+      act(() => {
+        vi.advanceTimersByTime(5000);
+      });
+      const report = screen.getByRole('region', { name: 'Where Peninsula kids went' });
+      expect(report.textContent).toContain('Rosa Parks');
+      expect(report.querySelector('.call')!.textContent).toMatch(/^You called \d+\. Stayed in PPS: \d+–\d+~ (HIT|MISS)$/);
+    });
+
+    function closeInto(receiver: RegExp) {
+      click(receiver);
+      click('Next >');
+      click('Next >');
+      click('Close it');
+      click('Skip');
+    }
+
+    it('offers no closure of a school that takes kids in the plan', () => {
+      setup();
+      openPeninsula();
+      closeInto(/Rosa Parks/);
+      click('Plan');
+      click('Rosa Parks Elementary School');
+      expect(screen.getByText(/takes kids from Peninsula/)).toBeTruthy();
+      expect(screen.queryByRole('button', { name: 'Close & send' })).toBeNull();
+    });
+
+    it("counts the plan's other closures into the same receiver on the chip", () => {
+      setup();
+      openPeninsula();
+      closeInto(/Rosa Parks/);
+      click('Plan');
+      click('Sitton Elementary School');
+      click('Close & send');
+      click('All schools A–Z');
+      click(/Rosa Parks/);
+      click('Next >');
+      const start = realSim.newGame({ seed: 't' });
+      const to = (school: string) => ({ school, receivers: [{ school: 'rosa-parks', share: 1 }], building: 'mothball' as const });
+      const chip = realSim.closureChip(start, to('sitton'), [to('peninsula')], 24);
+      const seats = screen.getByTestId('closure-chip').querySelector('dd')!.textContent;
+      expect(seats).toBe(`${fmtRange(realSim.modeledRange(chip.seats.kids))}/594`);
+    });
+
+    it('boards up the closed school next year and offers no second closure', () => {
+      setup();
+      openPeninsula();
+      click(/Rosa Parks/);
+      click('Next >');
+      click('Next >');
+      click('Close it');
+      click('Skip');
+      hold('End year');
+      hold('Play the year');
+      act(() => {
+        vi.advanceTimersByTime(5000);
+      });
+      click('Plan 2028');
+      expect(document.querySelector('[data-school="peninsula"]')!.classList.contains('closed')).toBe(true);
+      click('Plan');
+      expect(screen.getByText('None yet.')).toBeTruthy();
+      click('Peninsula Elementary School');
+      expect(screen.getByText('Closed in 2027, mothballed.')).toBeTruthy();
+      expect(screen.queryByRole('button', { name: 'Close & send' })).toBeNull();
+    });
+  });
+
+  it('cites a registered source for every Close & send number', () => {
+    const keys = new Set<string>();
+    const collect = () => document.querySelectorAll('[data-source]').forEach((e) => keys.add(e.getAttribute('data-source')!));
+    setup();
+    click('Plan');
+    click('Maplewood Elementary School');
+    click('Close & send');
+    collect();
+    click(/Hayhurst/);
+    click(/Rieke/);
+    click('Next >');
+    collect();
+    click('Next >');
+    fireEvent.click(screen.getByRole('radio', { name: /Sell/ }));
+    collect();
+    click('Close it');
+    collect();
+    click('Call it');
+    click('Plan');
+    collect();
+    hold('End year');
+    hold('Play the year');
+    act(() => {
+      vi.advanceTimersByTime(5000);
+    });
+    collect();
+    for (const k of ['ui.distance', 'ui.share', 'ui.closureWalk', 'ui.paysOff', 'model.buildingFate', 'ui.callIt', 'model.nonFollowers'])
+      expect(keys).toContain(k);
+    for (const k of keys) expect(getSource(k), k).toBeDefined();
+  });
+
+  it('replaces a closure when the player changes it', () => {
+    setup();
+    click('Plan');
+    click('Peninsula Elementary School');
+    click('Close & send');
+    click(/Rosa Parks/);
+    click('Next >');
+    click('Next >');
+    click('Close it');
+    click('Skip');
+    click('Change closure');
+    click('Next >');
+    click('Next >');
+    fireEvent.click(screen.getByRole('radio', { name: /Sell/ }));
+    click('Close it');
+    click('Skip');
+    click('Plan');
+    expect([...document.querySelectorAll('.edits li [data-source]')].map((e) => e.textContent)).toEqual([
+      'Close Peninsula → Rosa Parks · sold',
+    ]);
+  });
+
+  it('drops an unfinished Close & send at End year', () => {
+    setup();
+    click('Plan');
+    click('Peninsula Elementary School');
+    click('Close & send');
+    hold('End year');
+    click('Back');
+    expect(screen.queryByRole('region', { name: 'Close Peninsula' })).toBeNull();
+  });
+
+  it('asks for a start on first load and loads a scenario as ordinary edits', () => {
+    const onStart = vi.fn();
+    render(<App sim={realSim} seed="t" start={null} onStart={onStart} playbackMs={5000} />);
+    fireEvent.click(screen.getByRole('button', { name: 'PPS Scenario A' }));
+    expect(onStart).toHaveBeenCalledWith('scenario-a');
+    expect(screen.queryByRole('button', { name: 'PPS Scenario B' })).toBeNull();
+    click('Plan');
+    expect(document.querySelectorAll('.edits li')).toHaveLength(14);
+    expect(screen.getByText(realSim.SCENARIOS['scenario-a'].notModeled!)).toBeTruthy();
+    expect(document.querySelectorAll('[data-mark="closing"]')).toHaveLength(14);
+    click('Rosa Parks Elementary School');
+    expect(screen.getByText(/takes kids/).textContent).toBe(
+      'In the plan: takes kids from Peninsula. Change that closure to close this school.',
+    );
+  });
 });
+

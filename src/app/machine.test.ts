@@ -27,6 +27,15 @@ describe('app state machine', () => {
     expect(s.draft.levyRate).toBe(0);
   });
 
+  it('restarts the same seed from a PPS scenario, with its closures in the first plan', () => {
+    const s = run([{ type: 'preflight' }, { type: 'confirm' }, { type: 'restart', start: 'scenario-b' }]);
+    expect(s.phase).toBe('plan');
+    expect(s.start).toBe('scenario-b');
+    expect(s.history).toEqual([]);
+    expect(s.game.seed).toBe('test');
+    expect(s.draft.closures.map((c) => c.school)).toEqual(sim.SCENARIOS['scenario-b'].closures.map((c) => c.school));
+  });
+
   it('goes back from pre-flight to plan', () => {
     expect(run([{ type: 'preflight' }, { type: 'back' }]).phase).toBe('plan');
   });
@@ -84,8 +93,12 @@ describe('mapState', () => {
     expect(mapState(s, 'spring')).toBe(s.game);
   });
 
+  it('shows closed buildings from summer on', () => {
+    expect(mapState(playing, 'summer').schools).toBe(turn.end.schools);
+    expect(mapState(playing, 'summer').households).toBe(turn.start.households);
+  });
+
   it('shows where kids went from fall on', () => {
-    expect(mapState(playing, 'summer')).toBe(turn.start);
     expect(mapState(playing, 'fall')).toBe(turn.end);
     expect(mapState(playing, 'winter')).toBe(turn.end);
     expect(mapState({ ...playing, phase: 'report' }, 'spring')).toBe(turn.end);

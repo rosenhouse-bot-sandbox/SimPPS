@@ -3,7 +3,8 @@ import { clamp } from '../clamp';
 import { SCHOOLS } from '../data';
 import { SCHOOL_INFO } from './population';
 import { draw } from './rng';
-import type { Budget, BudgetLine, Policy, SchoolState } from './types';
+import { effectiveClosures } from './closures';
+import type { Budget, BudgetLine, ClosedSchool, Policy, SchoolId, SchoolState } from './types';
 
 export const FIRST_YEAR = 2027;
 
@@ -47,6 +48,11 @@ export function otherStaff(enrollment: number): number {
 
 export function revenuePerStudent(directCert: number): number {
   return M.revenueBase + M.revenuePoverty * clamp(directCert / M.directCertForMaxWeight, 0, 1);
+}
+
+/** State dollars a kid brings at `school`'s poverty weight. */
+export function stateWeight(school: SchoolId): number {
+  return revenuePerStudent(SCHOOL_INFO.get(school)?.data.pctDirectCert ?? 0);
 }
 
 /** State dollars per student at fall 2025's mix of schools. */
@@ -116,6 +122,16 @@ export interface BudgetInput {
   restCost: number;
   /** State funding over 2025-27's, from stateFundingLevel. */
   stateFunding: number;
+  /** Closures in force before this year. */
+  closed: ClosedSchool[];
+}
+
+/** model.closureOneTime: the budget books the middle of the range. */
+export const CLOSURE_ONE_TIME = (M.closureOneTime.lo + M.closureOneTime.hi) / 2;
+
+/** model.closurePhasing: the share of the saving not yet realized `yearsIn` years after a closure. */
+function unrealized(yearsIn: number): number {
+  return 1 - M.closurePhasing[Math.min(yearsIn, M.closurePhasing.length - 1)];
 }
 
 /**
@@ -131,7 +147,7 @@ export function computeBudget(input: BudgetInput): Budget {
   let plant = 0;
   for (const s of Object.values(input.schools)) {
     const info = SCHOOL_INFO.get(s.id)!;
-    state += s.enrollment * revenuePerStudent(info.data.pctDirectCert ?? 0);
+    state += s.stateRevenue;
     if (!s.open) continue;
     homerooms += classesFor(s.byGrade, input.policy.k5ClassSize, creep).homerooms;
     staff += otherStaff(s.enrollment);
@@ -155,6 +171,26 @@ export function computeBudget(input: BudgetInput): Budget {
       amount: (input.cumulativeCuts - input.homeroomsCut) * M.positionCost * index,
       sourceKey: 'model.autoCuts',
     });
+  // Year 1 runs on last fall's schools, so a closure's building is still in the lines above.
+  const closed = input.closed.filter((c) => input.year > c.year);
+  const closing = effectiveClosures(input.schools, input.policy.closures).length;
+  const optional: [string, string, number, string][] = [
+    ['closureOneTime', 'Closures, once', -closing * CLOSURE_ONE_TIME * index, 'model.closureOneTime'],
+    [
+      'closurePhasing',
+      'Closure savings not yet realized',
+      -closed.reduce((a, c) => a + unrealized(input.year - c.year) * c.saving, 0) * index,
+      'model.closurePhasing',
+    ],
+    [
+      'closureStaff',
+      'Staff who followed closed schools',
+      -closed.reduce((a, c) => a + c.staffKept, 0) * M.positionCost * index,
+      'model.closureSavings',
+    ],
+    ['mothball', 'Mothballed buildings', -closed.filter((c) => c.building === 'mothball').length * M.mothball * index, 'model.buildingFate'],
+  ];
+  for (const [key, label, amount, sourceKey] of optional) if (amount !== 0) lines.push({ key, label, amount, sourceKey });
   const gap = lines.reduce((sum, l) => sum + l.amount, 0);
   const revenue = state + stateCard + levyRevenue(input.policy.levyRate) + input.restRevenue;
   const position = M.positionCost * index;

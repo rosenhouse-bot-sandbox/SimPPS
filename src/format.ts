@@ -38,3 +38,19 @@ export function fmtRange(r: Range, fmt: (n: number) => string = fmtCount): strin
   const sep = r.lo < 0 || r.hi < 0 ? ' to ' : '–';
   return `${fmt(r.lo)}${sep}${fmt(r.hi)}~`;
 }
+
+function millions(n: number): string {
+  return trim(Math.abs(n) / 1e6);
+}
+
+/** A modeled money range in millions, like "−$0.3–0.6M~". */
+export function fmtMoneyRange(r: Range): string {
+  if (r.lo < 0 && r.hi > 0) return `${MINUS}$${millions(r.lo)}M to +$${millions(r.hi)}M~`;
+  const [a, b] = [Math.abs(r.lo), Math.abs(r.hi)].sort((x, y) => x - y);
+  return `${r.hi < 0 ? MINUS : '+'}$${millions(a)}–${millions(b)}M~`;
+}
+
+export function fmtMiles(mi: number, signed = false): string {
+  const plus = signed && mi >= 0.05 ? '+' : '';
+  return `${plus}${sign(Math.round(mi * 10))}${trim(Math.abs(mi))} mi`;
+}

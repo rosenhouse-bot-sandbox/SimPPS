@@ -1,5 +1,5 @@
 import { cleanup, fireEvent, render, screen } from '@testing-library/preact';
-import { afterEach, describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import { FIXTURE_GAME } from './fixtures';
 import { SchoolSheet } from './SchoolSheet';
 
@@ -31,5 +31,37 @@ describe('SchoolSheet', () => {
     expect(factValue('Blended').textContent).toBe('0–2~');
     fireEvent.click(screen.getByRole('button', { name: '150–170~' }));
     expect(screen.getByRole('dialog', { name: 'Simulated school counts' })).toBeTruthy();
+  });
+
+  it('offers Close & send for an open school while planning', () => {
+    const onCloseSend = vi.fn();
+    render(<SchoolSheet id="peninsula" state={FIXTURE_GAME.schools['peninsula']} onClose={() => {}} onCloseSend={onCloseSend} />);
+    fireEvent.click(screen.getByRole('button', { name: 'Close & send' }));
+    expect(onCloseSend).toHaveBeenCalledOnce();
+  });
+
+  it('names the planned closure and offers to change it', () => {
+    const closing = { school: 'peninsula', receivers: [{ school: 'rosa-parks', share: 1 }], building: 'mothball' as const };
+    render(
+      <SchoolSheet id="peninsula" state={FIXTURE_GAME.schools['peninsula']} onClose={() => {}} onCloseSend={() => {}} closing={closing} />,
+    );
+    expect(screen.getByText(/In the plan/).textContent).toBe('In the plan: Close Peninsula → Rosa Parks');
+    expect(screen.getByRole('button', { name: 'Close Peninsula → Rosa Parks' }).getAttribute('data-source')).toBe('model.closureSavings');
+    expect(screen.getByRole('button', { name: 'Change closure' })).toBeTruthy();
+  });
+
+  it('names the closures the plan sends into it', () => {
+    render(<SchoolSheet id="rosa-parks" state={FIXTURE_GAME.schools['rosa-parks']} onClose={() => {}} receivesFrom={['peninsula', 'james-john']} />);
+    expect(screen.getByText(/takes kids/).textContent).toBe(
+      'In the plan: takes kids from Peninsula and James John. Change that closure to close this school.',
+    );
+  });
+
+  it('says when a school closed and shows no simulated counts', () => {
+    const state = { ...FIXTURE_GAME.schools['peninsula'], open: false, enrollment: 0, closed: { year: 2027, building: 'sell' as const } };
+    render(<SchoolSheet id="peninsula" state={state} onClose={() => {}} />);
+    expect(screen.getByRole('button', { name: 'Closed in 2027, sold.' }).getAttribute('data-source')).toBe('model.buildingFate');
+    expect(screen.queryByText('Simulated')).toBeNull();
+    expect(screen.queryByText('Enrollment')).toBeNull();
   });
 });

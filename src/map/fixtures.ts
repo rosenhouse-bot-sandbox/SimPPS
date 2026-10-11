@@ -19,6 +19,7 @@ export function fixtureSchools(): Record<SchoolId, SchoolState> {
       enrollment,
       byGrade,
       capacity: Math.round(s.capacity ?? 0),
+      stateRevenue: 0,
       homerooms: Math.ceil(enrollment / 24),
       blendedHomerooms: 0,
     };
