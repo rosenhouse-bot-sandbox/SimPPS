@@ -1,6 +1,6 @@
 import { clamp } from '../clamp';
 import { ZONES, type Point } from '../data';
-import { classesFor, computeBudget, costIndex, cutCreep } from './budget';
+import { classesFor, computeBudget, costIndex, cutCreep, legislatureVotes, stateFundingGrowth, stateFundingLevel } from './budget';
 import { samplePoint, ZoneIndex } from './geo';
 import { gradeOf, M, MAX_GRADE, oneKid } from './model';
 import {
@@ -69,6 +69,8 @@ export interface YearFacts {
   homeroomsCut: number;
   blended: number;
   crowded: number;
+  /** The Legislature's growth for the biennium starting this fall; null in even years. */
+  stateFundingGrowth: number | null;
 }
 
 /** Kindergarten capture by fall year: 74% in 2025 rising to the 79% PSU assumes by 2028. */
@@ -217,6 +219,7 @@ export function stepYear(state: GameState, policy: Policy): { next: GameState; f
     homeroomsCut: mem.homeroomsCut,
     restRevenue: mem.restRevenue,
     restCost: mem.restCost,
+    stateFunding: stateFundingLevel(mem.seedHash, year, 'june'),
   });
   const autoCuts = plan.autoCutPositions;
   const position = M.positionCost * index;
@@ -263,6 +266,7 @@ export function stepYear(state: GameState, policy: Policy): { next: GameState; f
     homeroomsCut,
     restRevenue: mem.restRevenue,
     restCost: mem.restCost,
+    stateFunding: stateFundingLevel(mem.seedHash, year + 1, 'january'),
   });
   const nextState: GameState = {
     seed: state.seed,
@@ -290,6 +294,7 @@ export function stepYear(state: GameState, policy: Policy): { next: GameState; f
       homeroomsCut: octoberCut,
       blended,
       crowded,
+      stateFundingGrowth: legislatureVotes(year) ? stateFundingGrowth(mem.seedHash, year) : null,
     },
   };
 }

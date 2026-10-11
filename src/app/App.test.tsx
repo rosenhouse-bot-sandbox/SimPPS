@@ -69,10 +69,12 @@ describe('App', () => {
     expect(screen.getByRole('dialog', { name: 'Capture' })).toBeTruthy();
   });
 
-  it('pins the gap and cuts June will produce for the draft', () => {
+  it('pins the gap and cuts June will produce for the draft at flat state funding', () => {
     setup();
     const start = realSim.newGame({ seed: 't' });
-    const plan = realSim.previewBudget(start, { ...start.policy, k5ClassSize: 25 });
+    const policy = { ...start.policy, k5ClassSize: 25 };
+    const plan = realSim.previewBudget(start, policy);
+    const june = realSim.endYear(start, policy).next.dials.positionsCut;
     expect(gapBar()).toContain('−$65.2M');
     click('Budget');
     click('More K-5 class size');
@@ -81,13 +83,11 @@ describe('App', () => {
     expect(document.querySelector('.chip')!.textContent).toContain('Now+$3M–$5M~');
 
     hold('End year');
-    expect(screen.getByRole('region', { name: 'Play 2027-28?' }).textContent).toContain(
-      `${fmtCount(plan.autoCutPositions)} positions in June`,
-    );
+    const preflight = screen.getByRole('region', { name: 'Play 2027-28?' }).textContent;
+    expect(preflight).toContain(`${fmtCount(plan.autoCutPositions)} positions in June`);
+    expect(preflight).toContain('At flat state funding. The Legislature votes this spring.');
     hold('Play the year');
-    expect(screen.getByTestId('playback').textContent).toContain(
-      `remove ${plan.autoCutPositions.toLocaleString('en-US')} positions`,
-    );
+    expect(screen.getByTestId('playback').textContent).toContain(`remove ${june.toLocaleString('en-US')} positions`);
     expect(topBar()).toContain(`Gap ${fmtMoney(plan.gap)}`);
   });
 

@@ -1,5 +1,4 @@
-import { SCHOOLS } from '../data';
-import { MEDIAN_SQFT, revenuePerStudent } from '../sim/budget';
+import { MEDIAN_SQFT, STATE_PER_STUDENT } from '../sim/budget';
 import { CLOSED_ZONE_CAPTURE_DROPS, FOLLOW_RATES, M } from '../sim/model';
 import type { Dials } from '../sim/types';
 import type { Source, SourceLink } from './types';
@@ -20,19 +19,9 @@ const WW_GAP: SourceLink = {
 const DESIGN: SourceLink = { title: 'SimPPS design (issue #1)', url: 'https://github.com/rosenhouse-bot-sandbox/SimPPS/issues/1' };
 
 const $ = (n: number) => `$${(n / 1e6).toFixed(1)}M`;
+const $b = (n: number) => `$${(n / 1e9).toFixed(2)}B`;
 const $k = (n: number) => `$${(n / 1e3).toFixed(1)}K`;
 const pct = (x: number) => `${+(x * 100).toFixed(2)}%`;
-
-/** State dollars per student at fall 2025's mix of schools. */
-const STATE_PER_STUDENT = (() => {
-  let kids = 0;
-  let dollars = 0;
-  for (const s of SCHOOLS) {
-    kids += s.enrollment ?? 0;
-    dollars += (s.enrollment ?? 0) * revenuePerStudent(s.pctDirectCert ?? 0);
-  }
-  return dollars / kids;
-})();
 
 export function dialSourceKey(dial: keyof Dials): string {
   return `dial.${dial}`;
@@ -183,7 +172,7 @@ export const MODEL_SOURCES: Source[] = [
     key: 'model.stateFunding',
     label: 'State funding',
     tag: 'M',
-    explain: 'The state holds K-12 funding flat in dollars at $11.36B every year of the game, while costs grow. That is the low end of the range from flat to $12.56B a biennium, so the do-nothing ghost cuts positions every year.',
+    explain: `Each odd spring the Legislature sets state school funding for 2 years. It is ${$b(M.stateFunding2025)} for 2025-27, and ODE puts the 2027-29 current service level at ${$b(M.stateFundingCeiling)} [F]. Each biennium the game draws growth from flat to ${pct(M.stateFundingCeiling / M.stateFunding2025 - 1)}, with the same draw for you and the ghost. The growth applies to state revenue per student for K-8 and for the ${M.otherStudents.toLocaleString('en-US')} other students [I]. A January plan in an odd year assumes flat, as PPS does.`,
     links: [DESIGN],
   },
   {
@@ -218,7 +207,7 @@ export const MODEL_SOURCES: Source[] = [
     key: 'model.restOfDistrict',
     label: 'Rest of district',
     tag: 'I',
-    explain: `High schools, special education, transportation, central office and pensions are one lumped line each for revenue and cost. They are sized so the 2027-28 general fund is ${$(M.generalFund)} plus ${pct(M.costGrowth)} and the gap is ${$(-M.startGap)}. Rest-of-district costs grow ${pct(M.costGrowth)} a year; its revenue stays flat.`,
+    explain: `High schools, special education, transportation, central office and pensions are one lumped line each for revenue and cost. They are sized so the 2027-28 general fund is ${$(M.generalFund)} plus ${pct(M.costGrowth)} and the gap is ${$(-M.startGap)}. Rest-of-district costs grow ${pct(M.costGrowth)} a year. Its revenue stays flat except for the state funding card.`,
     links: [DESIGN],
   },
   {

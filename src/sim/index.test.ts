@@ -5,7 +5,8 @@ import { DEFAULT_POLICY, endYear, newGame, previewBudget, type GameState, type P
 import { classesFor } from './budget';
 import { gradeOf } from './model';
 import { SCHOOL_INFO } from './population';
-import { kCaptureTrend } from './step';
+import { kCaptureTrend, stepYear } from './step';
+import { stateFundingGrowth } from './budget';
 
 const start = newGame({ seed: 'calibration' });
 const M = 1_000_000;
@@ -20,6 +21,8 @@ function withoutGhost(s: GameState) {
 }
 
 const fall2035 = run(start, DEFAULT_POLICY, 9);
+/** The June 2027 budget, after the Legislature's vote. */
+const june2027 = stepYear(start, DEFAULT_POLICY).facts.plan;
 
 describe('newGame', () => {
   it('opens in January 2027 with 74 schools, the kids aged one silent year to fall 2026', () => {
@@ -104,8 +107,16 @@ describe('previewBudget reserves', () => {
     const plan = previewBudget(start, policy);
     expect(plan.reservePctAfterDraw).toBeLessThan(0.03);
     expect(plan.midYearCuts).toBeGreaterThan(0);
+    const june = stepYear(start, policy).facts.plan;
+    expect(june.midYearCuts).toBeGreaterThan(0);
     const { next } = endYear(start, policy);
-    expect(next.dials.positionsCut).toBe(plan.autoCutPositions + plan.midYearCuts);
+    expect(next.dials.positionsCut).toBe(june.autoCutPositions + june.midYearCuts);
+  });
+
+  it('previews exactly the June budget once the Legislature has voted', () => {
+    const later = endYear(start, DEFAULT_POLICY).next;
+    const policy = { ...DEFAULT_POLICY, k5ClassSize: 25, reserveDraw: 5 * M };
+    expect(stepYear(later, policy).facts.plan).toEqual(previewBudget(later, policy));
   });
 
   it('forecasts no mid-year cuts without a draw', () => {
@@ -178,10 +189,33 @@ describe('endYear', () => {
     expect(stayed + movedWithinPps + cameBack + entrants).toBe(next.dials.kids);
   });
 
+  it('closes the June budget with the Legislature\'s state funding card on top of the flat plan', () => {
+    const card = june2027.lines.find((l) => l.key === 'stateFunding')!.amount;
+    expect(start.budget.lines.find((l) => l.key === 'stateFunding')!.amount).toBe(0);
+    expect(june2027.gap - start.budget.gap).toBeCloseTo(card, 0);
+    const stateRevenue = card / stateFundingGrowth(start.sim!.seedHash, 2027);
+    expect(stateRevenue / M).toBeGreaterThan(330);
+    expect(stateRevenue / M).toBeLessThan(400);
+  });
+
+  it('sets state funding in odd springs only', () => {
+    const odd = endYear(start, DEFAULT_POLICY);
+    const even = endYear(odd.next, DEFAULT_POLICY);
+    const vote = (r: typeof odd.report) => r.events.filter((e) => e.sourceKey === 'model.stateFunding');
+    const pct = (stateFundingGrowth(start.sim!.seedHash, 2027) * 100).toFixed(1);
+    expect(vote(odd.report)).toHaveLength(1);
+    expect(vote(odd.report)[0].season).toBe('spring');
+    expect(vote(odd.report)[0].title).toBe(`Legislature sets state funding: +${pct}%`);
+    expect(vote(even.report)).toHaveLength(0);
+    const card = (b: typeof start.budget) => b.lines.find((l) => l.key === 'stateFunding')!.amount;
+    expect(card(odd.next.budget)).toBeGreaterThan(0);
+    expect(card(even.next.budget)).toBeCloseTo(card(odd.next.budget), -6);
+  });
+
   it('takes automatic cuts and carries them into the next plan', () => {
     const { next, report } = endYear(start, DEFAULT_POLICY);
-    expect(next.dials.positionsCut).toBe(start.budget.autoCutPositions);
-    expect(next.budget.lines.find((l) => l.key === 'earlierCuts')!.amount).toBeGreaterThan(40 * M);
+    expect(next.dials.positionsCut).toBe(june2027.autoCutPositions);
+    expect(next.budget.lines.find((l) => l.key === 'earlierCuts')!.amount).toBeGreaterThan(0.6 * june2027.autoCutPositions * 155_000);
     expect(next.budget.gap / M).toBeGreaterThan(-50);
     expect(next.budget.gap / M).toBeLessThan(-20);
     expect(report.events.some((e) => e.season === 'spring' && /cut/i.test(e.title + e.detail))).toBe(true);
@@ -194,8 +228,8 @@ describe('endYear', () => {
     const total = (s: GameState, key: 'homerooms' | 'blendedHomerooms') =>
       Object.values(s.schools).reduce((a, x) => a + x[key], 0);
     const removed = total(uncut, 'homerooms') - total(cut, 'homerooms');
-    expect(removed).toBeGreaterThan(0.1 * start.budget.autoCutPositions);
-    expect(removed).toBeLessThan(0.4 * start.budget.autoCutPositions);
+    expect(removed).toBeGreaterThan(0.1 * june2027.autoCutPositions);
+    expect(removed).toBeLessThan(0.4 * june2027.autoCutPositions);
     expect(total(cut, 'blendedHomerooms')).toBeGreaterThanOrEqual(total(uncut, 'blendedHomerooms'));
   });
 
@@ -213,14 +247,14 @@ describe('endYear', () => {
     const policy = { ...DEFAULT_POLICY, reserveDraw: 5 * M };
     const { next } = endYear(start, policy);
     expect(next.budget.reserves).toBe(start.budget.reserves - 5 * M);
-    expect(next.dials.positionsCut).toBe(Math.ceil((-start.budget.gap - 5 * M) / 155_000));
+    expect(next.dials.positionsCut).toBe(Math.ceil((-june2027.gap - 5 * M) / 155_000));
     expect(next.policy.reserveDraw).toBe(0);
     expect(next.policy.k5ClassSize).toBe(24);
   });
 
-  it('keeps the reserve share when reserves hold and spending shrinks', () => {
+  it('keeps the reserve share when reserves hold or grow and spending shrinks', () => {
     const later = run(start, DEFAULT_POLICY, 5);
-    expect(later.budget.reserves).toBe(start.budget.reserves);
+    expect(later.budget.reserves).toBeGreaterThanOrEqual(start.budget.reserves);
     expect(later.dials.reservePct).toBeGreaterThanOrEqual(start.dials.reservePct);
   });
 
@@ -248,7 +282,7 @@ describe('endYear', () => {
     const { report } = endYear(start, { ...DEFAULT_POLICY, reserveDraw: 20 * M });
     expect(report.vsGhost.length).toBeGreaterThan(0);
     const cuts = report.vsGhost.find((g) => g.dial === 'positionsCut')!;
-    expect(cuts.ghost).toBe(start.budget.autoCutPositions);
+    expect(cuts.ghost).toBe(june2027.autoCutPositions);
     expect(cuts.better).toBe(true);
   });
 

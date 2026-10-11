@@ -1,5 +1,15 @@
 import { describe, expect, it } from 'vitest';
-import { classesFor, computeBudget, levyRevenue, otherStaff, revenuePerStudent } from './budget';
+import {
+  classesFor,
+  computeBudget,
+  levyRevenue,
+  otherStaff,
+  revenuePerStudent,
+  STATE_PER_STUDENT,
+  stateFundingGrowth,
+  stateFundingLevel,
+} from './budget';
+import { M } from './model';
 import type { SchoolState } from './types';
 
 describe('classesFor', () => {
@@ -74,6 +84,7 @@ describe('computeBudget', () => {
     homeroomsCut: 0,
     restRevenue: 0,
     restCost: 0,
+    stateFunding: 1,
   };
   const amount = (b: ReturnType<typeof computeBudget>, key: string) => b.lines.find((l) => l.key === key)?.amount;
 
@@ -101,9 +112,45 @@ describe('computeBudget', () => {
     expect(amount(two, 'earlierCuts')).toBeCloseTo(8 * 155_000 * 1.035, 0);
   });
 
+  it('adds the state funding card on all state revenue as its own line', () => {
+    const flat = computeBudget(base);
+    expect(amount(flat, 'stateFunding')).toBe(0);
+    const up = computeBudget({ ...base, stateFunding: 1.05 });
+    const stateRevenue = amount(flat, 'stateK8')! + M.otherStudents * STATE_PER_STUDENT;
+    expect(amount(up, 'stateFunding')).toBeCloseTo(0.05 * stateRevenue, 0);
+    expect(up.gap - flat.gap).toBeCloseTo(0.05 * stateRevenue, 0);
+  });
+
   it('cuts positions for the shortfall left after the reserve draw', () => {
     const b = computeBudget({ ...base, restRevenue: -10_000_000 });
     expect(b.autoCutPositions).toBe(Math.ceil((-b.gap - 5_000_000) / (155_000 * 1.035)));
     expect(computeBudget({ ...base, restRevenue: 50_000_000 }).autoCutPositions).toBe(0);
+  });
+});
+
+describe('state funding card', () => {
+  const ceiling = 12.56 / 11.36 - 1;
+
+  it('draws each biennium from flat to $12.56B against $11.36B', () => {
+    const draws = Array.from({ length: 200 }, (_, i) => stateFundingGrowth(i, 2027 + 2 * (i % 5)));
+    for (const g of draws) {
+      expect(g).toBeGreaterThanOrEqual(0);
+      expect(g).toBeLessThanOrEqual(ceiling);
+    }
+    expect(Math.min(...draws)).toBeLessThan(0.1 * ceiling);
+    expect(Math.max(...draws)).toBeGreaterThan(0.9 * ceiling);
+    expect(stateFundingGrowth(7, 2029)).toBe(stateFundingGrowth(7, 2029));
+    expect(stateFundingGrowth(7, 2029)).not.toBe(stateFundingGrowth(7, 2031));
+  });
+
+  it('compounds biennia and plans odd years flat until the spring vote', () => {
+    const g27 = 1 + stateFundingGrowth(7, 2027);
+    const g29 = 1 + stateFundingGrowth(7, 2029);
+    expect(stateFundingLevel(7, 2027, 'january')).toBe(1);
+    expect(stateFundingLevel(7, 2027, 'june')).toBe(g27);
+    expect(stateFundingLevel(7, 2028, 'january')).toBe(g27);
+    expect(stateFundingLevel(7, 2028, 'june')).toBe(g27);
+    expect(stateFundingLevel(7, 2029, 'january')).toBe(g27);
+    expect(stateFundingLevel(7, 2029, 'june')).toBeCloseTo(g27 * g29, 12);
   });
 });

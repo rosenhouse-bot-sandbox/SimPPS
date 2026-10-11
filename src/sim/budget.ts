@@ -1,6 +1,8 @@
 import { M } from './model';
 import { clamp } from '../clamp';
+import { SCHOOLS } from '../data';
 import { SCHOOL_INFO } from './population';
+import { draw } from './rng';
 import type { Budget, BudgetLine, Policy, SchoolState } from './types';
 
 export const FIRST_YEAR = 2027;
@@ -47,6 +49,40 @@ export function revenuePerStudent(directCert: number): number {
   return M.revenueBase + M.revenuePoverty * clamp(directCert / M.directCertForMaxWeight, 0, 1);
 }
 
+/** State dollars per student at fall 2025's mix of schools. */
+export const STATE_PER_STUDENT = (() => {
+  let kids = 0;
+  let dollars = 0;
+  for (const s of SCHOOLS) {
+    kids += s.enrollment ?? 0;
+    dollars += (s.enrollment ?? 0) * revenuePerStudent(s.pctDirectCert ?? 0);
+  }
+  return dollars / kids;
+})();
+
+/** Draw key for the state funding card, apart from the household dice. */
+const STATE_FUNDING_DRAW = 20;
+
+/** model.stateFunding: the biennium's growth over the last one, from flat to the current service level. */
+export function stateFundingGrowth(seedHash: number, biennium: number): number {
+  return draw(seedHash, biennium, 0, STATE_FUNDING_DRAW) * (M.stateFundingCeiling / M.stateFunding2025 - 1);
+}
+
+/** The Legislature sets the biennium that starts in fall `year` that spring. */
+export function legislatureVotes(year: number): boolean {
+  return (year - FIRST_YEAR) % 2 === 0;
+}
+
+/**
+ * State funding for the school year starting in fall `year`, over 2025-27's. The Legislature votes
+ * each odd spring on the biennium starting that fall, so a January plan in an odd year assumes flat.
+ */
+export function stateFundingLevel(seedHash: number, year: number, when: 'january' | 'june'): number {
+  let level = 1;
+  for (let b = FIRST_YEAR; b <= year; b += 2) if (b < year || when === 'june') level *= 1 + stateFundingGrowth(seedHash, b);
+  return level;
+}
+
 export function levyRevenue(rate: number): number {
   const r = rate / M.levyRate;
   return (M.levyNet + M.compression) * r - M.compression * r ** M.compressionPower;
@@ -78,6 +114,8 @@ export interface BudgetInput {
   homeroomsCut: number;
   restRevenue: number;
   restCost: number;
+  /** State funding over 2025-27's, from stateFundingLevel. */
+  stateFunding: number;
 }
 
 /**
@@ -99,8 +137,10 @@ export function computeBudget(input: BudgetInput): Budget {
     staff += otherStaff(s.enrollment);
     plant += (info.data.squareFeet ?? MEDIAN_SQFT) * M.plantPerSqft;
   }
+  const stateCard = (input.stateFunding - 1) * (state + M.otherStudents * STATE_PER_STUDENT);
   const lines: BudgetLine[] = [
     { key: 'stateK8', label: 'State school fund, K-8', amount: state, sourceKey: 'model.revenuePerStudent' },
+    { key: 'stateFunding', label: 'State funding over 2025-27', amount: stateCard, sourceKey: 'model.stateFunding' },
     { key: 'levy', label: 'Local option levy, net', amount: levyRevenue(input.policy.levyRate), sourceKey: 'model.levy' },
     { key: 'restRevenue', label: 'Rest of district revenue', amount: input.restRevenue, sourceKey: 'model.restOfDistrict' },
     { key: 'homerooms', label: 'K-8 homeroom teachers', amount: -homerooms * M.homeroomCost * index, sourceKey: 'model.homerooms' },
@@ -116,7 +156,7 @@ export function computeBudget(input: BudgetInput): Budget {
       sourceKey: 'model.autoCuts',
     });
   const gap = lines.reduce((sum, l) => sum + l.amount, 0);
-  const revenue = state + levyRevenue(input.policy.levyRate) + input.restRevenue;
+  const revenue = state + stateCard + levyRevenue(input.policy.levyRate) + input.restRevenue;
   const position = M.positionCost * index;
   const reserveDraw = clamp(input.policy.reserveDraw, 0, Math.min(input.reserves, Math.max(0, -gap)));
   const autoCutPositions = Math.ceil(Math.max(0, -gap - reserveDraw) / position);

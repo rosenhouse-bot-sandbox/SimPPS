@@ -34,6 +34,7 @@ const facts: YearFacts = {
   homeroomsCut: 85,
   blended: 137,
   crowded: 3,
+  stateFundingGrowth: null,
 };
 
 const dials: Dials = {
@@ -49,6 +50,13 @@ const dials: Dials = {
 const detail = (f: YearFacts, title: string) => seasonEvents(f).find((e) => e.title === title)!.detail;
 
 describe('seasonEvents', () => {
+  it('reports the Legislature\'s vote in odd springs only', () => {
+    const vote = seasonEvents({ ...facts, stateFundingGrowth: 0.042 }).find((e) => e.sourceKey === 'model.stateFunding')!;
+    expect(vote.season).toBe('spring');
+    expect(vote.title).toBe('Legislature sets state funding: +4.2%');
+    expect(seasonEvents(facts).some((e) => e.sourceKey === 'model.stateFunding')).toBe(false);
+  });
+
   it('formats money like the rest of the game', () => {
     expect(detail(facts, 'June budget closes with cuts')).toBe(
       'The gap is −$65.2M. Automatic cuts remove 421 positions by seniority and spare IEP services.',

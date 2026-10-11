@@ -1,4 +1,4 @@
-import { computeBudget, FIRST_YEAR, generalFund } from './budget';
+import { computeBudget, FIRST_YEAR, generalFund, stateFundingLevel } from './budget';
 import { CLOSED_ZONE_CAPTURE_DROPS, FOLLOW_RATES, M } from './model';
 import { clamp } from '../clamp';
 import { generatePopulation } from './population';
@@ -10,7 +10,7 @@ import type { Budget, GameState, Household, Policy, SimMemory, YearReport } from
 
 export * from './types';
 export { modeledRange } from './range';
-export { levyRevenue } from './budget';
+export { legislatureVotes, levyRevenue } from './budget';
 
 export const DEFAULT_POLICY: Policy = { k5ClassSize: 24, levyRate: 1.99, reserveDraw: 0, closures: [] };
 
@@ -36,6 +36,7 @@ export function newGame(opts: { seed: string }): GameState {
     homeroomsCut: 0,
     restRevenue: 0,
     restCost: 0,
+    stateFunding: stateFundingLevel(seedHash, FIRST_YEAR, 'january'),
   };
   const k8 = computeBudget(input).lines;
   const revenue = k8.filter((l) => l.amount > 0).reduce((a, l) => a + l.amount, 0);
@@ -102,6 +103,7 @@ export function previewBudget(state: GameState, policy: Policy): Budget {
     homeroomsCut: sim.homeroomsCut,
     restRevenue: sim.restRevenue,
     restCost: sim.restCost,
+    stateFunding: stateFundingLevel(sim.seedHash, state.year, 'january'),
   });
 }
 

@@ -10,6 +10,7 @@ export const K = {
   capture: dialSourceKey('capture'),
   classSize: 'ui.k5ClassSize',
   levy: 'model.levy',
+  stateFunding: 'model.stateFunding',
   reserveDraw: 'ui.reserveDraw',
   autoCuts: 'model.autoCuts',
   midYearCuts: 'model.midYearCuts',

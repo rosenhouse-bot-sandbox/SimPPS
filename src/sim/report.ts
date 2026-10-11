@@ -22,12 +22,16 @@ export function seasonEvents(f: YearFacts): SeasonEvent[] {
       detail: `~${count(f.kEnrolled)} of ~${count(f.kResidents)} resident kindergartners choose PPS (~${pct(f.kEnrolled / f.kResidents)}).`,
       sourceKey: 'model.kCapture',
     },
-    {
-      season: 'spring',
-      title: 'State funding flat',
-      detail: 'The state holds school funding flat.',
-      sourceKey: 'model.stateFunding',
-    },
+    ...(f.stateFundingGrowth === null
+      ? []
+      : [
+          {
+            season: 'spring' as const,
+            title: `Legislature sets state funding: +${(f.stateFundingGrowth * 100).toFixed(1)}%`,
+            detail: 'The 2-year state school budget sets revenue for this year and next.',
+            sourceKey: 'model.stateFunding',
+          },
+        ]),
     {
       season: 'spring',
       title: f.autoCuts > 0 ? 'June budget closes with cuts' : 'June budget closes',

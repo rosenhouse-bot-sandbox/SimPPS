@@ -1,4 +1,5 @@
 import { fmtCount, fmtMoney } from '../format';
+import { legislatureVotes } from '../sim/budget';
 import type { Budget, Policy } from '../sim/types';
 import { ballotItems, listEdits, type EditLine } from './edits';
 import { HoldButton } from './HoldButton';
@@ -49,6 +50,13 @@ export function PreflightSheet({ year, draft, base, budget, onBack, onConfirm }:
             </>
           )}
         </p>
+        {legislatureVotes(year) && (
+          <p class="note">
+            <Sourced k={K.stateFunding} text>
+              At flat state funding. The Legislature votes this spring.
+            </Sourced>
+          </p>
+        )}
         <h3>Automatic cuts</h3>
         {june + winter > 0 ? (
           <ul>

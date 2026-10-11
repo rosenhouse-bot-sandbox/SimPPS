@@ -65,6 +65,11 @@ export const M = {
   revenueBase: 7_000,
   revenuePoverty: 6_000,
   directCertForMaxWeight: 0.63,
+  // model.stateFunding
+  stateFunding2025: 11_360_000_000,
+  stateFundingCeiling: 12_560_000_000,
+  /** Students outside the K-8 simulation in fall 2025: 42,622 in all less 26,966. */
+  otherStudents: 15_656,
   // model.levy
   levyRate: 1.99,
   levyNet: 103_900_000,
