@@ -50,13 +50,20 @@ function closureEvents(f: YearFacts): SeasonEvent[] {
 
 /** Boundary events name no school and give no counts of a school's families. */
 function boundaryEvents(f: YearFacts): SeasonEvent[] {
-  if (f.rezonedCells === 0) return [];
-  const blocks = `${count(f.rezonedCells)} block${f.rezonedCells === 1 ? '' : 's'}`;
+  const { elementary, middle } = f.rezonedCells;
+  const n = elementary + middle;
+  if (n === 0) return [];
+  const entrants = [elementary > 0 && 'kindergartners', middle > 0 && '6th graders'].filter(Boolean).join(' and ');
+  const who = {
+    all: `Current students keep their schools; new ${entrants} use the new zones.`,
+    some: 'Some current students get new zone schools; the rest keep theirs.',
+    none: 'Kids in them get new zone schools.',
+  }[f.grandfathered];
   return [
     {
       season: 'summer',
       title: 'Boundaries change',
-      detail: `${blocks} change zones. ${f.grandfathered ? 'Current students keep their schools; new kindergartners and 6th graders use the new zones.' : 'Kids in them get new zone schools.'}`,
+      detail: `${count(n)} block${n === 1 ? '' : 's'} of 250 m change${n === 1 ? 's' : ''} zones. ${who}`,
       sourceKey: 'model.zoneGrid',
     },
     ...(f.rezoned.kids > 0

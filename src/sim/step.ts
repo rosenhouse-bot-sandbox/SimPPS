@@ -20,6 +20,7 @@ import type {
   SchoolChoice,
   SchoolId,
   SimMemory,
+  ZoneLevel,
 } from './types';
 
 const HIGH = new ZoneIndex(ZONES.high);
@@ -80,9 +81,9 @@ export interface YearFacts {
   /** Closures that took effect this summer. */
   closing: ClosedSchool[];
   closures: ClosureTally[];
-  /** Cells boundary edits moved this summer, and whether every edit grandfathered. */
-  rezonedCells: number;
-  grandfathered: boolean;
+  /** Cells boundary edits moved this summer, by level, and how many of their edits grandfathered. */
+  rezonedCells: Record<ZoneLevel, number>;
+  grandfathered: 'all' | 'some' | 'none';
   rezoned: RezoneTally;
 }
 
@@ -392,11 +393,16 @@ export function stepYear(state: GameState, policy: Policy): { next: GameState; f
       stateFundingGrowth: legislatureVotes(year) ? stateFundingGrowth(mem.seedHash, year) : null,
       closing,
       closures,
-      rezonedCells: zoning.changed.elementary.size + zoning.changed.middle.size,
-      grandfathered: [...zoning.changed.elementary.values(), ...zoning.changed.middle.values()].every(Boolean),
+      rezonedCells: { elementary: zoning.changed.elementary.size, middle: zoning.changed.middle.size },
+      grandfathered: grandfathering([...zoning.changed.elementary.values(), ...zoning.changed.middle.values()]),
       rezoned,
     },
   };
+}
+
+function grandfathering(flags: boolean[]): YearFacts['grandfathered'] {
+  if (flags.every(Boolean)) return 'all';
+  return flags.some(Boolean) ? 'some' : 'none';
 }
 
 function countKid(regions: RegionTally, pos: Point): { kids: number; leavers: number } | null {

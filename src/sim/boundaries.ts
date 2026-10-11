@@ -91,8 +91,8 @@ export interface BoundaryChip {
   seats: { school: SchoolId; before: Range; after: Range; capacity: number }[];
   /** Change in PPS K-5 kids within a mile of school once every re-zoned kid attends the new zone school. */
   walk: number;
-  /** Homes in the moved cells, in and out of PPS. */
-  homes: number;
+  /** K-8 kids living in the moved cells, in and out of PPS. Each household holds one kid. */
+  residents: number;
   /** PPS kids whose zone school changes under them next fall. None when grandfathered. */
   kidsMoving: number;
   /** New bus riders next fall, and once every re-zoned kid attends the new zone school. */
@@ -122,13 +122,13 @@ export function boundaryChip(state: GameState, edit: BoundaryEdit, plan: Policy)
 
   const delta = new Map<SchoolId, number>([[edit.to, 0]]);
   for (const c of moved) delta.set(base.zones[level][c], delta.get(base.zones[level][c]) ?? 0);
-  let homes = 0;
+  let residents = 0;
   let kidsMoving = 0;
   let walk = 0;
   let mature = 0;
   for (const h of state.households) {
     if (!moved.has(h.cell)) continue;
-    homes++;
+    residents++;
     if (h.school === null) continue;
     const g = gradeOf(h);
     const ng = g + 1;
@@ -152,7 +152,7 @@ export function boundaryChip(state: GameState, edit: BoundaryEdit, plan: Policy)
       return { school, before: modeledRange(s.enrollment), after: modeledRange(s.enrollment + d), capacity: s.capacity };
     }),
     walk,
-    homes,
+    residents,
     kidsMoving,
     riders: { now, atMaturity: mature },
     now: span(-now * cost.hi * index, -now * cost.lo * index),

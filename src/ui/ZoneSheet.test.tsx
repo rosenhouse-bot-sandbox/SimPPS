@@ -81,13 +81,21 @@ describe('ZoneSheet', () => {
     const text = chip().textContent!;
     expect(text).toContain(`Rosa Parks${fmtRange(c.seats[0].after)}/594`);
     expect(text).toContain('Peninsula');
-    expect(text).toContain('Now$0');
-    expect(text).toMatch(/Walk[+−]?\d+~/);
+    expect(text).toMatch(/Walk at maturity[+−]?\d+~/);
+    expect(text).toContain(`${peninsula.length} blocks of 250 m, ${c.residents}~ resident kids`);
     expect(sources(chip())).toEqual(
-      expect.arrayContaining(['model.schoolRange', 'dial.walkK5', 'model.busing', 'model.busReimbursement', 'model.zoneGrid', 'model.sliceStay', 'model.walkLimit']),
+      expect.arrayContaining(['model.schoolRange', 'dial.walkK5', 'model.busing', 'model.zoneGrid', 'model.households', 'model.sliceStay', 'model.walkLimit']),
     );
     expect(chip().querySelectorAll('button:not([data-source])')).toHaveLength(0);
     expect(screen.queryByRole('alert')).toBeNull();
+  });
+
+  it('marks zero busing as modeled and sources the net figure to busing', () => {
+    const d = addStroke(startZoneDraft('elementary', 'rosa-parks'), peninsula);
+    setup(d, { now: { lo: 0, hi: 0 }, atMaturity: { lo: -60_000, hi: -20_000 } });
+    expect(chip().textContent).toContain('Now$0~');
+    const later = screen.getByText('At maturity').nextElementSibling!;
+    expect(sources(later)).toEqual(['model.busing']);
   });
 
   it('shows busing as signed ranges', () => {
@@ -144,6 +152,6 @@ describe('ZoneSheet', () => {
     const d = addStroke(startZoneDraft('elementary', 'rosa-parks'), peninsula);
     expect(draftCells(d, game.zones)).toEqual(peninsula);
     setup(d);
-    expect(chip().textContent).toContain(`${peninsula.length} blocks`);
+    expect(chip().textContent).toContain(`${peninsula.length} blocks of 250 m`);
   });
 });

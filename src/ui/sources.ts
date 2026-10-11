@@ -34,6 +34,7 @@ export const K = {
   share: 'ui.share',
   scenarios: 'model.scenarios',
   zoneGrid: 'model.zoneGrid',
+  households: 'model.households',
   sliceStay: 'model.sliceStay',
   walkLimit: 'model.walkLimit',
   busing: 'model.busing',

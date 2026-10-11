@@ -90,7 +90,7 @@ describe('a boundary edit without grandfathering', () => {
 
   it('tells the Bulletin about blocks, never a school', () => {
     const summer = report.events.find((e) => e.title === 'Boundaries change')!;
-    expect(summer.detail).toMatch(/^60 blocks change zones/);
+    expect(summer.detail).toMatch(/^60 blocks of 250 m change zones/);
     for (const e of report.events) expect(e.detail).not.toMatch(/Creston|Atkinson/);
   });
 
@@ -149,6 +149,17 @@ describe('a middle-school boundary edit', () => {
     expect(kids.length).toBeGreaterThan(20);
     for (const h of kids) expect(h.zoneSchool).toBe('sellwood');
     expect(next.households.filter(inCells(edit)).filter((h) => gradeOf(h) >= 7 && h.school === 'hosford' && !h.movedFrom)).toEqual([]);
+  });
+
+  it('counts its blocks for the Bulletin', () => {
+    const summer = play(edit).report.events.find((e) => e.title === 'Boundaries change')!;
+    expect(summer.detail).toMatch(new RegExp(`^${edit.cells.length} blocks`));
+  });
+
+  it("grandfathers only some kids when only some edits say so", () => {
+    const gf = sliceEdit(start, 'elementary', 'creston', 'atkinson', 20, true);
+    const report = endYear(start, { ...DEFAULT_POLICY, boundaryEdits: [gf, edit] }).report;
+    expect(report.events.find((e) => e.title === 'Boundaries change')!.detail).toContain('Some current students');
   });
 
   it('leaves K-5 zones alone', () => {
@@ -217,7 +228,7 @@ describe('boundaryChip', () => {
     expect(at('creston').after).toEqual(modeledRange(start.schools.creston.enrollment - chip.kidsMoving));
     expect(at('atkinson').after).toEqual(modeledRange(start.schools.atkinson.enrollment + chip.kidsMoving));
     expect(at('atkinson').capacity).toBe(start.schools.atkinson.capacity);
-    expect(chip.homes).toBe(start.households.filter(inCells(edit)).length);
+    expect(chip.residents).toBe(start.households.filter(inCells(edit)).length);
   });
 
   it('moves no one now when grandfathered, but still shows the walk at maturity', () => {

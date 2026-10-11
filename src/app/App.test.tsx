@@ -498,7 +498,7 @@ describe('App', () => {
       const start = realSim.newGame({ seed: 't' });
       const cell = realSim.cellAtPoint([SCHOOLS.find((x) => x.id === 'peninsula')!.x, SCHOOLS.find((x) => x.id === 'peninsula')!.y]);
       const chip = realSim.boundaryChip(start, { level: 'elementary', to: 'rosa-parks', cells: [cell], grandfather: true }, start.policy);
-      expect(screen.getByTestId('boundary-chip').textContent).toContain(`${chip.homes}~ homes`);
+      expect(screen.getByTestId('boundary-chip').textContent).toContain(`${chip.residents}~ resident kids`);
       expect(document.querySelector('[data-painted]')!.getAttribute('d')).not.toBe('');
       click('Undo stroke');
       expect(screen.queryByTestId('boundary-chip')).toBeNull();
