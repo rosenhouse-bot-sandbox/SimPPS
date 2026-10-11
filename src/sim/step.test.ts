@@ -50,6 +50,19 @@ describe('the moving roll', () => {
   });
 });
 
+describe('class size', () => {
+  it('moves only K-5 families', () => {
+    const start = newGame({ seed: 'class' });
+    const noCuts = { ...DEFAULT_POLICY, levyRate: 5 };
+    const base = endYear(start, noCuts).next.households;
+    const big = endYear(start, { ...noCuts, k5ClassSize: 28 }).next.households;
+    const left = (hs: typeof base, lo: number, hi: number) =>
+      hs.filter((h) => h.status === 'left' && h.kids.slice(lo, hi + 1).includes(1)).length;
+    expect(left(big, 1, 5)).toBeGreaterThan(left(base, 1, 5));
+    expect(left(big, 6, 8)).toBe(left(base, 6, 8));
+  });
+});
+
 describe('policy bounds', () => {
   it('keeps K-5 class size within 22-28', () => {
     const start = newGame({ seed: 'bounds' });

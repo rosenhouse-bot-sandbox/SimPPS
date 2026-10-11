@@ -116,7 +116,8 @@ export function stepYear(state: GameState, policy: Policy): { next: GameState; f
   });
 
   // Summer: 8th graders leave. Fall: everyone else may move.
-  const bump = worseYear(policy.k5ClassSize, autoCuts);
+  const bumpK5 = worseYear(policy.k5ClassSize, autoCuts);
+  const bumpOther = worseYear(24, autoCuts);
   const flows: Flows = { stayed: 0, movedWithinPps: 0, leftPps: 0, cameBack: 0 };
   const leaversByRegion = new Map<string, number>();
   let graduates = 0;
@@ -135,7 +136,7 @@ export function stepYear(state: GameState, policy: Policy): { next: GameState; f
     if (h.school !== null) {
       const transition = ng > SCHOOL_INFO.get(h.school)!.hi;
       const base = transition ? M.grade6Exit : M.leaveRate * (0.7 + 0.6 * h.exitCapacity);
-      const pLeave = base + bump * (1.25 - 0.5 * h.loyalty);
+      const pLeave = base + (ng <= 5 ? bumpK5 : bumpOther) * (1.25 - 0.5 * h.loyalty);
       if (draw(seed, year, h.id, D.Leave) < pLeave) {
         next.school = null;
         next.status = 'left';
