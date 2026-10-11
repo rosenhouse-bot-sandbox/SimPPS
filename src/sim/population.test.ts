@@ -1,6 +1,8 @@
 import { describe, expect, it } from 'vitest';
 import { SCHOOLS, ZONES } from '../data';
-import { inZone } from './geo';
+import { onRiver } from '../map/rivers';
+import { inZone, samplePoint } from './geo';
+import { stream } from './rng';
 import { gradeOf, MAX_GRADE } from './model';
 import { generatePopulation, SCHOOL_INFO } from './population';
 
@@ -13,6 +15,10 @@ function mean(xs: number[]): number {
 }
 
 describe('generatePopulation', () => {
+  it('keeps homes off the rivers', () => {
+    expect(pop.households.filter((h) => onRiver(h.pos))).toEqual([]);
+  });
+
   it('gives each household one kid in K-8', () => {
     for (const h of pop.households) {
       expect(h.kids).toHaveLength(MAX_GRADE + 1);
@@ -107,5 +113,12 @@ describe('generatePopulation', () => {
     const again = generatePopulation(123);
     expect(again.households.slice(0, 50)).toEqual(pop.households.slice(0, 50));
     expect(generatePopulation(124).households[0].pos).not.toEqual(pop.households[0].pos);
+  });
+});
+
+describe('samplePoint', () => {
+  it('samples river zones off the water', () => {
+    const rand = stream(1);
+    for (const zone of ZONES.elementary) for (let i = 0; i < 50; i++) expect(onRiver(samplePoint(zone, rand))).toBe(false);
   });
 });

@@ -70,3 +70,15 @@ export const RIVERS: River[] = [
     ],
   },
 ];
+
+function distanceToSegment([px, py]: Point, [ax, ay]: Point, [bx, by]: Point): number {
+  const dx = bx - ax;
+  const dy = by - ay;
+  const t = Math.max(0, Math.min(1, ((px - ax) * dx + (py - ay) * dy) / (dx * dx + dy * dy)));
+  return Math.hypot(px - ax - t * dx, py - ay - t * dy);
+}
+
+/** True within a river's drawn width. */
+export function onRiver(p: Point): boolean {
+  return RIVERS.some((r) => r.points.some((a, i) => i > 0 && distanceToSegment(p, r.points[i - 1], a) <= r.width / 2));
+}

@@ -1,4 +1,5 @@
 import type { Point, Zone } from '../data';
+import { onRiver } from '../map/rivers';
 
 interface Box {
   minX: number;
@@ -40,7 +41,7 @@ export function inZone([px, py]: Point, zone: Zone): boolean {
   return inside;
 }
 
-/** Uniform rejection sampling inside the zone. Coordinates round to whole meters. */
+/** Uniform rejection sampling inside the zone and off the rivers. Coordinates round to whole meters. */
 export function samplePoint(zone: Zone, rand: () => number): Point {
   const b = boxOf(zone);
   for (;;) {
@@ -48,7 +49,7 @@ export function samplePoint(zone: Zone, rand: () => number): Point {
       Math.round(b.minX + rand() * (b.maxX - b.minX)),
       Math.round(b.minY + rand() * (b.maxY - b.minY)),
     ];
-    if (inZone(p, zone)) return p;
+    if (inZone(p, zone) && !onRiver(p)) return p;
   }
 }
 

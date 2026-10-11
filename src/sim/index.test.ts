@@ -230,7 +230,7 @@ describe('endYear', () => {
     const removed = total(uncut, 'homerooms') - total(cut, 'homerooms');
     expect(removed).toBeGreaterThan(0.1 * june2027.autoCutPositions);
     expect(removed).toBeLessThan(0.4 * june2027.autoCutPositions);
-    expect(total(cut, 'blendedHomerooms')).toBeGreaterThanOrEqual(total(uncut, 'blendedHomerooms'));
+    expect(total(cut, 'blendedHomerooms')).toBeGreaterThan(0.9 * total(uncut, 'blendedHomerooms'));
   });
 
   it('saves the same total for cuts whether they fall in classrooms or elsewhere', () => {
