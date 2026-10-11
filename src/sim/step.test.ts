@@ -14,11 +14,12 @@ describe('worseYear', () => {
 });
 
 describe('kCaptureTrend', () => {
-  it('rises from 74% to the 79% PSU assumes by 2028, then holds', () => {
-    expect(kCaptureTrend(-1)).toBeCloseTo(0.74);
-    expect(kCaptureTrend(0)).toBeGreaterThan(0.75);
-    expect(kCaptureTrend(2)).toBeCloseTo(0.79);
-    expect(kCaptureTrend(8)).toBeCloseTo(0.79);
+  it('rises from 74% in fall 2025 to the 79% PSU assumes by fall 2028, then holds', () => {
+    expect(kCaptureTrend(2025)).toBeCloseTo(0.74);
+    expect(kCaptureTrend(2026)).toBeGreaterThan(0.75);
+    expect(kCaptureTrend(2027)).toBeLessThan(0.79);
+    expect(kCaptureTrend(2028)).toBeCloseTo(0.79);
+    expect(kCaptureTrend(2035)).toBeCloseTo(0.79);
   });
 });
 

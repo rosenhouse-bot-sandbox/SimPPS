@@ -59,7 +59,7 @@ describe('App', () => {
     const top = topBar();
     expect(top).toContain('JAN 2027');
     expect(top).toContain('Gap −$65.2M');
-    expect(top).toContain('Kids 27K');
+    expect(top).toContain('Kids 26.6K');
     expect(top).toContain('Res 4.8%');
   });
 

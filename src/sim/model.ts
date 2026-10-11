@@ -48,7 +48,6 @@ export const M = {
   homeroomCost: 159_600,
   msClassSize: 26,
   overload: 2,
-  ownRoomShare: 0.75,
   // model.staffSteps
   staffSteps: [
     [300, 6],

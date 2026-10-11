@@ -1,5 +1,5 @@
 import { ZONES } from '../data';
-import { classesFor, computeBudget, costIndex, FIRST_YEAR, generalFund } from './budget';
+import { classesFor, computeBudget, costIndex, generalFund } from './budget';
 import { samplePoint, ZoneIndex } from './geo';
 import { gradeOf, M, MAX_GRADE, oneKid } from './model';
 import {
@@ -13,7 +13,7 @@ import {
 } from './population';
 import { draw, stream } from './rng';
 import { buildSchools, computeDials } from './schools';
-import type { Budget, Flows, GameState, Household, Policy, SchoolChoice, SchoolId } from './types';
+import type { Budget, Flows, GameState, Household, Policy, SchoolChoice, SchoolId, SimMemory } from './types';
 
 const HIGH = new ZoneIndex(ZONES.high);
 const ELEM_ZONE_OF = new Map(ZONES.elementary.map((z, i) => [z.school, i]));
@@ -47,9 +47,9 @@ export interface YearFacts {
   crowded: number;
 }
 
-/** Kindergarten capture trend: 74% in fall 2025 to 79% by 2028 (PSU). Step t plays fall 2026 + t. */
-export function kCaptureTrend(t: number): number {
-  return M.kCapture2025 + (M.kCapture2028 - M.kCapture2025) * Math.min(1, (t + 1) / 3);
+/** Kindergarten capture by fall year: 74% in 2025 rising to the 79% PSU assumes by 2028. */
+export function kCaptureTrend(year: number): number {
+  return M.kCapture2025 + (M.kCapture2028 - M.kCapture2025) * clamp((year - 2025) / 3, 0, 1);
 }
 
 /** Extra yearly exit from a worse year: class size above 24 and positions cut. At most 1 point. */
@@ -61,35 +61,34 @@ export function worseYear(classSize: number, positionsCut: number): number {
   );
 }
 
-export function stepYear(state: GameState, policy: Policy): { next: GameState; facts: YearFacts } {
-  const mem = state.sim!;
-  const seed = mem.seedHash;
-  const year = state.year;
-  const t = year - FIRST_YEAR;
-  const index = costIndex(year);
+export interface FamilyYear {
+  households: Household[];
+  nextId: number;
+  kResidents: number;
+  kEnrolled: number;
+  graduates: number;
+  flows: Flows;
+  leaversByRegion: Map<string, number>;
+}
 
-  // June: the budget closes.
-  const plan = computeBudget({
-    year,
-    schools: state.schools,
-    policy,
-    reserves: state.budget.reserves,
-    cumulativeCuts: mem.cumulativeCuts,
-    restRevenue: mem.restRevenue,
-    restCost: mem.restCost,
-  });
-  const reserveDraw = clamp(policy.reserveDraw, 0, plan.reserves);
-  const autoCuts = plan.autoCutPositions;
-  let reserves = plan.reserves - reserveDraw + Math.max(0, plan.gap + reserveDraw);
+/** Spring to fall of `year`: kindergartners choose, 8th graders leave and everyone else may move. */
+export function familiesDecide(
+  mem: Pick<SimMemory, 'seedHash' | 'nextId' | 'kChoice' | 'msMix' | 'zoneKeep' | 'kCohort' | 'kCapture'>,
+  before: Household[],
+  year: number,
+  classSize: number,
+  positionsCut: number,
+): FamilyYear {
+  const seed = mem.seedHash;
 
   // Spring: kindergarten entrants choose.
   const households: Household[] = [];
   let nextId = mem.nextId;
   let kResidents = 0;
   let kEnrolled = 0;
-  const entrantBump = Math.max(0, worseYear(policy.k5ClassSize, 0));
-  const capture = kCaptureTrend(t);
-  const cohortScale = (1 + M.cohortTrend) ** (t + 1);
+  const entrantBump = Math.max(0, worseYear(classSize, 0));
+  const capture = kCaptureTrend(year);
+  const cohortScale = (1 + M.cohortTrend) ** (year - 2025);
   ZONES.elementary.forEach((zone, z) => {
     const expected = mem.kCohort[z] * cohortScale;
     const n = Math.floor(expected) + (draw(seed, year, z, D.EntrantCount) < expected % 1 ? 1 : 0);
@@ -116,12 +115,12 @@ export function stepYear(state: GameState, policy: Policy): { next: GameState; f
   });
 
   // Summer: 8th graders leave. Fall: everyone else may move.
-  const bumpK5 = worseYear(policy.k5ClassSize, autoCuts);
-  const bumpOther = worseYear(24, autoCuts);
+  const bumpK5 = worseYear(classSize, positionsCut);
+  const bumpOther = worseYear(24, positionsCut);
   const flows: Flows = { stayed: 0, movedWithinPps: 0, leftPps: 0, cameBack: 0 };
   const leaversByRegion = new Map<string, number>();
   let graduates = 0;
-  for (const h of state.households) {
+  for (const h of before) {
     if (h.movedAway) continue;
     const g = gradeOf(h);
     if (g === MAX_GRADE) {
@@ -171,6 +170,35 @@ export function stepYear(state: GameState, policy: Policy): { next: GameState; f
     }
     households.push(next);
   }
+  return { households, nextId, kResidents, kEnrolled, graduates, flows, leaversByRegion };
+}
+
+export function stepYear(state: GameState, policy: Policy): { next: GameState; facts: YearFacts } {
+  const mem = state.sim!;
+  const year = state.year;
+  const index = costIndex(year);
+
+  // June: the budget closes.
+  const plan = computeBudget({
+    year,
+    schools: state.schools,
+    policy,
+    reserves: state.budget.reserves,
+    cumulativeCuts: mem.cumulativeCuts,
+    restRevenue: mem.restRevenue,
+    restCost: mem.restCost,
+  });
+  const reserveDraw = clamp(policy.reserveDraw, 0, plan.reserves);
+  const autoCuts = plan.autoCutPositions;
+  let reserves = plan.reserves - reserveDraw + Math.max(0, plan.gap + reserveDraw);
+
+  const { households, nextId, kResidents, kEnrolled, graduates, flows, leaversByRegion } = familiesDecide(
+    mem,
+    state.households,
+    year,
+    policy.k5ClassSize,
+    autoCuts,
+  );
 
   // October: classes form.
   const schools = buildSchools(households, policy.k5ClassSize);

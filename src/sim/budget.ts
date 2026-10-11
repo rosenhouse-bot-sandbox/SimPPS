@@ -4,33 +4,18 @@ import type { Budget, BudgetLine, Policy, SchoolState } from './types';
 
 export const FIRST_YEAR = 2027;
 
-/** Homerooms for one school's grades K-8. K-5 blends small remainders of neighboring grades. */
+/**
+ * Homerooms for one school's grades K-8. K-5 rooms fill to the target plus the overload across the
+ * school, and grades that cannot each have their own rooms share blended classes.
+ */
 export function classesFor(byGrade: number[], classSize: number): { homerooms: number; blended: number } {
   const cap = classSize + M.overload;
-  let homerooms = 0;
-  let blended = 0;
-  let waiting = 0;
-  for (let g = 0; g <= 5; g++) {
-    const n = byGrade[g];
-    if (n === 0) continue;
-    const full = Math.floor(n / classSize);
-    const rest = n - full * classSize;
-    homerooms += full;
-    if (rest === 0 || (full > 0 && rest <= full * M.overload)) continue;
-    if (rest >= classSize * M.ownRoomShare) {
-      homerooms++;
-    } else if (waiting > 0 && waiting + rest <= cap) {
-      homerooms++;
-      blended++;
-      waiting = 0;
-    } else {
-      if (waiting > 0) homerooms++;
-      waiting = rest;
-    }
-  }
-  if (waiting > 0) homerooms++;
+  const k5 = byGrade.slice(0, 6);
+  const k5Rooms = Math.ceil(k5.reduce((a, n) => a + n, 0) / cap);
+  const sections = k5.reduce((a, n) => a + Math.ceil(n / cap), 0);
+  let homerooms = k5Rooms;
   for (let g = 6; g < byGrade.length; g++) homerooms += Math.ceil(byGrade[g] / M.msClassSize);
-  return { homerooms, blended };
+  return { homerooms, blended: Math.min(k5Rooms, sections - k5Rooms) };
 }
 
 export function otherStaff(enrollment: number): number {

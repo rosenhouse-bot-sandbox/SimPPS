@@ -2,8 +2,10 @@ import { describe, expect, it } from 'vitest';
 import { SCHOOLS } from '../data';
 import { getSource } from '../sources/registry';
 import { DEFAULT_POLICY, endYear, newGame, previewBudget, type GameState, type Policy } from '.';
+import { classesFor } from './budget';
 import { gradeOf } from './model';
 import { SCHOOL_INFO } from './population';
+import { kCaptureTrend } from './step';
 
 const start = newGame({ seed: 'calibration' });
 const M = 1_000_000;
@@ -17,15 +19,20 @@ function withoutGhost(s: GameState) {
   return { ...s, sim: { ...s.sim!, ghost: undefined } };
 }
 
-const tenYears = run(start, DEFAULT_POLICY, 10);
+const fall2035 = run(start, DEFAULT_POLICY, 9);
 
 describe('newGame', () => {
-  it('opens in January 2027 with 74 schools and 26,981 K-8 kids', () => {
+  it('opens in January 2027 with 74 schools, the kids aged one silent year to fall 2026', () => {
     expect(start.year).toBe(2027);
     expect(Object.keys(start.schools)).toHaveLength(74);
-    expect(start.dials.kids).toBe(26_981);
+    expect(start.dials.kids).toBeGreaterThan(26_300);
+    expect(start.dials.kids).toBeLessThan(26_635);
     expect(start.schools.alliance.enrollment).toBe(215);
-    expect(start.schools['rosa-parks'].enrollment).toBe(160);
+  });
+
+  it('shows no leavers on the opening map', () => {
+    expect(start.households.some((h) => h.movedAway || h.leftThisYear)).toBe(false);
+    for (const h of start.households) expect(h.status).toBe(h.school ? 'stayed' : 'left');
   });
 
   it('opens with a gap of about -$65.2M and reserves of $41.1M, 4.8%', () => {
@@ -35,21 +42,26 @@ describe('newGame', () => {
     expect(start.dials.positionsCut).toBe(0);
   });
 
-  it('opens near 77% capture and 74% kindergarten capture', () => {
-    expect(start.dials.capture).toBeGreaterThan(0.75);
-    expect(start.dials.capture).toBeLessThan(0.79);
-    expect(start.dials.kindergartenCapture).toBeCloseTo(0.74, 2);
+  it('opens near 76.6% capture and the fall 2026 kindergarten capture trend', () => {
+    expect(start.dials.capture).toBeGreaterThan(0.76);
+    expect(start.dials.capture).toBeLessThan(0.775);
+    expect(start.dials.kindergartenCapture).toBeCloseTo(kCaptureTrend(2026), 2);
   });
 
   it('counts kids in URM buildings', () => {
     const urm = SCHOOLS.filter((s) => s.isUrm).reduce((a, s) => a + (s.enrollment ?? 0), 0);
-    expect(start.dials.kidsInUrm).toBe(urm);
+    expect(Math.abs(start.dials.kidsInUrm - urm) / urm).toBeLessThan(0.05);
   });
 
-  it('plans about 4% of K-5 homerooms as blended or more', () => {
-    const k5 = Object.values(start.schools).reduce((a, s) => a + s.blendedHomerooms, 0);
-    expect(k5).toBeGreaterThan(60);
-    expect(k5).toBeLessThan(200);
+  it('staffs about 717 K-5 homerooms with about 125 blended, as in 2025-26', () => {
+    let homerooms = 0;
+    let blended = 0;
+    for (const s of Object.values(start.schools)) {
+      homerooms += classesFor(s.byGrade.slice(0, 6), 24).homerooms;
+      blended += s.blendedHomerooms;
+    }
+    expect(Math.abs(homerooms - 717) / 717).toBeLessThan(0.05);
+    expect(Math.abs(blended - 125) / 125).toBeLessThan(0.2);
   });
 
   it('balances budget lines to the gap', () => {
@@ -210,14 +222,15 @@ describe('endYear', () => {
     for (const l of start.budget.lines) expect(getSource(l.sourceKey)).toBeDefined();
   });
 
-  it('lands 10 status-quo years near the PSU 2035-36 total, inside its band', () => {
-    expect(Math.abs(tenYears.dials.kids - 23_999)).toBeLessThan(700);
-    expect(tenYears.dials.kids).toBeGreaterThan(22_119);
-    expect(tenYears.dials.kids).toBeLessThan(26_412);
+  it('lands status quo in fall 2035 near the PSU total, inside its band', () => {
+    expect(fall2035.year - 1).toBe(2035);
+    expect(Math.abs(fall2035.dials.kids - 23_999)).toBeLessThan(500);
+    expect(fall2035.dials.kids).toBeGreaterThan(22_119);
+    expect(fall2035.dials.kids).toBeLessThan(26_412);
   });
 
-  it('tracks the PSU forecast year by year', () => {
-    const forecast = [26_635, 26_292, 26_023, 25_766, 25_272];
+  it('tracks the PSU forecast within 2% every year from fall 2027 to 2035', () => {
+    const forecast = [26_292, 26_023, 25_766, 25_272, 24_971, 24_693, 24_514, 24_271, 23_999];
     let s = start;
     for (const f of forecast) {
       s = endYear(s, DEFAULT_POLICY).next;

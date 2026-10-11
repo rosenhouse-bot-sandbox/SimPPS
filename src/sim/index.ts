@@ -4,8 +4,8 @@ import { clamp, generatePopulation } from './population';
 import { headlines, seasonEvents, versusGhost } from './report';
 import { draw, hashString } from './rng';
 import { buildSchools, computeDials } from './schools';
-import { stepYear } from './step';
-import type { Budget, GameState, Policy, SimMemory, YearReport } from './types';
+import { familiesDecide, stepYear } from './step';
+import type { Budget, GameState, Household, Policy, SimMemory, YearReport } from './types';
 
 export * from './types';
 export { modeledRange } from './range';
@@ -15,7 +15,15 @@ export const DEFAULT_POLICY: Policy = { k5ClassSize: 24, levyRate: 1.99, reserve
 export function newGame(opts: { seed: string }): GameState {
   const seedHash = hashString(opts.seed);
   const pop = generatePopulation(seedHash);
-  const schools = buildSchools(pop.households, DEFAULT_POLICY.k5ClassSize);
+  const fall2026 = familiesDecide(
+    { ...pop, seedHash, nextId: pop.households.length },
+    pop.households,
+    FIRST_YEAR - 1,
+    DEFAULT_POLICY.k5ClassSize,
+    0,
+  );
+  const households = settle(fall2026.households);
+  const schools = buildSchools(households, DEFAULT_POLICY.k5ClassSize);
   const input = {
     year: FIRST_YEAR,
     schools,
@@ -31,7 +39,7 @@ export function newGame(opts: { seed: string }): GameState {
   const total = generalFund(FIRST_YEAR);
   const sim: SimMemory = {
     seedHash,
-    nextId: pop.households.length,
+    nextId: fall2026.nextId,
     kChoice: pop.kChoice,
     msMix: pop.msMix,
     zoneKeep: pop.zoneKeep,
@@ -50,12 +58,19 @@ export function newGame(opts: { seed: string }): GameState {
     seed: opts.seed,
     year: FIRST_YEAR,
     schools,
-    households: pop.households,
+    households,
     budget,
-    dials: computeDials({ households: pop.households, schools, budget }, 0),
+    dials: computeDials({ households, schools, budget }, 0),
     policy: DEFAULT_POLICY,
     sim,
   };
+}
+
+/** Play opens before anyone has decided this year, so the map shows no leavers. */
+function settle(households: Household[]): Household[] {
+  return households
+    .filter((h) => !h.movedAway)
+    .map(({ leftThisYear: _, ...h }) => ({ ...h, status: h.school ? 'stayed' : 'left' }));
 }
 
 /** Clamps K-5 class size to 22-28 and keeps the levy rate and reserve draw at or above zero. */

@@ -3,21 +3,18 @@ import { classesFor, computeBudget, levyRevenue, otherStaff, revenuePerStudent }
 import type { SchoolState } from './types';
 
 describe('classesFor', () => {
-  it('fills full classes per grade', () => {
+  it('fills full classes', () => {
     expect(classesFor([48, 48, 48, 48, 48, 48, 0, 0, 0], 24)).toEqual({ homerooms: 12, blended: 0 });
   });
 
-  it('absorbs a small remainder into full classes', () => {
+  it('staffs K-5 by the school total, filling rooms up to 2 over target', () => {
+    expect(classesFor([26, 26, 26, 26, 26, 26, 0, 0, 0], 24)).toEqual({ homerooms: 6, blended: 0 });
     expect(classesFor([50, 0, 0, 0, 0, 0, 0, 0, 0], 24)).toEqual({ homerooms: 2, blended: 0 });
   });
 
-  it('gives a large remainder its own class', () => {
-    expect(classesFor([43, 0, 0, 0, 0, 0, 0, 0, 0], 24)).toEqual({ homerooms: 2, blended: 0 });
-  });
-
-  it('blends small remainders of neighboring grades', () => {
+  it('blends grades that do not fill their own rooms', () => {
     expect(classesFor([10, 10, 10, 10, 10, 10, 0, 0, 0], 24)).toEqual({ homerooms: 3, blended: 3 });
-    expect(classesFor([60, 55, 0, 0, 0, 0, 0, 0, 0], 24)).toEqual({ homerooms: 5, blended: 1 });
+    expect(classesFor([30, 30, 30, 30, 30, 30, 0, 0, 0], 24)).toEqual({ homerooms: 7, blended: 5 });
   });
 
   it('never blends middle grades, which use classes of 26', () => {

@@ -22,7 +22,7 @@ export const MODEL_SOURCES: Source[] = [
     key: 'model.households',
     label: 'Simulated households',
     tag: 'I',
-    explain: `Each lit window is one simulated K-8 kid. The 26,966 in PPS match each school's fall 2025 count. About ${M.outsideKids.toLocaleString('en-US')} more resident kids attend private, charter or other schools. Homes sit at random points inside the real zones: ${pct(M.inZoneShare)} of a school's kids live in its zone (${pct(M.focusInZoneShare)} at focus schools), and the rest live anywhere in the city. Older grades are ${pct(M.gradeTilt)} larger per grade. No household has a name.`,
+    explain: `Each lit window is one simulated K-8 kid. Each school starts from its fall 2025 count, and the game plays fall 2026 before your first plan. About ${M.outsideKids.toLocaleString('en-US')} more resident kids attend private, charter or other schools. Homes sit at random points inside the real zones: ${pct(M.inZoneShare)} of a school's kids live in its zone (${pct(M.focusInZoneShare)} at focus schools), and the rest live anywhere in the city. Older grades are ${pct(M.gradeTilt)} larger per grade. No household has a name.`,
     links: [PPS_DATA, DESIGN],
   },
   {
@@ -113,7 +113,7 @@ export const MODEL_SOURCES: Source[] = [
     key: 'model.homerooms',
     label: 'Homerooms',
     tag: 'I',
-    explain: `Each school needs homerooms per grade at the K-5 class size target, ${$k(M.homeroomCost)} each. A grade can run ${M.overload} over target before it splits. Small leftovers of neighboring grades share a blended class. Grades 6-8 use classes of ${M.msClassSize}. 125 of 717 K-5 positions were blended in 2025-26. The cost was fit to 10 points in PPS's Oct 6 deck.`,
+    explain: `A school gets enough K-5 homerooms for its K-5 kids at ${M.overload} over the class size target, ${$k(M.homeroomCost)} each. Grades too small for their own rooms share blended classes. Grades 6-8 use classes of ${M.msClassSize}. This rule gives about 717 K-5 homerooms with about 125 blended, as PPS reported for 2025-26. The cost was fit to 10 points in PPS's Oct 6 deck.`,
     links: [PPS_DATA],
   },
   {
@@ -239,7 +239,7 @@ export const MODEL_SOURCES: Source[] = [
 ];
 
 export const DIAL_SOURCES: Source[] = [
-  { key: dialSourceKey('kids'), label: 'Kids', tag: 'M', explain: 'Simulated K-8 enrollment at the 74 in-scope schools. It starts at the real fall 2025 count of 26,966.', links: [PPS_DATA] },
+  { key: dialSourceKey('kids'), label: 'Kids', tag: 'M', explain: 'Simulated K-8 enrollment at the 74 in-scope schools. The game ages the fall 2025 count of 26,966 one year to fall 2026. PSU forecast 26,635 for fall 2026, and early counts run about 200 below.', links: [PPS_DATA] },
   { key: dialSourceKey('capture'), label: 'Capture', tag: 'M', explain: 'Simulated PPS K-8 kids over all resident K-8 kids. PPS reports 76.6% for K-12.', links: [DESIGN] },
   { key: dialSourceKey('kindergartenCapture'), label: 'Kindergarten capture', tag: 'M', explain: 'Simulated PPS kindergartners over resident kindergartners. It was about 74% in 2025.', links: [PSU] },
   { key: dialSourceKey('gap'), label: 'Gap', tag: 'M', explain: 'Revenue minus costs in the coming year\'s plan, before automatic cuts. It starts at the reported -$65.2M.', links: [DESIGN] },
