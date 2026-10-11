@@ -37,6 +37,9 @@ const facts: YearFacts = {
   stateFundingGrowth: null,
   closing: [],
   closures: [],
+  rezonedCells: 0,
+  grandfathered: false,
+  rezoned: { kids: 0, zoneSchool: 0, otherPps: 0, left: 0 },
 };
 
 const dials: Dials = {
@@ -47,6 +50,8 @@ const dials: Dials = {
   positionsCut: 0,
   reservePct: 0.048,
   kidsInUrm: 6_500,
+  walkK5: 9_000,
+  newBusRiders: 0,
 };
 
 const detail = (f: YearFacts, title: string) => seasonEvents(f).find((e) => e.title === title)!.detail;

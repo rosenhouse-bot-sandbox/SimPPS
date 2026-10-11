@@ -4,6 +4,7 @@ import { SCHOOLS } from '../data';
 import { SCHOOL_INFO } from './population';
 import { draw } from './rng';
 import { effectiveClosures } from './closures';
+import { busingCost, busReimbursement } from './walk';
 import type { Budget, BudgetLine, ClosedSchool, Policy, SchoolId, SchoolState } from './types';
 
 export const FIRST_YEAR = 2027;
@@ -124,6 +125,10 @@ export interface BudgetInput {
   stateFunding: number;
   /** Closures in force before this year. */
   closed: ClosedSchool[];
+  /** Kids expected to ride a bus this fall only because a zone changed. */
+  busRiders?: number;
+  /** Busing dollars booked last year, which the state repays this year. */
+  busingLastYear?: number;
 }
 
 /** model.closureOneTime: the budget books the middle of the range. */
@@ -174,6 +179,7 @@ export function computeBudget(input: BudgetInput): Budget {
   // Year 1 runs on last fall's schools, so a closure's building is still in the lines above.
   const closed = input.closed.filter((c) => input.year > c.year);
   const closing = effectiveClosures(input.schools, input.policy.closures).length;
+  const repaid = busReimbursement(input.busingLastYear ?? 0);
   const optional: [string, string, number, string][] = [
     ['closureOneTime', 'Closures, once', -closing * CLOSURE_ONE_TIME * index, 'model.closureOneTime'],
     [
@@ -188,11 +194,13 @@ export function computeBudget(input: BudgetInput): Budget {
       -closed.reduce((a, c) => a + c.staffKept, 0) * M.positionCost * index,
       'model.closureSavings',
     ],
+    ['busing', 'New bus riders', -busingCost(input.busRiders ?? 0) * index, 'model.busing'],
+    ['busReimbursement', "State's busing repayment", repaid, 'model.busReimbursement'],
     ['mothball', 'Mothballed buildings', -closed.filter((c) => c.building === 'mothball').length * M.mothball * index, 'model.buildingFate'],
   ];
   for (const [key, label, amount, sourceKey] of optional) if (amount !== 0) lines.push({ key, label, amount, sourceKey });
   const gap = lines.reduce((sum, l) => sum + l.amount, 0);
-  const revenue = state + stateCard + levyRevenue(input.policy.levyRate) + input.restRevenue;
+  const revenue = state + stateCard + levyRevenue(input.policy.levyRate) + input.restRevenue + repaid;
   const position = M.positionCost * index;
   const reserveDraw = clamp(input.policy.reserveDraw, 0, Math.min(input.reserves, Math.max(0, -gap)));
   const autoCutPositions = Math.ceil(Math.max(0, -gap - reserveDraw) / position);

@@ -1,6 +1,7 @@
 import { MEDIAN_SQFT, STATE_PER_STUDENT } from '../sim/budget';
 import { CLOSED_ZONE_CAPTURE_DROPS, FOLLOW_RATES, M } from '../sim/model';
 import { CITYWIDE_INTAKE } from '../sim/population';
+import { CELL_METERS } from '../sim/grid';
 import rightsizing from '../data/rightsizing.json';
 import type { Dials } from '../sim/types';
 import type { Source, SourceLink } from './types';
@@ -309,10 +310,45 @@ export const MODEL_SOURCES: Source[] = [
     links: [DESIGN],
   },
   {
+    key: 'model.zoneGrid',
+    label: 'Zone blocks',
+    tag: 'I',
+    explain: `The game draws zones on ${CELL_METERS} m grid squares clipped to the real 53 K-5 zone polygons [F]. Each block has a K-5 zone school and a middle zone school, the one at most of its points. A home on a block still on today's middle zone keeps its own middle zone. Boundary edits and closures move blocks between zones.`,
+    links: [PPS_DATA],
+  },
+  {
+    key: 'model.sliceStay',
+    label: 'Re-zoned kids',
+    tag: 'M',
+    explain: `A kid whose zone school changes under it goes to the new zone school with a ${pct(M.sliceStay)} chance, less the adjustments under "Who follows a closed school" except whole classes. The rest choose like a closed school's kids who don't follow. A grandfathered edit moves no current student: only new kindergartners and 6th graders, and kids outside PPS, use the new zone.`,
+    links: [DESIGN],
+  },
+  {
+    key: 'model.walkLimit',
+    label: 'Walk limit',
+    tag: 'V',
+    explain: `K-5 kids who live more than ${M.walkLimitK5} mile from school ride a bus, and grades 6-8 past ${M.walkLimitMiddle} miles. Distances are straight lines, so real walks are longer.`,
+    links: [DESIGN],
+  },
+  {
+    key: 'model.busing',
+    label: 'New bus riders',
+    tag: 'V',
+    explain: `A new rider costs $${M.busRider.lo.toLocaleString('en-US')}-${M.busRider.hi.toLocaleString('en-US')} a year. A new rider is a kid at its zone school past the walk limit whose zone before any change was within it. The budget books the middle for the kids expected to ride next fall. Kids whose new zone is closer save nothing here. General-fund transportation is $47.6M [F].`,
+    links: [DESIGN],
+  },
+  {
+    key: 'model.busReimbursement',
+    label: "State's busing repayment",
+    tag: 'V',
+    explain: `The state repays ${pct(M.busReimbursed.lo)}-${pct(M.busReimbursed.hi)} of approved busing a year later. The budget books the middle of last year's new-rider busing.`,
+    links: [DESIGN],
+  },
+  {
     key: 'model.scenarios',
     label: 'PPS scenarios',
     tag: 'F',
-    explain: "Scenario A closes 14 schools and Scenario B 11, with PPS's receivers and shares. Sellwood MS's split is unpublished, so the game splits it evenly [I]. Each building is mothballed until you change it [M]. Program moves, grade-span changes and boundary changes are not modeled yet.",
+    explain: "Scenario A closes 14 schools and Scenario B 11, with PPS's receivers and shares. Sellwood MS's split is unpublished, so the game splits it evenly [I]. Each building is mothballed until you change it [M]. Program moves, grade-span changes and PPS's boundary changes are not modeled yet.",
     links: [RIGHTSIZING],
   },
 ];
@@ -324,5 +360,7 @@ export const DIAL_SOURCES: Source[] = [
   { key: dialSourceKey('gap'), label: 'Gap', tag: 'M', explain: 'Revenue minus costs in the coming year\'s plan, before automatic cuts. It starts at the reported -$65.2M.', links: [DESIGN] },
   { key: dialSourceKey('positionsCut'), label: 'Positions cut', tag: 'M', explain: 'Positions removed by automatic and mid-year cuts in the year just played.', links: [DESIGN] },
   { key: dialSourceKey('reservePct'), label: 'Reserves', tag: 'M', explain: 'Reserves over last year\'s spending. They start at $41.1M, 4.8% of the $862.1M 2026-27 general fund. Below 5% breaches policy; below 3% forces mid-year cuts.', links: [PPS_DATA] },
+  { key: dialSourceKey('walkK5'), label: 'K-5 walkers', tag: 'M', explain: `Simulated PPS K-5 kids within ${M.walkDialMiles} mile of their school, in a straight line.`, links: [DESIGN] },
+  { key: dialSourceKey('newBusRiders'), label: 'New bus riders', tag: 'M', explain: 'Simulated PPS kids at their zone school past the walk limit whose zone before any change was within it.', links: [DESIGN] },
   { key: dialSourceKey('kidsInUrm'), label: 'Kids in URM buildings', tag: 'M', explain: 'Simulated kids in unreinforced-masonry buildings (Holmes 2024) without a full retrofit. In fall 2025 about 4,500 attended URM buildings with no retrofit yet and 1,400 attended ones with a targeted retrofit.', links: [PPS_DATA] },
 ];

@@ -1,5 +1,6 @@
 import { SCHOOLS, ZONES } from '../data';
 import { samplePoint } from '../sim/geo';
+import { cellAt } from '../sim/grid';
 import { stream } from '../sim/rng';
 import type { Household, HouseholdStatus, SchoolId, SchoolState } from '../sim/types';
 
@@ -43,6 +44,7 @@ export function fixtureHouseholds(n = 400, seed = 1): Household[] {
   for (let id = 0; id < n; id++) {
     const zone = pick(zones);
     const pos = samplePoint(zone, rand);
+    const cell = cellAt(pos, zones.indexOf(zone));
     let r = rand();
     const status = STATUSES.find(([, w]) => (r -= w) < 0)?.[0] ?? 'stayed';
     const kids = Array<number>(9).fill(0);
@@ -50,6 +52,7 @@ export function fixtureHouseholds(n = 400, seed = 1): Household[] {
     out.push({
       id,
       pos,
+      cell,
       kids,
       zoneSchool: zone.school,
       school: status === 'left' ? null : status === 'moved' ? pick(zones).school : zone.school,

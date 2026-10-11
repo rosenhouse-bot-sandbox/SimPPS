@@ -4,7 +4,7 @@ import { WINDOW_COLORS } from './colors';
 import { TRAIL_PX, binHouseholds, drawHouseholds, type HouseholdCtx } from './households';
 
 function hh(id: number, pos: [number, number], status: HouseholdStatus, school: string | null = 'a'): Household {
-  const h: Household = { id, pos, kids: [1], zoneSchool: 'a', school, exitCapacity: 0, loyalty: 0, voice: 0, status };
+  const h: Household = { id, pos, cell: 0, kids: [1], zoneSchool: 'a', school, exitCapacity: 0, loyalty: 0, voice: 0, status };
   return status === 'left' ? { ...h, leftThisYear: true } : h;
 }
 

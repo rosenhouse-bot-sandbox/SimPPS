@@ -2,10 +2,12 @@ import { computeBudget, FIRST_YEAR, generalFund, stateFundingLevel } from './bud
 import { CLOSED_ZONE_CAPTURE_DROPS, FOLLOW_RATES, M } from './model';
 import { clamp } from '../clamp';
 import { generatePopulation } from './population';
-import { headlines, seasonEvents, versusGhost } from './report';
+import { headlines, rezoneOutcome, seasonEvents, versusGhost } from './report';
 import { draw, hashString } from './rng';
 import { buildSchools, computeDials } from './schools';
-import { closureOutcomes, normalizeClosures } from './closures';
+import { closureOutcomes, effectiveClosures, normalizeClosures } from './closures';
+import { projectRiders } from './boundaries';
+import { defaultZones, normalizeBoundaryEdits, zoningYear } from './zones';
 import { SCENARIOS, type Start } from './scenarios';
 import { familiesDecide, stepYear } from './step';
 import type { Budget, GameState, Household, Policy, SimMemory, YearReport } from './types';
@@ -14,11 +16,24 @@ export * from './types';
 export { modeledRange } from './range';
 export { legislatureVotes, levyRevenue } from './budget';
 export { canClose, closureChip, receiverCandidates, type ClosureChip } from './closures';
+export { boundaryChip, sliceEdit, type BoundaryChip } from './boundaries';
+export {
+  CELL_METERS,
+  cellAtPoint,
+  defaultZones,
+  isContiguous,
+  neighbors,
+  sliceCells,
+  zoneGrid,
+  type ZoneCell,
+  type ZoneGrid,
+} from './zones';
+export { walkLimit } from './walk';
 export { SCENARIOS, type Start } from './scenarios';
 export { FATE_DONE } from './report';
 export const MOTHBALL_PER_YEAR = M.mothball;
 
-export const DEFAULT_POLICY: Policy = { k5ClassSize: 24, levyRate: 1.99, reserveDraw: 0, closures: [] };
+export const DEFAULT_POLICY: Policy = { k5ClassSize: 24, levyRate: 1.99, reserveDraw: 0, closures: [], boundaryEdits: [] };
 
 /** A start loads its closures into the first plan as ordinary edits. */
 export function newGame(opts: { seed: string; start?: Start }): GameState {
@@ -64,6 +79,7 @@ export function newGame(opts: { seed: string; start?: Start }): GameState {
     restRevenue: total + M.startGap - revenue,
     restCost: total - cost,
     closed: [],
+    busing: 0,
     cards: {
       followRate: FOLLOW_RATES[Math.floor(draw(seedHash, 1) * FOLLOW_RATES.length)],
       closedZoneCaptureDrop: CLOSED_ZONE_CAPTURE_DROPS[Math.floor(draw(seedHash, 2) * CLOSED_ZONE_CAPTURE_DROPS.length)],
@@ -79,6 +95,7 @@ export function newGame(opts: { seed: string; start?: Start }): GameState {
     budget,
     dials: computeDials({ households, schools, budget }, 0),
     policy,
+    zones: defaultZones(),
     sim,
   };
 }
@@ -90,11 +107,12 @@ function settle(households: Household[]): Household[] {
     .map(({ leftThisYear: _, ...h }) => ({ ...h, status: h.school ? 'stayed' : 'left' }));
 }
 
-/** Clamps K-5 class size to 22-28, keeps the levy rate and reserve draw at or above zero and tidies closures. */
+/** Clamps K-5 class size to 22-28, keeps the levy rate and reserve draw at or above zero and tidies closures and boundary edits. */
 export function normalizePolicy(p: Policy): Policy {
   return {
     ...p,
     closures: normalizeClosures(p.closures),
+    boundaryEdits: normalizeBoundaryEdits(p.boundaryEdits ?? []),
     k5ClassSize: clamp(Math.round(p.k5ClassSize), 22, 28),
     levyRate: Math.max(0, p.levyRate),
     reserveDraw: Math.max(0, p.reserveDraw),
@@ -104,10 +122,14 @@ export function normalizePolicy(p: Policy): Policy {
 /** The coming year's budget if the player commits `policy`. Use it to preview edits before End Year. */
 export function previewBudget(state: GameState, policy: Policy): Budget {
   const sim = state.sim!;
+  const plan = normalizePolicy(policy);
+  const closing = effectiveClosures(state.schools, plan.closures);
+  const closed = [...sim.closed, ...closing];
+  const zoning = zoningYear(state.zones, closed, plan.boundaryEdits);
   return computeBudget({
     year: state.year,
     schools: state.schools,
-    policy: normalizePolicy(policy),
+    policy: plan,
     reserves: state.budget.reserves,
     priorSpending: sim.spending,
     cumulativeCuts: sim.cumulativeCuts,
@@ -116,6 +138,8 @@ export function previewBudget(state: GameState, policy: Policy): Budget {
     restCost: sim.restCost,
     stateFunding: stateFundingLevel(sim.seedHash, state.year, 'january'),
     closed: sim.closed,
+    busRiders: projectRiders(state.households, zoning, closed, new Set(closing.map((c) => c.school))),
+    busingLastYear: sim.busing,
   });
 }
 
@@ -134,6 +158,7 @@ export function endYear(state: GameState, policy: Policy): { next: GameState; re
       headlines: headlines(mine.facts, state.dials, next.dials),
       budget: mine.facts.plan,
       closures: closureOutcomes(mine.facts.closures, mine.facts.closing),
+      ...(mine.facts.rezoned.kids > 0 ? { rezoned: rezoneOutcome(mine.facts.rezoned) } : {}),
     },
   };
 }

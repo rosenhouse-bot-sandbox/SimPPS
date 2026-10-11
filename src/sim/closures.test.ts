@@ -115,7 +115,7 @@ describe('closure budget lines', () => {
   const base = {
     year: 2027,
     schools: { peninsula: school('peninsula'), 'rosa-parks': school('rosa-parks') },
-    policy: { k5ClassSize: 24, levyRate: 0, reserveDraw: 0, closures: [] },
+    policy: { k5ClassSize: 24, levyRate: 0, reserveDraw: 0, closures: [], boundaryEdits: [] },
     reserves: 0,
     priorSpending: 800_000_000,
     cumulativeCuts: 0,

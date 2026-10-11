@@ -3,7 +3,9 @@ import { M } from './model';
 import { SCHOOL_INFO } from './population';
 import { dialSourceKey } from '../sources/model';
 import type { YearFacts } from './step';
-import type { BuildingFate, Dials, Headline, SeasonEvent, YearReport } from './types';
+import type { RezoneTally } from './boundaries';
+import { modeledRange } from './range';
+import type { BuildingFate, Dials, Headline, RezoneOutcome, SeasonEvent, YearReport } from './types';
 
 function count(n: number): string {
   return Math.round(n).toLocaleString('en-US');
@@ -46,10 +48,35 @@ function closureEvents(f: YearFacts): SeasonEvent[] {
   ];
 }
 
+/** Boundary events name no school and give no counts of a school's families. */
+function boundaryEvents(f: YearFacts): SeasonEvent[] {
+  if (f.rezonedCells === 0) return [];
+  const blocks = `${count(f.rezonedCells)} block${f.rezonedCells === 1 ? '' : 's'}`;
+  return [
+    {
+      season: 'summer',
+      title: 'Boundaries change',
+      detail: `${blocks} change zones. ${f.grandfathered ? 'Current students keep their schools; new kindergartners and 6th graders use the new zones.' : 'Kids in them get new zone schools.'}`,
+      sourceKey: 'model.zoneGrid',
+    },
+    ...(f.rezoned.kids > 0
+      ? [
+          {
+            season: 'fall' as const,
+            title: 'Re-zoned families decide',
+            detail: 'Kids whose zone school changed choose schools. The report shows where they went.',
+            sourceKey: 'model.sliceStay',
+          },
+        ]
+      : []),
+  ];
+}
+
 export function seasonEvents(f: YearFacts): SeasonEvent[] {
   const cuts = f.autoCuts > 0 ? ` Automatic cuts remove ${count(f.autoCuts)} positions by seniority and spare IEP services.` : '';
   const draw = f.reserveDraw > 0 ? ` Reserves cover ${fmtMoney(f.reserveDraw)}.` : '';
   const [closes, decide] = closureEvents(f);
+  const [rezone, rezonedDecide] = boundaryEvents(f);
   const events: SeasonEvent[] = [
     {
       season: 'spring',
@@ -74,6 +101,7 @@ export function seasonEvents(f: YearFacts): SeasonEvent[] {
       sourceKey: 'model.autoCuts',
     },
     ...(closes ? [closes] : []),
+    ...(rezone ? [rezone] : []),
     {
       season: 'summer',
       title: 'Eighth graders move on',
@@ -87,6 +115,7 @@ export function seasonEvents(f: YearFacts): SeasonEvent[] {
       sourceKey: 'model.movingRoll',
     },
     ...(decide ? [decide] : []),
+    ...(rezonedDecide ? [rezonedDecide] : []),
     {
       season: 'october',
       title: 'Classes form',
@@ -135,7 +164,19 @@ export function headlines(f: YearFacts, before: Dials, after: Dials): Headline[]
   return [money, kids, where];
 }
 
+/** The report's "where kids went" for kids a boundary change moved, as ranges. */
+export function rezoneOutcome(t: RezoneTally): RezoneOutcome {
+  return {
+    kids: modeledRange(t.kids),
+    zoneSchool: modeledRange(t.zoneSchool),
+    otherPps: modeledRange(t.otherPps),
+    leftPps: modeledRange(t.left),
+  };
+}
+
 const HIGHER_IS_BETTER: Record<keyof Dials, boolean> = {
+  walkK5: true,
+  newBusRiders: false,
   kids: true,
   capture: true,
   kindergartenCapture: true,
@@ -147,6 +188,8 @@ const HIGHER_IS_BETTER: Record<keyof Dials, boolean> = {
 
 /** One unit of each dial that counts as a comparable gap. */
 const SCALE: Record<keyof Dials, number> = {
+  walkK5: 100,
+  newBusRiders: 20,
   kids: 100,
   capture: 0.005,
   kindergartenCapture: 0.005,

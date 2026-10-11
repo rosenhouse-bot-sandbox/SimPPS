@@ -120,7 +120,7 @@ function serves(school: SchoolId, grade: number): boolean {
 }
 
 /** Receivers that serve a grade, shares renormalized. Empty when none does. */
-export function receiversFor(closure: Closure, grade: number): Closure['receivers'] {
+export function receiversFor(closure: Pick<Closure, 'receivers'>, grade: number): Closure['receivers'] {
   return renormalize(closure.receivers.filter((r) => serves(r.school, grade)));
 }
 
@@ -293,7 +293,7 @@ const D = {
 export function nearestOpen(
   pos: Point,
   grade: number,
-  closed: ReadonlyMap<SchoolId, ClosedSchool>,
+  closed: { has(school: SchoolId): boolean },
   exclude: ReadonlySet<SchoolId> = new Set(),
   counts?: ReadonlyMap<SchoolId, number>,
 ): SchoolId {
