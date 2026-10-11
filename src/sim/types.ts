@@ -126,6 +126,8 @@ export interface YearReport {
   /** Largest gaps against the do-nothing ghost, biggest first. */
   vsGhost: { dial: keyof Dials; you: number; ghost: number; better: boolean }[];
   headlines: Headline[];
+  /** The June budget that applied. */
+  budget: Budget;
 }
 
 export interface GameState {

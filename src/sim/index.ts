@@ -120,6 +120,7 @@ export function endYear(state: GameState, policy: Policy): { next: GameState; re
       flows: mine.facts.flows,
       vsGhost: versusGhost(next.dials, ghost.dials),
       headlines: headlines(mine.facts, state.dials, next.dials),
+      budget: mine.facts.plan,
     },
   };
 }

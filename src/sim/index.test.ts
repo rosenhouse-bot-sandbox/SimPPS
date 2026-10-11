@@ -224,6 +224,7 @@ describe('endYear', () => {
 
   it('takes automatic cuts and carries them into the next plan', () => {
     const { next, report } = endYear(start, DEFAULT_POLICY);
+    expect(report.budget).toEqual(june2027);
     expect(next.dials.positionsCut).toBe(june2027.autoCutPositions);
     expect(next.budget.lines.find((l) => l.key === 'earlierCuts')!.amount).toBeGreaterThan(0.6 * june2027.autoCutPositions * 155_000);
     expect(next.budget.gap / M).toBeGreaterThan(-50);

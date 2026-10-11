@@ -54,4 +54,5 @@ export const FIXTURE_REPORT: YearReport = {
     { text: 'Leavers run highest in North: ~2.4%', sourceKey: 'model.movingRoll' },
     { text: 'A fourth headline', sourceKey: 'model.movingRoll' },
   ],
+  budget: FIXTURE_GAME.budget,
 };

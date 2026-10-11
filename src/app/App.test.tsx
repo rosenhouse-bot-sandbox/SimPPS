@@ -74,7 +74,8 @@ describe('App', () => {
     const start = realSim.newGame({ seed: 't' });
     const policy = { ...start.policy, k5ClassSize: 25 };
     const plan = realSim.previewBudget(start, policy);
-    const june = realSim.endYear(start, policy).next.dials.positionsCut;
+    const { next, report } = realSim.endYear(start, policy);
+    const june = next.dials.positionsCut;
     expect(gapBar()).toContain('−$65.2M');
     click('Budget');
     click('More K-5 class size');
@@ -88,7 +89,7 @@ describe('App', () => {
     expect(preflight).toContain('At flat state funding. The Legislature votes this spring.');
     hold('Play the year');
     expect(screen.getByTestId('playback').textContent).toContain(`remove ${june.toLocaleString('en-US')} positions`);
-    expect(topBar()).toContain(`Gap ${fmtMoney(plan.gap)}`);
+    expect(topBar()).toContain(`Gap ${fmtMoney(report.budget.gap)}`);
   });
 
   it('shows a chip per edited lever', () => {
