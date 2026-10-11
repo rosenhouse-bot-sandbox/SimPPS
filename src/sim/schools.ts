@@ -1,9 +1,10 @@
-import { classesFor } from './budget';
+import { classesFor, cutCreep } from './budget';
 import { gradeOf, MAX_GRADE } from './model';
 import { SCHOOL_INFO } from './population';
 import type { Dials, GameState, Household, SchoolState } from './types';
 
-export function buildSchools(households: Household[], classSize: number): Record<string, SchoolState> {
+/** Each school's kids and homerooms. Cuts remove `homeroomsCut` homerooms across schools. */
+export function buildSchools(households: Household[], classSize: number, homeroomsCut = 0): Record<string, SchoolState> {
   const schools: Record<string, SchoolState> = {};
   for (const [id, info] of SCHOOL_INFO)
     schools[id] = {
@@ -21,8 +22,9 @@ export function buildSchools(households: Household[], classSize: number): Record
     s.enrollment++;
     s.byGrade[gradeOf(h)]++;
   }
+  const creep = cutCreep(schools, classSize, homeroomsCut);
   for (const s of Object.values(schools)) {
-    const c = classesFor(s.byGrade, classSize);
+    const c = classesFor(s.byGrade, classSize, creep);
     s.homerooms = c.homerooms;
     s.blendedHomerooms = c.blended;
   }

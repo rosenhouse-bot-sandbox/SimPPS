@@ -157,6 +157,8 @@ export interface SimMemory {
   cumulativeCuts: number;
   /** Last year's spending, the base for the reserve share. */
   spending: number;
+  /** Homerooms removed by cuts so far. Class sizes creep up to absorb them. */
+  homeroomsCut: number;
   /** The lumped rest of the general fund, in 2027-28 dollars. */
   restRevenue: number;
   restCost: number;

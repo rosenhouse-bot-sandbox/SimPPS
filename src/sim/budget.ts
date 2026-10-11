@@ -8,14 +8,34 @@ export const FIRST_YEAR = 2027;
  * Homerooms for one school's grades K-8. K-5 rooms fill to the target plus the overload across the
  * school, and grades that cannot each have their own rooms share blended classes.
  */
-export function classesFor(byGrade: number[], classSize: number): { homerooms: number; blended: number } {
-  const cap = classSize + M.overload;
+export function classesFor(byGrade: number[], classSize: number, creep = 0): { homerooms: number; blended: number } {
+  const cap = classSize + creep + M.overload;
   const k5 = byGrade.slice(0, 6);
   const k5Rooms = Math.ceil(k5.reduce((a, n) => a + n, 0) / cap);
   const sections = k5.reduce((a, n) => a + Math.ceil(n / cap), 0);
   let homerooms = k5Rooms;
-  for (let g = 6; g < byGrade.length; g++) homerooms += Math.ceil(byGrade[g] / M.msClassSize);
+  for (let g = 6; g < byGrade.length; g++) homerooms += Math.ceil(byGrade[g] / (M.msClassSize + creep));
   return { homerooms, blended: Math.min(k5Rooms, sections - k5Rooms) };
+}
+
+function totalHomerooms(schools: Record<string, SchoolState>, classSize: number, creep: number): number {
+  let n = 0;
+  for (const s of Object.values(schools)) if (s.open) n += classesFor(s.byGrade, classSize, creep).homerooms;
+  return n;
+}
+
+/** model.autoCuts: how far class sizes creep up when cuts remove `cut` homerooms. */
+export function cutCreep(schools: Record<string, SchoolState>, classSize: number, cut: number): number {
+  if (cut <= 0) return 0;
+  const target = totalHomerooms(schools, classSize, 0) - cut;
+  let lo = 0;
+  let hi = 40;
+  for (let i = 0; i < 30; i++) {
+    const mid = (lo + hi) / 2;
+    if (totalHomerooms(schools, classSize, mid) <= target) hi = mid;
+    else lo = mid;
+  }
+  return hi;
 }
 
 export function otherStaff(enrollment: number): number {
@@ -53,6 +73,8 @@ export interface BudgetInput {
   /** Last year's spending. */
   priorSpending: number;
   cumulativeCuts: number;
+  /** The share of cumulativeCuts taken from homerooms. */
+  homeroomsCut: number;
   restRevenue: number;
   restCost: number;
 }
@@ -63,6 +85,7 @@ export interface BudgetInput {
  */
 export function computeBudget(input: BudgetInput): Budget {
   const index = costIndex(input.year);
+  const creep = cutCreep(input.schools, input.policy.k5ClassSize, input.homeroomsCut);
   let state = 0;
   let homerooms = 0;
   let staff = 0;
@@ -71,7 +94,7 @@ export function computeBudget(input: BudgetInput): Budget {
     const info = SCHOOL_INFO.get(s.id)!;
     state += s.enrollment * revenuePerStudent(info.data.pctDirectCert ?? 0);
     if (!s.open) continue;
-    homerooms += classesFor(s.byGrade, input.policy.k5ClassSize).homerooms;
+    homerooms += classesFor(s.byGrade, input.policy.k5ClassSize, creep).homerooms;
     staff += otherStaff(s.enrollment);
     plant += (info.data.squareFeet ?? MEDIAN_SQFT) * M.plantPerSqft;
   }
@@ -84,11 +107,11 @@ export function computeBudget(input: BudgetInput): Budget {
     { key: 'plant', label: 'Buildings', amount: -plant * index, sourceKey: 'model.plant' },
     { key: 'restCost', label: 'Rest of district costs', amount: -input.restCost * index, sourceKey: 'model.restOfDistrict' },
   ];
-  if (input.cumulativeCuts > 0)
+  if (input.cumulativeCuts > input.homeroomsCut)
     lines.push({
       key: 'earlierCuts',
-      label: 'Positions cut in earlier years',
-      amount: input.cumulativeCuts * M.positionCost * index,
+      label: 'Positions cut outside homerooms',
+      amount: (input.cumulativeCuts - input.homeroomsCut) * M.positionCost * index,
       sourceKey: 'model.autoCuts',
     });
   const gap = lines.reduce((sum, l) => sum + l.amount, 0);

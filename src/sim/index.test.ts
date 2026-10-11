@@ -179,10 +179,32 @@ describe('endYear', () => {
   it('takes automatic cuts and carries them into the next plan', () => {
     const { next, report } = endYear(start, DEFAULT_POLICY);
     expect(next.dials.positionsCut).toBe(start.budget.autoCutPositions);
-    expect(next.budget.lines.find((l) => l.key === 'earlierCuts')!.amount).toBeGreaterThan(60 * M);
+    expect(next.budget.lines.find((l) => l.key === 'earlierCuts')!.amount).toBeGreaterThan(40 * M);
     expect(next.budget.gap / M).toBeGreaterThan(-50);
     expect(next.budget.gap / M).toBeLessThan(-20);
     expect(report.events.some((e) => e.season === 'spring' && /cut/i.test(e.title + e.detail))).toBe(true);
+  });
+
+  it('takes some cut positions out of classrooms', () => {
+    const noCuts = { ...DEFAULT_POLICY, levyRate: 5 };
+    const cut = endYear(start, DEFAULT_POLICY).next;
+    const uncut = endYear(start, noCuts).next;
+    const total = (s: GameState, key: 'homerooms' | 'blendedHomerooms') =>
+      Object.values(s.schools).reduce((a, x) => a + x[key], 0);
+    const removed = total(uncut, 'homerooms') - total(cut, 'homerooms');
+    expect(removed).toBeGreaterThan(0.1 * start.budget.autoCutPositions);
+    expect(removed).toBeLessThan(0.4 * start.budget.autoCutPositions);
+    expect(total(cut, 'blendedHomerooms')).toBeGreaterThanOrEqual(total(uncut, 'blendedHomerooms'));
+  });
+
+  it('saves the same total for cuts whether they fall in classrooms or elsewhere', () => {
+    const noCuts = { ...DEFAULT_POLICY, levyRate: 5 };
+    const cut = endYear(start, DEFAULT_POLICY).next;
+    const uncut = endYear(start, noCuts).next;
+    const line = (s: GameState, key: string) => s.budget.lines.find((l) => l.key === key)?.amount ?? 0;
+    const saved = line(cut, 'earlierCuts') + line(cut, 'homerooms') - line(uncut, 'homerooms');
+    const expected = cut.sim!.cumulativeCuts * 155_000 * 1.035;
+    expect(Math.abs(saved - expected) / expected).toBeLessThan(0.03);
   });
 
   it('spends reserves before cutting', () => {

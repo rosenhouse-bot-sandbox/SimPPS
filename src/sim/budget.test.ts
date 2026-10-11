@@ -71,6 +71,7 @@ describe('computeBudget', () => {
     reserves: 20_000_000,
     priorSpending: 800_000_000,
     cumulativeCuts: 0,
+    homeroomsCut: 0,
     restRevenue: 0,
     restCost: 0,
   };
@@ -89,6 +90,15 @@ describe('computeBudget', () => {
     expect(amount(b, 'earlierCuts')).toBeCloseTo(10 * 155_000 * 1.035, 0);
     expect(amount(b, 'homerooms')).toBeCloseTo(0);
     expect(amount(b, 'stateK8')).toBeGreaterThan(0);
+  });
+
+  it('takes cut homerooms off the homeroom line instead of the earlier-cuts line', () => {
+    const big: SchoolState = { ...rosaParks, enrollment: 520, byGrade: [80, 80, 80, 80, 100, 100, 0, 0, 0] };
+    const input = { ...base, schools: { 'rosa-parks': big }, cumulativeCuts: 10 };
+    const none = computeBudget(input);
+    const two = computeBudget({ ...input, homeroomsCut: 2 });
+    expect(amount(two, 'homerooms')! - amount(none, 'homerooms')!).toBeCloseTo(2 * 159_600 * 1.035, 0);
+    expect(amount(two, 'earlierCuts')).toBeCloseTo(8 * 155_000 * 1.035, 0);
   });
 
   it('cuts positions for the shortfall left after the reserve draw', () => {

@@ -197,7 +197,7 @@ export const MODEL_SOURCES: Source[] = [
     key: 'model.autoCuts',
     label: 'Automatic cuts',
     tag: 'M',
-    explain: `Any shortfall left after the reserve draw becomes cuts by seniority at ${$k(M.positionCost)} a position. They spare IEP services, thin every school and stay cut in later years.`,
+    explain: `Any shortfall left after the reserve draw becomes cuts by seniority at ${$k(M.positionCost)} a position. They spare IEP services and stay cut in later years. Homerooms take their share of the cuts by cost, so class sizes creep up at every school; other staff and central costs take the rest.`,
     links: [DESIGN],
   },
   {

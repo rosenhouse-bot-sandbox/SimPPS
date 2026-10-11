@@ -52,7 +52,7 @@ export function seasonEvents(f: YearFacts): SeasonEvent[] {
     {
       season: 'october',
       title: 'Classes form',
-      detail: `~${count(f.blended)} of ~${count(f.k5Homerooms)} K-5 homerooms are blended. ${count(f.crowded)} schools are over capacity.`,
+      detail: `~${count(f.blended)} of ~${count(f.k5Homerooms)} K-5 homerooms are blended.${f.homeroomsCut > 0 ? ` Cuts have taken ~${count(f.homeroomsCut)} homerooms, so classes run larger.` : ''} ${count(f.crowded)} schools are over capacity.`,
       sourceKey: 'model.homerooms',
     },
     {

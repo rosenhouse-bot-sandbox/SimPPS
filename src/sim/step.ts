@@ -1,5 +1,5 @@
 import { ZONES } from '../data';
-import { classesFor, computeBudget, costIndex } from './budget';
+import { classesFor, computeBudget, costIndex, cutCreep } from './budget';
 import { samplePoint, ZoneIndex } from './geo';
 import { gradeOf, M, MAX_GRADE, oneKid } from './model';
 import {
@@ -43,6 +43,8 @@ export interface YearFacts {
   flows: Flows;
   leaversByRegion: Map<string, number>;
   k5Homerooms: number;
+  /** Homerooms that cuts have removed by October. */
+  homeroomsCut: number;
   blended: number;
   crowded: number;
 }
@@ -186,10 +188,13 @@ export function stepYear(state: GameState, policy: Policy): { next: GameState; f
     reserves: state.budget.reserves,
     priorSpending: mem.spending,
     cumulativeCuts: mem.cumulativeCuts,
+    homeroomsCut: mem.homeroomsCut,
     restRevenue: mem.restRevenue,
     restCost: mem.restCost,
   });
   const autoCuts = plan.autoCutPositions;
+  const position = M.positionCost * index;
+  const classroomShare = -plan.lines.find((l) => l.key === 'homerooms')!.amount / (plan.spending + autoCuts * position);
 
   const { households, nextId, kResidents, kEnrolled, graduates, flows, leaversByRegion } = familiesDecide(
     mem,
@@ -199,26 +204,29 @@ export function stepYear(state: GameState, policy: Policy): { next: GameState; f
     autoCuts,
   );
 
-  // October: classes form.
-  const schools = buildSchools(households, policy.k5ClassSize);
+  // October: classes form, short the homerooms that cuts removed.
+  const octoberCut = mem.homeroomsCut + Math.round(autoCuts * classroomShare);
+  const schools = buildSchools(households, policy.k5ClassSize, octoberCut);
+  const creep = cutCreep(schools, policy.k5ClassSize, octoberCut);
   let k5Homerooms = 0;
   let blended = 0;
   let crowded = 0;
   for (const s of Object.values(schools)) {
-    k5Homerooms += classesFor(s.byGrade.slice(0, 6), policy.k5ClassSize).homerooms;
+    k5Homerooms += classesFor(s.byGrade.slice(0, 6), policy.k5ClassSize, creep).homerooms;
     blended += s.blendedHomerooms;
     if (s.capacity > 0 && s.enrollment > s.capacity) crowded++;
   }
 
   // Winter: below 3% reserves, mid-year cuts save half a year's pay.
   const midYearCuts = plan.midYearCuts;
-  const midYearSavings = (midYearCuts * M.positionCost * index) / 2;
+  const midYearSavings = (midYearCuts * position) / 2;
+  const homeroomsCut = octoberCut + Math.round(midYearCuts * classroomShare);
   const reserves = plan.reservesAfter + midYearSavings;
 
   const nextPolicy: Policy = { ...policy, reserveDraw: 0 };
   const cumulativeCuts = mem.cumulativeCuts + autoCuts + midYearCuts;
   const spending = plan.spending - midYearSavings;
-  const sim = { ...mem, nextId, cumulativeCuts, spending, ghost: undefined };
+  const sim = { ...mem, nextId, cumulativeCuts, homeroomsCut, spending, ghost: undefined };
   const budget = computeBudget({
     year: year + 1,
     schools,
@@ -226,6 +234,7 @@ export function stepYear(state: GameState, policy: Policy): { next: GameState; f
     reserves,
     priorSpending: spending,
     cumulativeCuts,
+    homeroomsCut,
     restRevenue: mem.restRevenue,
     restCost: mem.restCost,
   });
@@ -252,6 +261,7 @@ export function stepYear(state: GameState, policy: Policy): { next: GameState; f
       flows,
       leaversByRegion,
       k5Homerooms,
+      homeroomsCut: octoberCut,
       blended,
       crowded,
     },
