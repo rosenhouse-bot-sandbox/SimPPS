@@ -234,7 +234,7 @@ export function homesByCell(households: readonly Household[]): Map<number, numbe
   return out;
 }
 
-/** "The N% of zone X nearest school Y": zone X's cells nearest Y until they hold N% of its homes. */
+/** "The N% of zone X nearest school Y": zone X's cells nearest Y, holding as near N% of its homes as whole cells allow. */
 export function sliceCells(
   state: Pick<GameState, 'households'> & { zones?: ZoneMap },
   level: ZoneLevel,
@@ -257,8 +257,10 @@ export function sliceCells(
   const out: number[] = [];
   let acc = 0;
   for (const { id } of ids) {
+    const n = homes.get(id) ?? 0;
+    if (out.length && acc + n - target > target - acc) break;
     out.push(id);
-    if ((acc += homes.get(id) ?? 0) >= target) break;
+    if ((acc += n) >= target) break;
   }
   return out;
 }

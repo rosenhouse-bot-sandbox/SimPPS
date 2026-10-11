@@ -95,14 +95,16 @@ describe('sliceCells', () => {
   it('takes the blocks of zone X nearest school Y until they hold N% of its homes', () => {
     const zone = cellsOf('elementary', 'creston');
     const slice = sliceCells(start, 'elementary', 'creston', 'atkinson', 20);
-    const total = homes(zone);
-    expect(homes(slice) / total).toBeGreaterThanOrEqual(0.2);
-    expect(homes(slice.slice(0, -1)) / total).toBeLessThan(0.2);
     const atk = schoolPos('atkinson');
     const d = (c: number) => Math.hypot(grid.cells[c].center[0] - atk[0], grid.cells[c].center[1] - atk[1]);
     const picked = new Set(slice);
     const farthestPicked = Math.max(...slice.map(d));
-    for (const c of zone.filter((x) => !picked.has(x))) expect(d(c)).toBeGreaterThanOrEqual(farthestPicked);
+    const rest = zone.filter((x) => !picked.has(x));
+    for (const c of rest) expect(d(c)).toBeGreaterThanOrEqual(farthestPicked);
+    const off = (cells: number[]) => Math.abs(homes(cells) / homes(zone) - 0.2);
+    const next = rest.reduce((a, b) => (d(b) < d(a) ? b : a));
+    expect(off(slice)).toBeLessThanOrEqual(off(slice.slice(0, -1)));
+    expect(off(slice)).toBeLessThanOrEqual(off([...slice, next]));
     for (const c of slice) expect(defaultZones().elementary[c]).toBe('creston');
   });
 
@@ -110,6 +112,17 @@ describe('sliceCells', () => {
     const slice = sliceCells(start, 'middle', 'hosford', 'sellwood', 10);
     expect(slice.length).toBeGreaterThan(0);
     for (const c of slice) expect(defaultZones().middle[c]).toBe('hosford');
+  });
+
+  it('lands as near N% as whole blocks allow, never on no block', () => {
+    for (const [from, to, p] of [['lewis', 'llewellyn', 5], ['beverly-cleary', 'boise-eliot', 10], ['dr-martin-luther-king-jr', 'maplewood', 25]] as const) {
+      const zone = cellsOf('elementary', from);
+      const slice = sliceCells(start, 'elementary', from, to, p);
+      expect(slice.length).toBeGreaterThan(0);
+      const share = homes(slice) / homes(zone);
+      if (slice.length > 1) expect(Math.abs(share - p / 100)).toBeLessThanOrEqual(Math.abs(homes(slice.slice(0, -1)) / homes(zone) - p / 100));
+    }
+    expect(sliceCells(start, 'elementary', 'creston', 'atkinson', 0.1)).toHaveLength(1);
   });
 
   it('takes nothing toward a school it does not know', () => {
