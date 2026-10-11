@@ -28,6 +28,12 @@ describe('HoldButton', () => {
     expect(onConfirm).toHaveBeenCalledOnce();
   });
 
+  it('blocks the long-press menu', () => {
+    render(<HoldButton label="End year" onConfirm={() => {}}>End</HoldButton>);
+    const b = screen.getByRole('button');
+    expect(fireEvent.contextMenu(b)).toBe(false);
+  });
+
   it('does nothing on a short press or a click', () => {
     const { onConfirm, button } = setup();
     fireEvent.pointerDown(button);

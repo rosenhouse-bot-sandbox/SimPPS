@@ -1,6 +1,9 @@
 import { describe, expect, it } from 'vitest';
 import { DEFAULT_POLICY, endYear, newGame } from '.';
-import { kCaptureTrend, worseYear } from './step';
+import { M } from './model';
+import { kCaptureTrend, leaveChance, worseYear } from './step';
+import type { Household } from './types';
+import { normalizePolicy } from '.';
 
 describe('worseYear', () => {
   it('adds exit for class size above 24 and for cuts, capped at one point', () => {
@@ -77,7 +80,49 @@ describe('class size', () => {
   });
 });
 
+describe('leaveChance', () => {
+  const h = { exitCapacity: 0.5, loyalty: 0.5 } as Household;
+
+  it('rises with exit capacity', () => {
+    expect(leaveChance({ ...h, exitCapacity: 0.9 }, false, 0)).toBeGreaterThan(leaveChance(h, false, 0));
+  });
+
+  it('uses the grade 6 exit at a school change', () => {
+    expect(leaveChance(h, true, 0)).toBe(M.grade6Exit);
+  });
+
+  it('lets loyal households shrug off more of a worse year', () => {
+    const loyal = leaveChance({ ...h, loyalty: 1 }, false, 0.01) - leaveChance({ ...h, loyalty: 1 }, false, 0);
+    const fickle = leaveChance({ ...h, loyalty: 0 }, false, 0.01) - leaveChance({ ...h, loyalty: 0 }, false, 0);
+    expect(loyal).toBeCloseTo(0.0075, 6);
+    expect(fickle).toBeCloseTo(0.0125, 6);
+  });
+});
+
+describe('a worse year', () => {
+  const start = newGame({ seed: 'worse' });
+  const noCuts = { ...DEFAULT_POLICY, levyRate: 5 };
+  const leftInGrades = (hs: Household[], lo: number, hi: number) =>
+    hs.filter((h) => h.leftThisYear && h.kids.slice(lo, hi + 1).includes(1)).length;
+
+  it('sends more middle graders away when positions are cut', () => {
+    const cut = endYear(start, DEFAULT_POLICY).next.households;
+    const uncut = endYear(start, noCuts).next.households;
+    expect(leftInGrades(cut, 7, 8)).toBeGreaterThan(leftInGrades(uncut, 7, 8));
+  });
+
+  it('draws fewer kindergartners at class size 28', () => {
+    const at24 = endYear(start, noCuts).next.dials.kindergartenCapture;
+    const at28 = endYear(start, { ...noCuts, k5ClassSize: 28 }).next.dials.kindergartenCapture;
+    expect(at28).toBeLessThan(at24);
+  });
+});
+
 describe('policy bounds', () => {
+  it('treats a negative reserve draw as none', () => {
+    expect(normalizePolicy({ ...DEFAULT_POLICY, reserveDraw: -5e6 }).reserveDraw).toBe(0);
+  });
+
   it('keeps K-5 class size within 22-28', () => {
     const start = newGame({ seed: 'bounds' });
     const at40 = endYear(start, { ...DEFAULT_POLICY, k5ClassSize: 40 });

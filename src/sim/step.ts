@@ -82,6 +82,12 @@ export function worseYear(classSize: number, positionsCut: number): number {
   );
 }
 
+/** model.movingRoll: the chance a PPS household leaves this fall. */
+export function leaveChance(h: Household, schoolChange: boolean, worse: number): number {
+  const base = schoolChange ? M.grade6Exit : M.leaveRate * (0.7 + 0.6 * h.exitCapacity);
+  return base + worse * (1.25 - 0.5 * h.loyalty);
+}
+
 export interface FamilyYear {
   households: Household[];
   nextId: number;
@@ -157,9 +163,7 @@ export function familiesDecide(
     if (h.school !== null) {
       const region = countKid(regions, h.pos);
       const transition = ng > SCHOOL_INFO.get(h.school)!.hi;
-      const base = transition ? M.grade6Exit : M.leaveRate * (0.7 + 0.6 * h.exitCapacity);
-      const pLeave = base + (ng <= 5 ? bumpK5 : bumpOther) * (1.25 - 0.5 * h.loyalty);
-      if (draw(seed, year, h.id, D.Leave) < pLeave) {
+      if (draw(seed, year, h.id, D.Leave) < leaveChance(h, transition, ng <= 5 ? bumpK5 : bumpOther)) {
         next.school = null;
         next.status = 'left';
         next.leftThisYear = true;
