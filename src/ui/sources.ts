@@ -1,0 +1,130 @@
+import { getSource, registerSources, type Source } from '../sources/registry';
+
+/** Keys the shell shows. The sim may register its own versions; those win. */
+export const K = {
+  calendar: 'ui.calendar',
+  gap: 'dial.gap',
+  reservePct: 'dial.reservePct',
+  kids: 'dial.kids',
+  capture: 'dial.capture',
+  classSize: 'lever.k5ClassSize',
+  levy: 'lever.levyRate',
+  reserveDraw: 'lever.reserveDraw',
+  autoCuts: 'calc.autoCuts',
+  enrollment: 'sim.enrollment',
+  homerooms: 'sim.homerooms',
+  blended: 'sim.blended',
+  flows: 'report.flows',
+  ghost: 'report.ghost',
+  bulletin: 'report.bulletin',
+} as const;
+
+const FALLBACK: Source[] = [
+  {
+    key: K.calendar,
+    label: 'Calendar',
+    tag: 'F',
+    explain: 'A turn follows PPS’s year: plan in January, budget in June, classes form in October.',
+    links: [],
+  },
+  {
+    key: K.gap,
+    label: 'Gap',
+    tag: 'N',
+    explain: 'Revenue minus costs before automatic cuts. PPS projected about −$65.2M for 2027-28 at flat state funding.',
+    links: [],
+  },
+  {
+    key: K.reservePct,
+    label: 'Reserves',
+    tag: 'F',
+    explain: 'Reserves hold $41.1M, 4.8% of an $862.1M general fund. Below 5% breaches policy. Below 3% forces mid-year cuts [M].',
+    links: [],
+  },
+  {
+    key: K.kids,
+    label: 'Kids',
+    tag: 'F',
+    explain: 'K-8 students enrolled in PPS, about 26,400 at the start.',
+    links: [],
+  },
+  {
+    key: K.capture,
+    label: 'Capture',
+    tag: 'I',
+    explain: 'The share of resident K-8 kids who attend PPS. One point is about 350 kids.',
+    links: [],
+  },
+  {
+    key: K.classSize,
+    label: 'K-5 class size',
+    tag: 'I',
+    explain: 'The target is 24 today. Each step of one cuts or adds about 4% of homerooms, $3–5M a year.',
+    links: [],
+  },
+  {
+    key: K.levy,
+    label: 'Levy rate',
+    tag: 'F',
+    explain: 'Dollars per $1,000 of assessed value. $1.99 projects $103.9M. A change goes to voters. The legal maximum is unverified [V].',
+    links: [],
+  },
+  {
+    key: K.reserveDraw,
+    label: 'Reserve draw',
+    tag: 'F',
+    explain: 'Dollars spent from reserves this year. A draw helps once.',
+    links: [],
+  },
+  {
+    key: K.autoCuts,
+    label: 'Automatic cuts',
+    tag: 'I',
+    explain: 'A June shortfall becomes cuts by seniority that spare IEP services [M]. A position costs about $155K.',
+    links: [],
+  },
+  {
+    key: K.enrollment,
+    label: 'Simulated enrollment',
+    tag: 'M',
+    explain: 'The sum of simulated households’ choices. The range is ±5% around the run.',
+    links: [],
+  },
+  {
+    key: K.homerooms,
+    label: 'Homerooms',
+    tag: 'M',
+    explain: 'Homerooms the simulation forms from each grade at the class size target.',
+    links: [],
+  },
+  {
+    key: K.blended,
+    label: 'Blended homerooms',
+    tag: 'M',
+    explain: 'Homerooms that mix two grades because a grade is too small for its own.',
+    links: [],
+  },
+  {
+    key: K.flows,
+    label: 'Where kids went',
+    tag: 'M',
+    explain: 'Every simulated kid whose school changed or stayed, sorted by outcome.',
+    links: [],
+  },
+  {
+    key: K.ghost,
+    label: 'Do-nothing ghost',
+    tag: 'M',
+    explain: 'The same year with the same luck and no edits, balanced by automatic cuts.',
+    links: [],
+  },
+  {
+    key: K.bulletin,
+    label: 'The Bulletin',
+    tag: 'M',
+    explain: 'Headlines written from simulated totals. They never describe real families.',
+    links: [],
+  },
+];
+
+registerSources(FALLBACK.filter((s) => !getSource(s.key)));

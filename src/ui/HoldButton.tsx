@@ -1,0 +1,60 @@
+import type { ComponentChildren } from 'preact';
+import { useEffect, useRef, useState } from 'preact/hooks';
+
+interface HoldButtonProps {
+  onConfirm: () => void;
+  children: ComponentChildren;
+  /** Accessible name; says that a hold is needed. */
+  label: string;
+  ms?: number;
+  class?: string;
+}
+
+/** Fires after a press of `ms` by pointer, or by holding Enter or Space. */
+export function HoldButton({ onConfirm, children, label, ms = 1000, class: cls = '' }: HoldButtonProps) {
+  const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const [holding, setHolding] = useState(false);
+
+  const cancel = () => {
+    if (timer.current) clearTimeout(timer.current);
+    timer.current = null;
+    setHolding(false);
+  };
+  const start = () => {
+    if (timer.current) return;
+    setHolding(true);
+    timer.current = setTimeout(() => {
+      timer.current = null;
+      setHolding(false);
+      onConfirm();
+    }, ms);
+  };
+  useEffect(() => cancel, []);
+
+  return (
+    <button
+      type="button"
+      class={`hold ${holding ? 'holding' : ''} ${cls}`}
+      style={{ '--hold-ms': `${ms}ms` }}
+      aria-label={`${label} (press and hold)`}
+      onPointerDown={start}
+      onPointerUp={cancel}
+      onPointerLeave={cancel}
+      onPointerCancel={cancel}
+      onContextMenu={(e) => e.preventDefault()}
+      onKeyDown={(e) => {
+        if (e.key === 'Enter' || e.key === ' ') {
+          e.preventDefault();
+          start();
+        }
+      }}
+      onKeyUp={(e) => {
+        if (e.key === 'Enter' || e.key === ' ') cancel();
+      }}
+      onBlur={cancel}
+    >
+      <span class="hold-fill" aria-hidden="true" />
+      <span class="hold-label">{children}</span>
+    </button>
+  );
+}
