@@ -1,7 +1,8 @@
 import { useMemo, useReducer, useState } from 'preact/hooks';
+import { ZONES } from '../data';
 import type { Mark } from '../map/MapView';
 import type { Start } from '../sim';
-import type { Closure, SchoolId, Season } from '../sim/types';
+import type { BoundaryEdit, Closure, SchoolId, Season, ZoneLevel as EditLevel } from '../sim/types';
 import { NEARBY, startDraft, toggleReceiver, withNames, type CloseDraft } from '../ui/closeSend';
 import { CloseSendSheet } from '../ui/CloseSendSheet';
 import { StartPicker } from '../ui/StartPicker';
@@ -16,6 +17,8 @@ import { ReportView } from '../ui/ReportView';
 import { SchoolSheet } from '../ui/SchoolSheet';
 import { Toolbar, type Tool } from '../ui/Toolbar';
 import { TopBar } from '../ui/TopBar';
+import { addStroke, sliceSources, startZoneDraft, targets, toEdit, type ZoneDraft } from '../ui/zoneEdit';
+import { ZoneSheet } from '../ui/ZoneSheet';
 import { DECIDED, initApp, lastTurn, makeReducer, mapState, type Sim } from './machine';
 import { MapSlot, type Overlay, type ZoneLevel } from './MapSlot';
 
@@ -28,8 +31,8 @@ interface AppProps {
   playbackMs?: number;
 }
 
-/** Sheets cover the lower map. In playback the season sits above center and the ticker below. */
-const FOCUS_AT = { sheet: 0.3, playback: 0.5 };
+/** Sheets cover the lower map, and the zone sheet more of it. In playback the season sits above center and the ticker below. */
+const FOCUS_AT = { sheet: 0.3, zone: 0.18, playback: 0.5 };
 
 type Sent = { school: SchoolId; receivers: { school: SchoolId }[] };
 
@@ -60,6 +63,7 @@ export function App({ sim, seed, start = 'status-quo', onStart, playbackMs }: Ap
   const [overlay, setOverlay] = useState<Overlay>('none');
   const [zoneLevel, setZoneLevel] = useState<ZoneLevel>('elementary');
   const [season, setSeason] = useState<Season>('spring');
+  const [zoneDraft, setZoneDraft] = useState<ZoneDraft | null>(null);
 
   const turn = lastTurn(s);
   const shown = s.phase === 'report' && turn ? turn.end : s.game;
@@ -67,7 +71,37 @@ export function App({ sim, seed, start = 'status-quo', onStart, playbackMs }: Ap
   const map = mapState(s, season);
   const planning = s.phase === 'plan' || s.phase === 'preflight';
   const close = () => setTool('map');
-  const drafting = s.phase === 'plan' && tool === 'map' && closeDraft ? closeDraft : null;
+  const zoning = s.phase === 'plan' && tool === 'map' && zoneDraft ? zoneDraft : null;
+  const drafting = s.phase === 'plan' && tool === 'map' && closeDraft && !zoning ? closeDraft : null;
+  const shut = useMemo(
+    () => new Set([...Object.keys(s.game.schools).filter((id) => !s.game.schools[id].open), ...s.draft.closures.map((c) => c.school)]),
+    [s.game, s.draft],
+  );
+  const targetsFor = (level: EditLevel) => targets(level, shut);
+  const planned = useMemo(() => (zoning ? sim.plannedZones(s.game, s.draft) : null), [sim, s.game, s.draft, !!zoning]);
+  const zoneEdit = useMemo(() => {
+    if (!zoning || !planned) return null;
+    const { slice, level, to } = zoning;
+    const shown = slice ? addStroke(zoning, sim.sliceCells({ ...s.game, zones: planned }, level, slice.from, to, slice.percent)) : zoning;
+    return toEdit(shown, planned);
+  }, [sim, s.game, planned, zoning]);
+  const zoneChip = useMemo(
+    () => (zoneEdit?.cells.length ? sim.boundaryChip(s.game, zoneEdit, s.draft) : null),
+    [sim, s.game, s.draft, zoneEdit],
+  );
+  const hasZone = (id: SchoolId) => !shut.has(id) && (['elementary', 'middle'] as const).some((l) => ZONES[l].some((z) => z.school === id));
+  const editBoundary = (id: SchoolId | null) => {
+    const level: EditLevel = id && !ZONES.elementary.some((z) => z.school === id) ? 'middle' : 'elementary';
+    const to = id && hasZone(id) ? id : targetsFor(level)[0].id;
+    setSelected(null);
+    setCloseDraft(null);
+    setZoneDraft(startZoneDraft(level, to));
+    setTool('map');
+  };
+  const commitBoundary = (edit: BoundaryEdit) => {
+    dispatch({ type: 'edit', policy: { boundaryEdits: [...s.draft.boundaryEdits, edit] } });
+    setZoneDraft(null);
+  };
   const candidates = drafting
     ? withNames(sim.receiverCandidates(s.game.schools, drafting.school, s.draft.closures.filter((c) => c.school !== drafting.school)))
     : [];
@@ -77,9 +111,10 @@ export function App({ sim, seed, start = 'status-quo', onStart, playbackMs }: Ap
     drafting,
     drafting?.step === 1 ? candidates.slice(0, NEARBY).map((c) => c.id) : [],
   );
+  if (zoning) marks[zoning.to] = 'receiver';
   const flows = s.phase === 'playing' && played.length > 0 && DECIDED.includes(season);
   const focus =
-    s.phase === 'playing' && played.length > 0 && season !== 'spring' ? played[0].school : (drafting?.school ?? listed);
+    s.phase === 'playing' && played.length > 0 && season !== 'spring' ? played[0].school : (zoning?.to ?? drafting?.school ?? listed);
   const onMapTap = (id: SchoolId) => {
     if (drafting?.step === 1 && candidates.some((c) => c.id === id)) setCloseDraft(toggleReceiver(drafting, id));
     else if (!drafting) setSelected(id);
@@ -110,9 +145,20 @@ export function App({ sim, seed, start = 'status-quo', onStart, playbackMs }: Ap
           overlay={overlay}
           selected={selected}
           onSelectSchool={onMapTap}
-          zoneLevel={zoneLevel}
+          zoneLevel={zoning?.level ?? zoneLevel}
+          zoneEdit={
+            zoning && planned && zoneEdit
+              ? {
+                  level: zoning.level,
+                  zones: planned[zoning.level],
+                  target: zoning.to,
+                  painted: zoneEdit.cells,
+                  onStroke: (cells) => setZoneDraft(addStroke(zoning, cells)),
+                }
+              : undefined
+          }
           focus={focus}
-          focusAt={s.phase === 'playing' ? FOCUS_AT.playback : FOCUS_AT.sheet}
+          focusAt={s.phase === 'playing' ? FOCUS_AT.playback : zoning ? FOCUS_AT.zone : FOCUS_AT.sheet}
           marks={marks}
           links={links}
           flows={flows}
@@ -129,8 +175,10 @@ export function App({ sim, seed, start = 'status-quo', onStart, playbackMs }: Ap
             onSelectSchool={(id) => {
               setSelected(id);
               setListed(id);
+              setZoneDraft(null);
               close();
             }}
+            onEditBoundary={s.phase === 'plan' ? () => editBoundary(selected) : undefined}
             onClose={close}
           />
         )}
@@ -148,7 +196,19 @@ export function App({ sim, seed, start = 'status-quo', onStart, playbackMs }: Ap
             onClose={() => setCloseDraft(null)}
           />
         )}
-        {planning && tool === 'map' && selected && !drafting && (
+        {zoning && zoneEdit && (
+          <ZoneSheet
+            draft={zoning}
+            edit={zoneEdit}
+            chip={zoneChip}
+            targetsFor={targetsFor}
+            sources={planned ? sliceSources(zoning.level, planned, zoning.to) : []}
+            onChange={setZoneDraft}
+            onCommit={commitBoundary}
+            onClose={() => setZoneDraft(null)}
+          />
+        )}
+        {planning && tool === 'map' && selected && !drafting && !zoning && (
           <SchoolSheet
             id={selected}
             state={shown.schools[selected]}
@@ -160,6 +220,7 @@ export function App({ sim, seed, start = 'status-quo', onStart, playbackMs }: Ap
                 ? () => setCloseDraft(startDraft(selected, closing))
                 : undefined
             }
+            onEditBoundary={s.phase === 'plan' && hasZone(selected) ? () => editBoundary(selected) : undefined}
           />
         )}
         {s.phase === 'playing' && turn && (
@@ -174,6 +235,11 @@ export function App({ sim, seed, start = 'status-quo', onStart, playbackMs }: Ap
           <ReportView
             report={turn.report}
             turn={s.history.length}
+            walk={
+              turn.policy.boundaryEdits.length || turn.report.rezoned
+                ? { before: turn.start.dials.walkK5, after: turn.end.dials.walkK5 }
+                : undefined
+            }
             onNext={() => {
               setTool('map');
               dispatch({ type: 'nextYear' });
@@ -187,6 +253,7 @@ export function App({ sim, seed, start = 'status-quo', onStart, playbackMs }: Ap
         onPick={setTool}
         onEnd={() => {
           setCloseDraft(null);
+          setZoneDraft(null);
           dispatch({ type: 'preflight' });
         }}
         disabled={s.phase !== 'plan'}
