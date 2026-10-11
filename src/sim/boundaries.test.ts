@@ -1,11 +1,11 @@
 import { describe, expect, it } from 'vitest';
 import { DEFAULT_POLICY, endYear, modeledRange, newGame, normalizePolicy, previewBudget } from '.';
-import { boundaryChip, decideRezoned, rezoneFactors, sliceEdit } from './boundaries';
+import { boundaryChip, decideRezoned, projectRiders, rezoneFactors, sliceEdit } from './boundaries';
 import { costIndex } from './budget';
 import { followChance } from './closures';
 import { gradeOf, M } from './model';
 import type { BoundaryEdit, GameState, Household, Policy } from './types';
-import { sliceCells } from './zones';
+import { homesByCell, sliceCells, zoningYear } from './zones';
 
 const start = newGame({ seed: 'bounds' });
 const quo = endYear(start, DEFAULT_POLICY);
@@ -129,6 +129,19 @@ describe('re-zoned kids who must choose', () => {
   });
 });
 
+describe('a block moved back to the school its kids kept', () => {
+  it('moves none of the grandfathered kids', () => {
+    const away = sliceEdit(start, 'elementary', 'creston', 'atkinson', 30, true);
+    const year1 = play(away).next;
+    const back: BoundaryEdit = { ...away, to: 'creston', grandfather: false };
+    const year2 = endYear(year1, { ...DEFAULT_POLICY, boundaryEdits: [back] }).next;
+    const kept = year1.households.filter(inCells(away)).filter((h) => h.school === 'creston' && gradeOf(h) < 5);
+    expect(kept.length).toBeGreaterThan(20);
+    const later = new Map(year2.households.map((h) => [h.id, h]));
+    expect(kept.filter((h) => later.get(h.id)?.movedFrom === 'creston')).toEqual([]);
+  });
+});
+
 describe('rezoneFactors', () => {
   const h = start.households.find((x) => x.school === 'creston')!;
 
@@ -202,6 +215,29 @@ describe('walk and buses', () => {
     expect(projected).toBeLessThanOrEqual(1.3 * actual);
   });
 
+  it('books year-2 busing at year-2 prices', () => {
+    const b = year1.next.budget;
+    const { closed } = year1.next.sim!;
+    const zoning = zoningYear(year1.next.zones, closed, [], homesByCell(year1.next.households));
+    const riders = projectRiders(year1.next.households, zoning, closed, new Set());
+    expect(riders).toBeGreaterThan(30);
+    expect(line(b, 'busing')).toBeCloseTo(-riders * 1_400 * costIndex(2028), 0);
+  });
+
+  it("counts the state's repayment as revenue, so it doesn't lower spending", () => {
+    const noCuts = { ...DEFAULT_POLICY, levyRate: 5 };
+    const repaid = previewBudget({ ...start, sim: { ...start.sim!, busing: 1_000_000 } }, noCuts);
+    const none = previewBudget(start, noCuts);
+    expect(repaid.autoCutPositions + none.autoCutPositions).toBe(0);
+    expect(line(repaid, 'busReimbursement')).toBe(800_000);
+    expect(repaid.spending).toBeCloseTo(none.spending, 0);
+  });
+
+  it('charges buses for kids a closure re-zones', () => {
+    const peninsula = { school: 'peninsula', receivers: [{ school: 'rosa-parks', share: 1 }], building: 'mothball' as const };
+    expect(line(previewBudget(start, { ...DEFAULT_POLICY, closures: [peninsula] }), 'busing')).toBeLessThan(0);
+  });
+
   it('books no buses without a change', () => {
     expect(line(quo.report.budget, 'busing')).toBe(0);
     expect(line(quo.next.budget, 'busReimbursement')).toBe(0);
@@ -245,6 +281,18 @@ describe('boundaryChip', () => {
     const far = sliceEdit(start, 'elementary', 'forest-park', 'forest-park', 10, false);
     expect(boundaryChip(start, { ...far, to: 'atkinson' }, DEFAULT_POLICY).contiguous).toBe(false);
     expect(boundaryChip(start, nearCreston(false), DEFAULT_POLICY).contiguous).toBe(true);
+  });
+
+  it("leaves a closing school's kids to the closure", () => {
+    const peninsula = { school: 'peninsula', receivers: [{ school: 'rosa-parks', share: 1 }], building: 'mothball' as const };
+    const cells = sliceCells(start, 'elementary', 'peninsula', 'chief-joseph', 50);
+    const edit: BoundaryEdit = { level: 'elementary', to: 'chief-joseph', cells, grandfather: false };
+    expect(start.households.filter((h) => cells.includes(h.cell) && h.school === 'peninsula').length).toBeGreaterThan(20);
+    expect(boundaryChip(start, edit, { ...DEFAULT_POLICY, closures: [peninsula] }).kidsMoving).toBe(0);
+  });
+
+  it('shows no walk change for a middle edit, since Walk counts K-5', () => {
+    expect(boundaryChip(start, sliceEdit(start, 'middle', 'hosford', 'sellwood', 30, false), DEFAULT_POLICY).walk).toBe(0);
   });
 
   it('counts only blocks the plan has not already moved', () => {
