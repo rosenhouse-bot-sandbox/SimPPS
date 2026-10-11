@@ -30,10 +30,11 @@ const REGION: Record<string, string> = {
   Roosevelt: 'North',
 };
 
-export function regionOf(pos: Point): string | null {
+function regionOf(pos: Point): string | null {
   const z = HIGH.find(pos);
   return z >= 0 ? REGION[ZONES.high[z].name] : null;
 }
+
 const ELEM_ZONE_OF = new Map(ZONES.elementary.map((z, i) => [z.school, i]));
 
 /** Draw purposes, so each decision has its own dice. */
@@ -50,6 +51,9 @@ const D = {
   ReturnSchool: 15,
 };
 
+/** PPS kids at the start of the year and those who left, by region. */
+export type RegionTally = Map<string, { kids: number; leavers: number }>;
+
 export interface YearFacts {
   plan: Budget;
   reserveDraw: number;
@@ -59,8 +63,7 @@ export interface YearFacts {
   kEnrolled: number;
   graduates: number;
   flows: Flows;
-  /** PPS kids at the start of the year and those who left, by region. */
-  regions: Map<string, { kids: number; leavers: number }>;
+  regions: RegionTally;
   k5Homerooms: number;
   /** Homerooms that cuts have removed by October. */
   homeroomsCut: number;
@@ -95,7 +98,7 @@ export interface FamilyYear {
   kEnrolled: number;
   graduates: number;
   flows: Flows;
-  regions: Map<string, { kids: number; leavers: number }>;
+  regions: RegionTally;
 }
 
 /** Spring to fall of `year`: kindergartners choose, 8th graders leave and everyone else may move. */
@@ -145,7 +148,7 @@ export function familiesDecide(
   const bumpK5 = worseYear(classSize, positionsCut);
   const bumpOther = worseYear(24, positionsCut);
   const flows: Flows = { stayed: 0, movedWithinPps: 0, leftPps: 0, cameBack: 0, enteredK: kEnrolled, graduated: 0 };
-  const regions = new Map<string, { kids: number; leavers: number }>();
+  const regions: RegionTally = new Map();
   let graduates = 0;
   for (const h of before) {
     if (h.movedAway) continue;
@@ -291,7 +294,7 @@ export function stepYear(state: GameState, policy: Policy): { next: GameState; f
   };
 }
 
-function countKid(regions: FamilyYear['regions'], pos: Point): { kids: number; leavers: number } | null {
+function countKid(regions: RegionTally, pos: Point): { kids: number; leavers: number } | null {
   const name = regionOf(pos);
   if (!name) return null;
   let r = regions.get(name);
