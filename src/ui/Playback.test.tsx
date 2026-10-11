@@ -57,6 +57,12 @@ describe('Playback', () => {
     expect(onDone).toHaveBeenCalledOnce();
   });
 
+  it('makes each event line, numbers included, open its source', () => {
+    render(<Playback report={FIXTURE_REPORT} onDone={() => {}} durationMs={5000} />);
+    const line = document.querySelector('.ticker [data-source="model.kCapture"]')!;
+    expect(line.textContent).toBe('Lottery runs Entering families choose schools.');
+  });
+
   it('says so when a season has no events', () => {
     render(<Playback report={{ ...FIXTURE_REPORT, events: [] }} onDone={() => {}} durationMs={5000} />);
     expect(screen.getByText('A quiet season.')).toBeTruthy();

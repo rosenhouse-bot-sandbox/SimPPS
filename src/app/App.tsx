@@ -34,8 +34,6 @@ export function App({ sim, seed, playbackMs }: AppProps) {
   const shown = s.phase === 'report' && turn ? turn.end : s.game;
   const plan = useMemo(() => sim.previewBudget(s.game, s.draft), [sim, s.game, s.draft]);
   const map = mapState(s, season);
-  const focus =
-    s.phase === 'playing' && turn ? (turn.report.events.find((e) => e.season === season && e.school)?.school ?? null) : listed;
   const planning = s.phase === 'plan' || s.phase === 'preflight';
   const close = () => setTool('map');
   const when =
@@ -56,7 +54,7 @@ export function App({ sim, seed, playbackMs }: AppProps) {
           selected={selected}
           onSelectSchool={setSelected}
           zoneLevel={zoneLevel}
-          focus={focus}
+          focus={listed}
         />
         {planning && tool === 'budget' && (
           <BudgetPanel game={s.game} draft={s.draft} plan={plan} onEdit={(policy) => dispatch({ type: 'edit', policy })} onClose={close} />

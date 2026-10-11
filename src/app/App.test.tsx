@@ -116,25 +116,6 @@ describe('App', () => {
     expect(isCentered(badgeAt('rosa-parks'))).toBe(true);
   });
 
-  it('jumps the camera to a season event at a school', () => {
-    const sim: Sim = {
-      ...realSim,
-      endYear: (state, policy) => {
-        const r = realSim.endYear(state, policy);
-        const events = r.report.events.map((e) => (e.season === 'summer' ? { ...e, school: 'rosa-parks' } : e));
-        return { ...r, report: { ...r.report, events } };
-      },
-    };
-    setup(sim);
-    hold('End year');
-    hold('Play the year');
-    expect(isCentered(badgeAt('rosa-parks'))).toBe(false);
-    act(() => {
-      vi.advanceTimersByTime(1000);
-    });
-    expect(isCentered(badgeAt('rosa-parks'))).toBe(true);
-  });
-
   it('plays a full year: hold End, review, hold to play, report, next January', () => {
     setup();
     click('Budget');

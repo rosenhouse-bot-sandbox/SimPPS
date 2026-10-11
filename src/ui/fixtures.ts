@@ -49,12 +49,12 @@ export const FIXTURE_GAME: GameState = {
 export const FIXTURE_REPORT: YearReport = {
   year: 2027,
   events: [
-    { season: 'spring', title: 'Lottery runs', detail: 'Entering families choose schools.' },
+    { season: 'spring', title: 'Lottery runs', detail: 'Entering families choose schools.', sourceKey: 'model.kCapture' },
     { season: 'spring', title: 'Budget closes', detail: 'June cuts reach every school.', sourceKey: 'model.autoCuts' },
-    { season: 'summer', title: 'Buildings stay put', detail: 'No closures take effect.' },
-    { season: 'fall', title: 'Families settle', detail: 'Movers choose new schools.' },
-    { season: 'october', title: 'Classes form', detail: 'Blended classes rise in small schools.' },
-    { season: 'winter', title: 'Costs land', detail: 'Pensions and compression grow.' },
+    { season: 'summer', title: 'Buildings stay put', detail: 'No closures take effect.', sourceKey: 'model.graduates' },
+    { season: 'fall', title: 'Families settle', detail: 'Movers choose new schools.', sourceKey: 'model.movingRoll' },
+    { season: 'october', title: 'Classes form', detail: 'Blended classes rise in small schools.', sourceKey: 'model.homerooms' },
+    { season: 'winter', title: 'Costs land', detail: 'Pensions and compression grow.', sourceKey: 'model.costGrowth' },
   ],
   flows: { stayed: 22_100, movedWithinPps: 820, leftPps: 610, cameBack: 140, enteredK: 2_900, graduated: 3_100 },
   vsGhost: [

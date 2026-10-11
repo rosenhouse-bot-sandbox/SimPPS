@@ -100,8 +100,7 @@ export interface SeasonEvent {
   season: Season;
   title: string;
   detail: string;
-  school?: SchoolId;
-  sourceKey?: string;
+  sourceKey: string;
 }
 
 /** Kids now = stayed + movedWithinPps + cameBack + enteredK. */
