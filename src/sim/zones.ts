@@ -100,18 +100,24 @@ export function defaultZone(h: Pick<Household, 'cell'>, grade: number): SchoolId
 const dist = (a: Point, b: Point) => Math.hypot(a[0] - b[0], a[1] - b[1]);
 
 /**
- * Closed schools' cells go to the receivers serving the level, split by share of area with nearer
+ * Closed schools' cells go to the receivers serving the level, split by share of `homes` with nearer
  * cells to the nearer receiver, or to the nearest open school serving it.
  */
-export function closeZones(zones: ZoneMap, closed: readonly Pick<Closure, 'school' | 'receivers'>[]): ZoneMap {
+export function closeZones(
+  zones: ZoneMap,
+  closed: readonly Pick<Closure, 'school' | 'receivers'>[],
+  homes: ReadonlyMap<number, number>,
+): ZoneMap {
   if (closed.length === 0) return zones;
   const { cells } = zoneGrid();
   const shut = new Set(closed.map((c) => c.school));
   const out = { ...zones };
   for (const level of LEVELS) {
     const grade = ENTRY_GRADE[level];
+    const byShut = new Map<SchoolId, number[]>();
+    zones[level].forEach((s, id) => shut.has(s) && (byShut.get(s) ?? byShut.set(s, []).get(s)!).push(id));
     for (const c of closed) {
-      const ids = out[level].flatMap((s, id) => (s === c.school ? [id] : []));
+      const ids = byShut.get(c.school) ?? [];
       if (ids.length === 0) continue;
       if (out[level] === zones[level]) out[level] = [...zones[level]];
       const map = out[level];
@@ -123,11 +129,12 @@ export function closeZones(zones: ZoneMap, closed: readonly Pick<Closure, 'schoo
       const [a, b] = serving.map((r) => schoolPos(r.school));
       const pull = (id: number) => (b ? dist(cells[id].center, a) - dist(cells[id].center, b) : 0);
       const sorted = ids.map((id) => ({ id, p: pull(id) })).sort((x, y) => x.p - y.p || x.id - y.id);
-      const total = ids.reduce((s, id) => s + cells[id].area, 0);
+      const total = ids.reduce((s, id) => s + (homes.get(id) ?? 0), 0);
       let acc = 0;
       for (const { id } of sorted) {
-        map[id] = acc < serving[0].share * total ? serving[0].school : serving[serving.length - 1].school;
-        acc += cells[id].area;
+        const n = homes.get(id) ?? 0;
+        map[id] = acc + n / 2 <= serving[0].share * total ? serving[0].school : serving[serving.length - 1].school;
+        acc += n;
       }
     }
   }
@@ -181,8 +188,9 @@ export function zoningYear(
   zones: ZoneMap,
   closed: readonly Pick<Closure, 'school' | 'receivers'>[],
   edits: readonly BoundaryEdit[],
+  homes: ReadonlyMap<number, number>,
 ): ZoningYear {
-  const afterClosures = closeZones(zones, closed);
+  const afterClosures = closeZones(zones, closed, homes);
   const effective = effectiveEdits(afterClosures, edits, new Set(closed.map((c) => c.school)));
   const changed: ZoningYear['changed'] = { elementary: new Map(), middle: new Map() };
   for (const e of effective) for (const c of e.cells) changed[e.level].set(c, e.grandfather);
@@ -209,10 +217,15 @@ export function nextZone(
   return { zone, forced: moves && h.school !== null && h.school === h.zoneSchool && zone !== h.zoneSchool };
 }
 
-/** Homes in each cell: kids in and out of PPS. */
-function homesByCell(households: readonly Household[]): Map<number, number> {
-  const out = new Map<number, number>();
+const homeCounts = new WeakMap<readonly Household[], Map<number, number>>();
+
+/** Each cell's homes, counting kids in and out of PPS who still live in the city. */
+export function homesByCell(households: readonly Household[]): Map<number, number> {
+  let out = homeCounts.get(households);
+  if (out) return out;
+  out = new Map();
   for (const h of households) if (!h.movedAway) out.set(h.cell, (out.get(h.cell) ?? 0) + 1);
+  homeCounts.set(households, out);
   return out;
 }
 

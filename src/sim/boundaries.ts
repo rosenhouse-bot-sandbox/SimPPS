@@ -15,9 +15,9 @@ import { gradeOf, M, MAX_GRADE } from './model';
 import { SCHOOL_INFO } from './population';
 import { modeledRange } from './range';
 import { draw } from './rng';
-import type { BoundaryEdit, Closure, Flows, GameState, Household, Policy, Range, SchoolId, ZoneLevel } from './types';
+import type { BoundaryEdit, ClosedSchool, Closure, Flows, GameState, Household, Policy, Range, SchoolId, ZoneLevel } from './types';
 import { milesTo, ridesNewBus } from './walk';
-import { defaultZones, ENTRY_GRADE, isContiguous, levelOf, mappedZone, nextZone, normalizeBoundaryEdits, sliceCells, zoningYear, type ZoningYear } from './zones';
+import { defaultZones, ENTRY_GRADE, homesByCell, isContiguous, levelOf, mappedZone, nextZone, normalizeBoundaryEdits, sliceCells, zoningYear, type ZoningYear } from './zones';
 
 /** "The N% of zone `from` nearest `to`" moved into `to`'s zone. */
 export function sliceEdit(
@@ -29,6 +29,22 @@ export function sliceEdit(
   grandfather: boolean,
 ): BoundaryEdit {
   return { level, to, cells: sliceCells(state, level, from, to, percent), grandfather };
+}
+
+/** Next fall's zones: closures in force re-zone first, then `edits` apply. */
+export function planZoning<C extends Closure>(
+  state: Pick<GameState, 'households' | 'zones' | 'sim'>,
+  closing: readonly C[],
+  edits: readonly BoundaryEdit[],
+): { closed: (ClosedSchool | C)[]; closingNow: Set<SchoolId>; zoning: ZoningYear } {
+  const closed: (ClosedSchool | C)[] = [...state.sim!.closed, ...closing];
+  const zoning = zoningYear(state.zones, closed, edits, homesByCell(state.households));
+  return { closed, closingNow: new Set(closing.map((c) => c.school)), zoning };
+}
+
+/** Next fall's new bus riders under a plan. */
+export function plannedRiders(households: readonly Household[], plan: ReturnType<typeof planZoning<Closure>>): number {
+  return projectRiders(households, plan.zoning, plan.closed, plan.closingNow);
 }
 
 /**
@@ -51,6 +67,10 @@ export function projectRiders(
     const g = gradeOf(h);
     const ng = g + 1;
     if (ng > MAX_GRADE) continue;
+    const level = levelOf(ng);
+    const was = today[level][h.cell];
+    // Only a zone that differs from today's makes a new rider.
+    if (zoning.zones[level][h.cell] === was && (ng === ENTRY_GRADE.middle || h.zoneSchool === was)) continue;
     const { zone, forced } = nextZone(h, ng, zoning, shut);
     if (h.school === null) {
       if (ridesNewBus(h, ng, zone, zone)) n += ng === ENTRY_GRADE.middle ? M.grade6Return : M.returnRate;
@@ -91,12 +111,12 @@ const span = (a: number, b: number): Range => ({ lo: Math.min(a, b), hi: Math.ma
 /** `plan` holds the other edits and closures; the edit applies after them. */
 export function boundaryChip(state: GameState, edit: BoundaryEdit, plan: Policy): BoundaryChip {
   const closing = effectiveClosures(state.schools, normalizeClosures(plan.closures));
-  const closed = [...state.sim!.closed, ...closing];
-  const closingNow = new Set(closing.map((c) => c.school));
-  const shut = new Set(closed.map((c) => c.school));
   const others = normalizeBoundaryEdits(plan.boundaryEdits);
-  const base = zoningYear(state.zones, closed, others);
-  const after = zoningYear(state.zones, closed, normalizeBoundaryEdits([...others, edit]));
+  const before = planZoning(state, closing, others);
+  const later = planZoning(state, closing, normalizeBoundaryEdits([...others, edit]));
+  const { closingNow, closed } = before;
+  const shut = new Set(closed.map((c) => c.school));
+  const [base, after] = [before.zoning, later.zoning];
   const { level } = edit;
   const moved = new Set<number>();
   after.zones[level].forEach((s, c) => s !== base.zones[level][c] && moved.add(c));
@@ -124,8 +144,7 @@ export function boundaryChip(state: GameState, edit: BoundaryEdit, plan: Policy)
     mature += +ridesNewBus(h, g, nu, nu) - +ridesNewBus(h, g, h.school, h.school);
     if (level === 'elementary') walk += +(milesTo(h, nu) <= M.walkDialMiles) - +(milesTo(h, h.school) <= M.walkDialMiles);
   }
-  const now =
-    projectRiders(state.households, after, closed, closingNow) - projectRiders(state.households, base, closed, closingNow);
+  const now = plannedRiders(state.households, later) - plannedRiders(state.households, before);
   const index = costIndex(state.year);
   const { busRider: cost, busReimbursed: repaid } = M;
   return {

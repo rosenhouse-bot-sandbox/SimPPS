@@ -342,6 +342,17 @@ describe('Scenario A over a year', () => {
   const { next, report } = endYear(start, start.policy);
   const movers = next.households.filter((h) => h.movedFrom);
 
+  it('sends each follower who lives in the closed zone to the receiver its block went to', () => {
+    const before = new Map(start.households.map((h) => [h.id, h]));
+    const closures = new Map(start.policy.closures.map((c) => [c.school, c]));
+    const followers = movers.filter((h) => {
+      const c = closures.get(h.movedFrom!);
+      return c && before.get(h.id)!.zoneSchool === c.school && c.receivers.some((r) => r.school === h.school);
+    });
+    expect(followers.length).toBeGreaterThan(1000);
+    expect(followers.filter((h) => h.school !== h.zoneSchool)).toEqual([]);
+  });
+
   it('closes 14 schools and empties them', () => {
     expect(report.closures).toHaveLength(14);
     for (const c of report.closures) expect(next.schools[c.school].enrollment).toBe(0);

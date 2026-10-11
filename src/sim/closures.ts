@@ -431,7 +431,8 @@ export function decideClosures(args: {
     next.forcedMoves = (before.forcedMoves ?? 0) + 1;
     next.fundedAs = before.fundedAs ?? closure.school;
     const serving = receiversFor(closure, gradeOf(next));
-    const target = serving.length ? pickShare(serving, draw(seed, year, before.id, D.Receiver)) : m.fallback;
+    const zoned = serving.some((r) => r.school === next.zoneSchool);
+    const target = zoned ? next.zoneSchool : serving.length ? pickShare(serving, draw(seed, year, before.id, D.Receiver)) : m.fallback;
     const p = followChance(args.followRate + schoolFollowOffset(seed, closure.school), followFactors(before, closure, target));
     if (draw(seed, year, before.id, D.Follow) >= p) {
       // model.nonFollowers

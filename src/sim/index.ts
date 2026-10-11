@@ -6,8 +6,8 @@ import { headlines, rezoneOutcome, seasonEvents, versusGhost } from './report';
 import { draw, hashString } from './rng';
 import { buildSchools, computeDials } from './schools';
 import { closureOutcomes, effectiveClosures, normalizeClosures } from './closures';
-import { projectRiders } from './boundaries';
-import { defaultZones, normalizeBoundaryEdits, zoningYear } from './zones';
+import { plannedRiders, planZoning } from './boundaries';
+import { defaultZones, normalizeBoundaryEdits } from './zones';
 import { SCENARIOS, type Start } from './scenarios';
 import { familiesDecide, stepYear } from './step';
 import type { Budget, GameState, Household, Policy, SimMemory, YearReport, ZoneMap } from './types';
@@ -125,9 +125,7 @@ export function normalizePolicy(p: Policy): Policy {
 export function previewBudget(state: GameState, policy: Policy): Budget {
   const sim = state.sim!;
   const plan = normalizePolicy(policy);
-  const closing = effectiveClosures(state.schools, plan.closures);
-  const closed = [...sim.closed, ...closing];
-  const zoning = zoningYear(state.zones, closed, plan.boundaryEdits);
+  const planned = planZoning(state, effectiveClosures(state.schools, plan.closures), plan.boundaryEdits);
   return computeBudget({
     year: state.year,
     schools: state.schools,
@@ -140,7 +138,7 @@ export function previewBudget(state: GameState, policy: Policy): Budget {
     restCost: sim.restCost,
     stateFunding: stateFundingLevel(sim.seedHash, state.year, 'january'),
     closed: sim.closed,
-    busRiders: projectRiders(state.households, zoning, closed, new Set(closing.map((c) => c.school))),
+    busRiders: plannedRiders(state.households, planned),
     busingLastYear: sim.busing,
   });
 }
@@ -148,8 +146,7 @@ export function previewBudget(state: GameState, policy: Policy): Budget {
 /** Each cell's zone school next fall under `policy`: its closures, then its boundary edits. */
 export function plannedZones(state: GameState, policy: Policy): ZoneMap {
   const plan = normalizePolicy(policy);
-  const closed = [...state.sim!.closed, ...effectiveClosures(state.schools, plan.closures)];
-  return zoningYear(state.zones, closed, plan.boundaryEdits).zones;
+  return planZoning(state, effectiveClosures(state.schools, plan.closures), plan.boundaryEdits).zoning.zones;
 }
 
 /** Plays a year for the player and for the do-nothing ghost (model.ghost). */

@@ -8,8 +8,8 @@ import { CITYWIDE_INTAKE, exitCapacityFor, pick, SCHOOL_INFO, voiceFor } from '.
 import { draw, stream } from './rng';
 import { closuresTakingEffect, decideClosures, rezoneDraw, resolveSchool, type ClosureTally, type Mover } from './closures';
 import { buildSchools, computeDials } from './schools';
-import { decideRezoned, projectRiders, type RezoneMover, type RezoneTally } from './boundaries';
-import { defaultZones, nextZone, zoningYear, type ZoningYear } from './zones';
+import { decideRezoned, plannedRiders, planZoning, projectRiders, type RezoneMover, type RezoneTally } from './boundaries';
+import { defaultZones, homesByCell, nextZone, zoningYear, type ZoningYear } from './zones';
 import type {
   Budget,
   ClosedSchool,
@@ -133,7 +133,7 @@ export function familiesDecide(
   classSize: number,
   positionsCut: number,
   closures: ClosureYear = { closed: [], cards: { followRate: 1, closedZoneCaptureDrop: 0 } },
-  zoning: ZoningYear = zoningYear(defaultZones(), closures.closed, []),
+  zoning: ZoningYear = zoningYear(defaultZones(), closures.closed, [], homesByCell(before)),
 ): FamilyYear {
   const seed = mem.seedHash;
   const closed = new Map(closures.closed.map((c) => [c.school, c]));
@@ -289,8 +289,8 @@ export function stepYear(state: GameState, policy: Policy): { next: GameState; f
   const year = state.year;
   const index = costIndex(year);
   const closing = closuresTakingEffect(state.schools, policy.closures, policy.k5ClassSize, year);
-  const closed = [...mem.closed, ...closing];
-  const zoning = zoningYear(state.zones, closed, policy.boundaryEdits);
+  const planned = planZoning(state, closing, policy.boundaryEdits);
+  const { closed, zoning } = planned;
 
   // June: the budget closes.
   const plan = computeBudget({
@@ -305,7 +305,7 @@ export function stepYear(state: GameState, policy: Policy): { next: GameState; f
     restCost: mem.restCost,
     stateFunding: stateFundingLevel(mem.seedHash, year, 'june'),
     closed: mem.closed,
-    busRiders: projectRiders(state.households, zoning, closed, new Set(closing.map((c) => c.school))),
+    busRiders: plannedRiders(state.households, planned),
     busingLastYear: mem.busing,
   });
   const autoCuts = plan.autoCutPositions;
@@ -359,7 +359,7 @@ export function stepYear(state: GameState, policy: Policy): { next: GameState; f
     restCost: mem.restCost,
     stateFunding: stateFundingLevel(mem.seedHash, year + 1, 'january'),
     closed,
-    busRiders: projectRiders(households, zoningYear(zones, closed, []), closed, new Set()),
+    busRiders: projectRiders(households, zoningYear(zones, closed, [], homesByCell(households)), closed, new Set()),
     busingLastYear: busing,
   });
   const nextState: GameState = {

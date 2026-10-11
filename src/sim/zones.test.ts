@@ -12,6 +12,7 @@ import {
   cellAtPoint,
   closeZones,
   defaultZones,
+  homesByCell,
   isContiguous,
   normalizeBoundaryEdits,
   sliceCells,
@@ -173,18 +174,18 @@ describe('closeZones', () => {
   });
 
   it("re-zones a closed school's blocks to its receiver", () => {
-    const zones = closeZones(defaultZones(), [closed('peninsula', ['rosa-parks', 1])]);
+    const zones = closeZones(defaultZones(), [closed('peninsula', ['rosa-parks', 1])], new Map());
     for (const c of cellsOf('elementary', 'peninsula')) expect(zones.elementary[c]).toBe('rosa-parks');
     expect(zones.elementary.includes('peninsula')).toBe(false);
     expect(defaultZones().elementary.includes('peninsula')).toBe(true);
   });
 
-  it('splits blocks between two receivers by share of area, nearer blocks to the nearer receiver', () => {
-    const zones = closeZones(defaultZones(), [closed('maplewood', ['hayhurst', 0.7], ['rieke', 0.3])]);
+  it('splits homes between two receivers by share, nearer blocks to the nearer receiver', () => {
+    const homes = homesByCell(start.households);
+    const zones = closeZones(defaultZones(), [closed('maplewood', ['hayhurst', 0.7], ['rieke', 0.3])], homes);
     const cells = cellsOf('elementary', 'maplewood');
-    const area = (to: string) => cells.filter((c) => zones.elementary[c] === to).reduce((a, c) => a + grid.cells[c].area, 0);
-    const total = area('hayhurst') + area('rieke');
-    expect(area('hayhurst') / total).toBeCloseTo(0.7, 1);
+    const count = (to: string) => cells.filter((c) => zones.elementary[c] === to).reduce((a, c) => a + (homes.get(c) ?? 0), 0);
+    expect(count('hayhurst') / (count('hayhurst') + count('rieke'))).toBeCloseTo(0.7, 1);
     const pull = (c: number) => {
       const p = grid.cells[c].center;
       const [h, r] = [schoolPos('hayhurst'), schoolPos('rieke')];
@@ -195,17 +196,25 @@ describe('closeZones', () => {
     expect(Math.max(...toH)).toBeLessThanOrEqual(Math.min(...toR));
   });
 
+  it('splits a middle zone evenly by homes, not by area', () => {
+    const homes = homesByCell(start.households);
+    const zones = closeZones(defaultZones(), [closed('sellwood', ['hosford', 0.5], ['lane', 0.5])], homes);
+    const cells = cellsOf('middle', 'sellwood');
+    const count = (to: string) => cells.filter((c) => zones.middle[c] === to).reduce((a, c) => a + (homes.get(c) ?? 0), 0);
+    expect(count('hosford') / (count('hosford') + count('lane'))).toBeCloseTo(0.5, 1);
+  });
+
   it("sends a closed middle zone's blocks to the nearest open middle grades when no receiver serves them", () => {
     const k8 = cellsOf('middle', 'vernon');
     expect(k8.length).toBeGreaterThan(0);
-    const zones = closeZones(defaultZones(), [closed('vernon', ['boise-eliot', 1])]);
+    const zones = closeZones(defaultZones(), [closed('vernon', ['boise-eliot', 1])], new Map());
     for (const c of k8) expect(['vernon', 'boise-eliot']).not.toContain(zones.middle[c]);
     for (const c of cellsOf('elementary', 'vernon')) expect(zones.elementary[c]).toBe('boise-eliot');
   });
 
   it('is idempotent', () => {
-    const once = closeZones(defaultZones(), [closed('peninsula', ['rosa-parks', 1])]);
-    expect(closeZones(once, [closed('peninsula', ['rosa-parks', 1])])).toEqual(once);
+    const once = closeZones(defaultZones(), [closed('peninsula', ['rosa-parks', 1])], new Map());
+    expect(closeZones(once, [closed('peninsula', ['rosa-parks', 1])], new Map())).toEqual(once);
   });
 });
 
