@@ -1,5 +1,10 @@
 import { useMemo, useReducer, useState } from 'preact/hooks';
-import type { Season } from '../sim/types';
+import type { Mark } from '../map/MapView';
+import type { Start } from '../sim';
+import type { Closure, SchoolId, Season } from '../sim/types';
+import { NEARBY, receiverCandidates, startDraft, toggleReceiver, type CloseDraft } from '../ui/closeSend';
+import { CloseSendSheet } from '../ui/CloseSendSheet';
+import { StartPicker } from '../ui/StartPicker';
 import { BudgetPanel } from '../ui/BudgetPanel';
 import { GapBar } from '../ui/GapBar';
 import { LayersPanel } from '../ui/LayersPanel';
@@ -11,18 +16,44 @@ import { ReportView } from '../ui/ReportView';
 import { SchoolSheet } from '../ui/SchoolSheet';
 import { Toolbar, type Tool } from '../ui/Toolbar';
 import { TopBar } from '../ui/TopBar';
-import { initApp, lastTurn, makeReducer, mapState, type Sim } from './machine';
+import { DECIDED, initApp, lastTurn, makeReducer, mapState, type Sim } from './machine';
 import { MapSlot, type Overlay, type ZoneLevel } from './MapSlot';
 
 interface AppProps {
   sim: Sim;
   seed: string;
+  /** Null asks the player to pick one. */
+  start?: Start | null;
+  onStart?: (start: Start) => void;
   playbackMs?: number;
 }
 
-export function App({ sim, seed, playbackMs }: AppProps) {
+/** Sheets cover the lower map. In playback the season sits above center and the ticker below. */
+const FOCUS_AT = { sheet: 0.3, playback: 0.5 };
+
+type Sent = { school: SchoolId; receivers: { school: SchoolId }[] };
+
+/** Marks and links for closures in the plan, or the one being drafted. */
+function closureMarks(plan: Sent[], draft: CloseDraft | null, candidates: SchoolId[]) {
+  const marks: Partial<Record<SchoolId, Mark>> = {};
+  const links: [SchoolId, SchoolId][] = [];
+  const shown: Sent[] = draft ? [{ school: draft.school, receivers: draft.receivers.map((school) => ({ school })) }] : plan;
+  for (const id of candidates) marks[id] = 'candidate';
+  for (const c of shown) {
+    marks[c.school] = 'closing';
+    for (const r of c.receivers) {
+      marks[r.school] = 'receiver';
+      links.push([c.school, r.school]);
+    }
+  }
+  return { marks, links };
+}
+
+export function App({ sim, seed, start = 'status-quo', onStart, playbackMs }: AppProps) {
   const reduce = useMemo(() => makeReducer(sim), [sim]);
-  const [s, dispatch] = useReducer(reduce, undefined, () => initApp(sim, seed));
+  const [s, dispatch] = useReducer(reduce, undefined, () => initApp(sim, seed, start ?? 'status-quo'));
+  const [picking, setPicking] = useState(start === null);
+  const [closeDraft, setCloseDraft] = useState<CloseDraft | null>(null);
   const [tool, setTool] = useState<Tool>('map');
   const [selected, setSelected] = useState<string | null>(null);
   const [listed, setListed] = useState<string | null>(null);
@@ -36,6 +67,26 @@ export function App({ sim, seed, playbackMs }: AppProps) {
   const map = mapState(s, season);
   const planning = s.phase === 'plan' || s.phase === 'preflight';
   const close = () => setTool('map');
+  const drafting = s.phase === 'plan' && tool === 'map' && closeDraft ? closeDraft : null;
+  const candidates =
+    drafting?.step === 1
+      ? receiverCandidates(s.game.schools, drafting.school, s.draft.closures.filter((c) => c.school !== drafting.school))
+      : [];
+  const played = s.phase === 'playing' || s.phase === 'report' ? (turn?.report.closures ?? []) : [];
+  const { marks, links } = closureMarks(
+    planning ? s.draft.closures : played,
+    drafting,
+    candidates.slice(0, NEARBY).map((c) => c.id),
+  );
+  const flows = s.phase === 'playing' && played.length > 0 && DECIDED.includes(season);
+  const focus =
+    s.phase === 'playing' && played.length > 0 && season !== 'spring' ? played[0].school : (drafting?.school ?? listed);
+  const onMapTap = (id: SchoolId) => {
+    if (drafting?.step === 1 && candidates.some((c) => c.id === id)) setCloseDraft(toggleReceiver(drafting, id));
+    else if (!drafting) setSelected(id);
+  };
+  const commit = (c: Closure) =>
+    dispatch({ type: 'edit', policy: { closures: [...s.draft.closures.filter((x) => x.school !== c.school), c] } });
   const when =
     s.phase === 'playing'
       ? `${SEASONS.find((x) => x.id === season)!.month} ${s.game.year}`
@@ -56,9 +107,13 @@ export function App({ sim, seed, playbackMs }: AppProps) {
           households={map.households}
           overlay={overlay}
           selected={selected}
-          onSelectSchool={setSelected}
+          onSelectSchool={onMapTap}
           zoneLevel={zoneLevel}
-          focus={listed}
+          focus={focus}
+          focusAt={s.phase === 'playing' ? FOCUS_AT.playback : FOCUS_AT.sheet}
+          marks={marks}
+          links={links}
+          flows={flows}
         />
         {planning && tool === 'budget' && (
           <BudgetPanel game={s.game} draft={s.draft} plan={plan} onEdit={(policy) => dispatch({ type: 'edit', policy })} onClose={close} />
@@ -67,6 +122,8 @@ export function App({ sim, seed, playbackMs }: AppProps) {
           <PlanPanel
             draft={s.draft}
             base={s.game.policy}
+            start={s.start}
+            onEdit={(policy) => dispatch({ type: 'edit', policy })}
             onSelectSchool={(id) => {
               setSelected(id);
               setListed(id);
@@ -79,8 +136,30 @@ export function App({ sim, seed, playbackMs }: AppProps) {
           <LayersPanel overlay={overlay} zoneLevel={zoneLevel} onOverlay={setOverlay} onZoneLevel={setZoneLevel} onClose={close} />
         )}
         {planning && tool === 'news' && <NewsPanel reports={s.history.map((t) => t.report)} onClose={close} />}
-        {planning && tool === 'map' && selected && (
-          <SchoolSheet id={selected} state={shown.schools[selected]} onClose={() => setSelected(null)} />
+        {drafting && (
+          <CloseSendSheet
+            draft={drafting}
+            game={s.game}
+            plan={s.draft.closures}
+            classSize={s.draft.k5ClassSize}
+            onChange={setCloseDraft}
+            onCommit={commit}
+            onClose={() => setCloseDraft(null)}
+          />
+        )}
+        {planning && tool === 'map' && selected && !drafting && (
+          <SchoolSheet
+            id={selected}
+            state={shown.schools[selected]}
+            onClose={() => setSelected(null)}
+            closing={s.draft.closures.find((c) => c.school === selected)}
+            receivesFrom={s.draft.closures.filter((c) => c.receivers.some((r) => r.school === selected)).map((c) => c.school)}
+            onCloseSend={
+              s.phase === 'plan'
+                ? () => setCloseDraft(startDraft(selected, s.draft.closures.find((c) => c.school === selected)))
+                : undefined
+            }
+          />
         )}
         {s.phase === 'playing' && turn && (
           <Playback
@@ -105,9 +184,21 @@ export function App({ sim, seed, playbackMs }: AppProps) {
       <Toolbar
         active={tool}
         onPick={setTool}
-        onEnd={() => dispatch({ type: 'preflight' })}
+        onEnd={() => {
+          setCloseDraft(null);
+          dispatch({ type: 'preflight' });
+        }}
         disabled={s.phase !== 'plan'}
       />
+      {picking && (
+        <StartPicker
+          onPick={(start) => {
+            dispatch({ type: 'restart', start });
+            onStart?.(start);
+            setPicking(false);
+          }}
+        />
+      )}
       {s.phase === 'preflight' && (
         <PreflightSheet
           year={s.game.year}

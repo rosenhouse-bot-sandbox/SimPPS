@@ -48,4 +48,49 @@ describe('ReportView', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Plan 2028' }));
     expect(onNext).toHaveBeenCalledOnce();
   });
+
+  it("shows where each closed school's kids went, as sourced ranges, and scores the call", () => {
+    const report = {
+      ...FIXTURE_REPORT,
+      closures: [
+        {
+          school: 'peninsula',
+          kids: 188,
+          receivers: [{ school: 'rosa-parks', kids: { lo: 136, hi: 154 } }],
+          otherPps: { lo: 14, hi: 20 },
+          leftPps: { lo: 23, hi: 29 },
+          stayedWithoutChoice: 32,
+          guess: { stayInPps: 160, actual: { lo: 152, hi: 172 }, hit: true },
+        },
+      ],
+    };
+    render(<ReportView report={report} turn={1} onNext={() => {}} />);
+    const section = screen.getByRole('region', { name: 'Where Peninsula kids went' });
+    expect(section.querySelector('p')!.textContent).toBe('Peninsula, 177–199~ kids:');
+    const rows = [...section.querySelectorAll('.flow')].map((r) => r.textContent);
+    expect(rows).toEqual(['Rosa Parks136–154~', 'Other PPS14–20~', 'Left PPS23–29~']);
+    expect([...section.querySelectorAll('.flow [data-source]')].map((e) => e.getAttribute('data-source'))).toEqual([
+      'model.followRate',
+      'model.nonFollowers',
+      'model.nonFollowers',
+    ]);
+    expect(section.querySelector('.call')!.textContent).toBe('You called 160. Stayed in PPS: 152–172~ HIT');
+    expect((section.querySelector('.flow .bar') as HTMLElement).style.width).toBe(`${(100 * 145) / 188}%`);
+  });
+
+  it('says MISS for a call outside the range, and nothing without one', () => {
+    const outcome = {
+      school: 'peninsula',
+      kids: 188,
+      receivers: [{ school: 'rosa-parks', kids: { lo: 136, hi: 154 } }],
+      otherPps: { lo: 14, hi: 20 },
+      leftPps: { lo: 23, hi: 29 },
+      stayedWithoutChoice: 32,
+    };
+    render(<ReportView report={{ ...FIXTURE_REPORT, closures: [{ ...outcome, guess: { stayInPps: 220, actual: { lo: 152, hi: 172 }, hit: false } }] }} turn={1} onNext={() => {}} />);
+    expect(document.querySelector('.call')!.textContent).toContain('MISS');
+    cleanup();
+    render(<ReportView report={{ ...FIXTURE_REPORT, closures: [outcome] }} turn={1} onNext={() => {}} />);
+    expect(document.querySelector('.call')).toBeNull();
+  });
 });

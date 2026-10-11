@@ -1,9 +1,10 @@
+import type { Start } from '../sim';
 import type { Budget, GameState, Policy, Season, YearReport } from '../sim/types';
 
 export type Phase = 'plan' | 'preflight' | 'playing' | 'report';
 
 export interface Sim {
-  newGame(opts: { seed: string }): GameState;
+  newGame(opts: { seed: string; start?: Start }): GameState;
   endYear(state: GameState, policy: Policy): { next: GameState; report: YearReport };
   previewBudget(state: GameState, policy: Policy): Budget;
   normalizePolicy(policy: Policy): Policy;
@@ -19,6 +20,7 @@ export interface Turn {
 
 export interface AppState {
   phase: Phase;
+  start: Start;
   /** The state being planned, or the state the playing year started from. */
   game: GameState;
   draft: Policy;
@@ -31,28 +33,30 @@ export type Action =
   | { type: 'back' }
   | { type: 'confirm' }
   | { type: 'playbackDone' }
-  | { type: 'nextYear' };
+  | { type: 'nextYear' }
+  | { type: 'restart'; start: Start };
 
 /** A reserve draw is once, so each plan starts with none. */
 function draftFor(game: GameState): Policy {
   return { ...game.policy, reserveDraw: 0 };
 }
 
-export function initApp(sim: Sim, seed: string): AppState {
-  const game = sim.newGame({ seed });
-  return { phase: 'plan', game, draft: draftFor(game), history: [] };
+export function initApp(sim: Sim, seed: string, start: Start = 'status-quo'): AppState {
+  const game = sim.newGame({ seed, start });
+  return { phase: 'plan', start, game, draft: draftFor(game), history: [] };
 }
 
 export function lastTurn(s: AppState): Turn | undefined {
   return s.history[s.history.length - 1];
 }
 
-const DECIDED: Season[] = ['fall', 'october', 'winter'];
+export const DECIDED: Season[] = ['fall', 'october', 'winter'];
 
-/** Families decide in fall, so the map shows the year's outcome from then on. */
+/** Closures take effect in summer and families decide in fall, so the map shows the outcome from then on. */
 export function mapState(s: AppState, season: Season): GameState {
   const turn = lastTurn(s);
   if (turn && (s.phase === 'report' || (s.phase === 'playing' && DECIDED.includes(season)))) return turn.end;
+  if (turn && s.phase === 'playing' && season === 'summer') return { ...s.game, schools: turn.end.schools };
   return s.game;
 }
 
@@ -78,6 +82,8 @@ export function makeReducer(sim: Sim) {
         if (s.phase !== 'report' || !turn) return s;
         return { ...s, phase: 'plan', game: turn.end, draft: draftFor(turn.end) };
       }
+      case 'restart':
+        return initApp(sim, s.game.seed, a.start);
     }
   };
 }

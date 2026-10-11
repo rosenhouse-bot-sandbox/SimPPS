@@ -1,5 +1,7 @@
-import type { Dials, Flows, YearReport } from '../sim/types';
-import { fmtMoney, fmtPct } from '../format';
+import type { ClosureOutcome, Dials, Flows, Range, YearReport } from '../sim/types';
+import { fmtMoney, fmtPct, fmtRange } from '../format';
+import { modeledRange } from '../sim';
+import { nameOf } from './closeSend';
 import { Sourced } from './Sourced';
 import { K } from './sources';
 import { Window } from './Window';
@@ -59,6 +61,41 @@ function WhereKidsWent({ flows }: { flows: Flows }) {
   );
 }
 
+function OutcomeRow({ label, kids, of, k }: { label: string; kids: Range; of: number; k: string }) {
+  return (
+    <div class="flow">
+      <dt>{label}</dt>
+      <dd>
+        <span class="bar" style={{ width: `${(100 * (kids.lo + kids.hi)) / 2 / Math.max(1, of)}%` }} />
+        <Sourced k={k}>{fmtRange(kids)}</Sourced>
+      </dd>
+    </div>
+  );
+}
+
+function ClosureReport({ c }: { c: ClosureOutcome }) {
+  return (
+    <section class="closure-report" aria-label={`Where ${nameOf(c.school)} kids went`}>
+      <p>
+        {nameOf(c.school)}, <Sourced k={K.enrollment}>{fmtRange(modeledRange(c.kids))}</Sourced> kids:
+      </p>
+      <dl class="flows">
+        {c.receivers.map((r) => (
+          <OutcomeRow key={r.school} label={nameOf(r.school)} kids={r.kids} of={c.kids} k={K.followRate} />
+        ))}
+        <OutcomeRow label="Other PPS" kids={c.otherPps} of={c.kids} k={K.nonFollowers} />
+        <OutcomeRow label="Left PPS" kids={c.leftPps} of={c.kids} k={K.nonFollowers} />
+      </dl>
+      {c.guess && (
+        <p class={c.guess.hit ? 'call hit' : 'call'}>
+          You called <Sourced k={K.callIt}>{String(c.guess.stayInPps)}</Sourced>. Stayed in PPS:{' '}
+          <Sourced k={K.followRate}>{fmtRange(c.guess.actual)}</Sourced> <span class="stamp">{c.guess.hit ? 'HIT' : 'MISS'}</span>
+        </p>
+      )}
+    </section>
+  );
+}
+
 interface ReportProps {
   report: YearReport;
   turn: number;
@@ -69,6 +106,9 @@ export function ReportView({ report, turn, onNext }: ReportProps) {
   return (
     <Window title={`DEC ${report.year} · YEAR ${turn}`} class="panel report">
       <h3>Where kids went</h3>
+      {report.closures.map((c) => (
+        <ClosureReport key={c.school} c={c} />
+      ))}
       <WhereKidsWent flows={report.flows} />
       <h3>Vs. do-nothing ghost</h3>
       {report.vsGhost.length === 0 && <p class="note">No difference yet.</p>}
