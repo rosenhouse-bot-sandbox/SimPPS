@@ -20,10 +20,11 @@ function withoutGhost(s: GameState) {
 const tenYears = run(start, DEFAULT_POLICY, 10);
 
 describe('newGame', () => {
-  it('opens in January 2027 with 74 schools and 26,966 kids', () => {
+  it('opens in January 2027 with 74 schools and 26,981 K-8 kids', () => {
     expect(start.year).toBe(2027);
     expect(Object.keys(start.schools)).toHaveLength(74);
-    expect(start.dials.kids).toBe(26_966);
+    expect(start.dials.kids).toBe(26_981);
+    expect(start.schools.alliance.enrollment).toBe(215);
     expect(start.schools['rosa-parks'].enrollment).toBe(160);
   });
 

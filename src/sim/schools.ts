@@ -9,7 +9,7 @@ export function buildSchools(households: Household[], classSize: number): Record
     schools[id] = {
       id,
       open: true,
-      enrollment: 0,
+      enrollment: info.highSchoolers,
       byGrade: new Array<number>(MAX_GRADE + 1).fill(0),
       capacity: info.data.capacity ?? 0,
       homerooms: 0,

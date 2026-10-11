@@ -33,6 +33,13 @@ export const MODEL_SOURCES: Source[] = [
     links: [DESIGN],
   },
   {
+    key: 'model.altPrograms',
+    label: 'Alternative programs',
+    tag: 'I',
+    explain: "The game simulates K-8 kids only. Alliance's 215 high schoolers and MLC's high schoolers (4 of its 13 grades) stay fixed. ACCESS serves grades 1-8; it starts from PSU's 2026 forecast of 315, because the state reports no count for it, and it takes no kindergartners.",
+    links: [PPS_DATA, PSU],
+  },
+  {
     key: 'model.exitCapacity',
     label: 'Exit capacity',
     tag: 'M',

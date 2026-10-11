@@ -20,11 +20,28 @@ describe('generatePopulation', () => {
     }
   });
 
-  it('matches every school total from fall 2025', () => {
+  it('matches every K-8 school total from fall 2025', () => {
     const counts = new Map<string, number>();
     for (const h of inPps) counts.set(h.school!, (counts.get(h.school!) ?? 0) + 1);
-    for (const s of SCHOOLS) expect(counts.get(s.id) ?? 0).toBe(s.enrollment ?? 0);
-    expect(inPps).toHaveLength(26_966);
+    for (const s of SCHOOLS) if (s.level !== 'ALT') expect(counts.get(s.id) ?? 0).toBe(s.enrollment ?? 0);
+  });
+
+  it('simulates only the K-8 grades of alternative programs', () => {
+    const count = (id: string) => inPps.filter((h) => h.school === id).length;
+    expect(count('alliance')).toBe(0);
+    expect(SCHOOL_INFO.get('alliance')!.highSchoolers).toBe(215);
+    expect(count('metropolitan-learning-center')).toBe(190);
+    expect(SCHOOL_INFO.get('metropolitan-learning-center')!.highSchoolers).toBe(85);
+    expect(count('access-academy')).toBe(315);
+    expect(SCHOOL_INFO.get('access-academy')).toMatchObject({ lo: 1, hi: 8 });
+    expect(inPps).toHaveLength(26_966 - 215 - 85 + 315);
+  });
+
+  it('never offers a kindergarten seat at a school without kindergarten', () => {
+    for (const c of pop.kChoice) {
+      expect(c.ids).not.toContain('alliance');
+      expect(c.ids).not.toContain('access-academy');
+    }
   });
 
   it('keeps kids inside their school grade span', () => {

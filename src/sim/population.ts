@@ -6,8 +6,13 @@ import type { Household, SchoolChoice as Choice, SchoolId } from './types';
 
 export interface SchoolInfo {
   data: SchoolData;
+  /** The K-8 grades the school serves. */
   lo: number;
   hi: number;
+  /** Simulated kids in fall 2025. */
+  k8: number;
+  /** High schoolers, held fixed outside the simulation. */
+  highSchoolers: number;
   elemZone: number;
   middleZone: number;
 }
@@ -15,13 +20,29 @@ export interface SchoolInfo {
 export const ELEM = new ZoneIndex(ZONES.elementary);
 export const MIDDLE = new ZoneIndex(ZONES.middle);
 
+/** model.altPrograms */
+function altGrades(data: SchoolData): Pick<SchoolInfo, 'lo' | 'hi' | 'k8' | 'highSchoolers'> {
+  const total = data.enrollment ?? 0;
+  if (data.id === 'alliance') return { lo: 0, hi: MAX_GRADE, k8: 0, highSchoolers: total };
+  if (data.id === 'access-academy') return { lo: 1, hi: MAX_GRADE, k8: data.forecast['2026'] ?? 0, highSchoolers: 0 };
+  const k8 = Math.round((total * 9) / 13);
+  return { lo: 0, hi: MAX_GRADE, k8, highSchoolers: total - k8 };
+}
+
 export const SCHOOL_INFO: Map<SchoolId, SchoolInfo> = new Map(
   SCHOOLS.map((data) => {
     const elemZone = ZONES.elementary.findIndex((z) => z.school === data.id);
     const middleZone = ZONES.middle.findIndex((z) => z.school === data.id);
-    const [lo, hi] =
-      data.level === 'MS' ? [6, 8] : data.level === 'K5' && middleZone < 0 ? [0, 5] : [0, MAX_GRADE];
-    return [data.id, { data, lo, hi, elemZone, middleZone }];
+    const grades =
+      data.level === 'ALT'
+        ? altGrades(data)
+        : {
+            lo: data.level === 'MS' ? 6 : 0,
+            hi: data.level === 'K5' && middleZone < 0 ? 5 : MAX_GRADE,
+            k8: data.enrollment ?? 0,
+            highSchoolers: 0,
+          };
+    return [data.id, { data, ...grades, elemZone, middleZone }];
   }),
 );
 
@@ -119,7 +140,7 @@ export function generatePopulation(seedHash: number): Population {
     const info = SCHOOL_INFO.get(s.id)!;
     const span = info.hi - info.lo + 1;
     const byGrade = apportion(
-      s.enrollment ?? 0,
+      info.k8,
       Array.from({ length: span }, (_, i) => 1 + M.gradeTilt * i),
     );
     const homeZone = info.lo === 6 ? info.middleZone : info.elemZone;
@@ -166,7 +187,7 @@ export function generatePopulation(seedHash: number): Population {
   const msCounts = new Map<SchoolId, number>();
   for (const h of homes) {
     if (h.school === null) continue;
-    if (h.grade <= 5) kCounts[h.elemZone].set(h.school, (kCounts[h.elemZone].get(h.school) ?? 0) + 1);
+    if (h.grade <= 5 && SCHOOL_INFO.get(h.school)!.lo === 0) kCounts[h.elemZone].set(h.school, (kCounts[h.elemZone].get(h.school) ?? 0) + 1);
     if (SCHOOL_INFO.get(h.school)!.lo === 6) msCounts.set(h.school, (msCounts.get(h.school) ?? 0) + 1);
   }
   const zoneKeep = kCounts.map((counts, z) => {
