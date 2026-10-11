@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { DEFAULT_POLICY, newGame, previewBudget, type Policy } from '../sim';
 import { M } from '../sim/model';
-import { classSizeChip, clamp, levyChip, reserveChip } from './levers';
+import { classSizeChip, levyChip, reserveChip } from './levers';
 
 describe('lever arithmetic', () => {
   it('prices a class size step at $3-5M a year, now and at maturity', () => {
@@ -18,11 +18,6 @@ describe('lever arithmetic', () => {
     const c = reserveChip(5e6);
     expect(c.now.lo).toBe(5e6);
     expect(c.atMaturity.hi).toBe(0);
-  });
-
-  it('clamps', () => {
-    expect(clamp(30, 22, 28)).toBe(28);
-    expect(clamp(20, 22, 28)).toBe(22);
   });
 });
 

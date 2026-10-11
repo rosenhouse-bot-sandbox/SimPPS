@@ -1,26 +1,11 @@
-import { SCHOOLS } from '../data';
+import { fixtureSchools } from '../map/fixtures';
 import { DEFAULT_POLICY } from '../sim';
-import type { GameState, SchoolState, YearReport } from '../sim/types';
-
-function schoolState(id: string, enrollment: number, capacity: number): SchoolState {
-  const perGrade = Math.round(enrollment / 6);
-  return {
-    id,
-    open: true,
-    enrollment,
-    byGrade: [perGrade, perGrade, perGrade, perGrade, perGrade, perGrade, 0, 0, 0],
-    capacity,
-    homerooms: Math.max(1, Math.round(enrollment / 24)),
-    blendedHomerooms: enrollment < 300 ? 2 : 0,
-  };
-}
+import type { GameState, YearReport } from '../sim/types';
 
 export const FIXTURE_GAME: GameState = {
   seed: 'fixture',
   year: 2027,
-  schools: Object.fromEntries(
-    SCHOOLS.map((s) => [s.id, schoolState(s.id, s.enrollment ?? 0, s.capacity ?? 0)]),
-  ),
+  schools: fixtureSchools(),
   households: [],
   budget: {
     lines: [{ key: 'generalFund', label: 'General fund', amount: 862_100_000, sourceKey: 'model.generalFund' }],

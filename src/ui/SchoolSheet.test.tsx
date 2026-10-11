@@ -28,7 +28,7 @@ describe('SchoolSheet', () => {
     render(<SchoolSheet id="rosa-parks" state={FIXTURE_GAME.schools['rosa-parks']} onClose={() => {}} />);
     expect(factValue('Enrollment').textContent).toBe('150–170~');
     expect(factValue('Homerooms').textContent).toBe('5–9~');
-    expect(factValue('Blended').textContent).toBe('0–4~');
+    expect(factValue('Blended').textContent).toBe('0–2~');
     fireEvent.click(screen.getByRole('button', { name: '150–170~' }));
     expect(screen.getByRole('dialog', { name: 'Simulated school counts' })).toBeTruthy();
   });

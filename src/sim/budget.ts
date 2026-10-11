@@ -1,5 +1,6 @@
 import { M } from './model';
-import { clamp, SCHOOL_INFO } from './population';
+import { clamp } from '../clamp';
+import { SCHOOL_INFO } from './population';
 import type { Budget, BudgetLine, Policy, SchoolState } from './types';
 
 export const FIRST_YEAR = 2027;

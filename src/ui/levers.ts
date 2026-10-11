@@ -27,10 +27,6 @@ function scale(r: Range, k: number): Range {
   return { lo: Math.min(a, b), hi: Math.max(a, b) };
 }
 
-export function clamp(n: number, min: number, max: number): number {
-  return Math.min(max, Math.max(min, n));
-}
-
 export function classSizeChip(size: number, base: number): Chip {
   const delta = scale(CLASS_SIZE_SAVING, size - base);
   return { seats: '—', walk: '—', now: delta, atMaturity: delta };

@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'preact/hooks';
 import { HIGH_SCHOOLS, SCHOOLS, ZONES, type Point } from '../data';
+import { clamp } from '../clamp';
 import type { Household, HouseholdStatus, SchoolId, SchoolState } from '../sim/types';
 import { NO_DATA_COLOR, SEAT_BANDS, WINDOW_COLORS, WINDOW_LABELS, seatColor, utilization } from './colors';
 import { ringsToPath, shortName } from './geometry';
@@ -326,10 +327,6 @@ function Legend({ overlay }: { overlay: Overlay }) {
 
 function stop(e: Event) {
   e.stopPropagation();
-}
-
-function clamp(x: number, lo: number, hi: number): number {
-  return Math.max(lo, Math.min(hi, x));
 }
 
 function getContext(canvas: HTMLCanvasElement): CanvasRenderingContext2D | null {

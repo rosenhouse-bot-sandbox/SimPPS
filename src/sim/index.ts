@@ -1,6 +1,7 @@
 import { computeBudget, FIRST_YEAR, generalFund } from './budget';
 import { CLOSED_ZONE_CAPTURE_DROPS, FOLLOW_RATES, M } from './model';
-import { clamp, generatePopulation } from './population';
+import { clamp } from '../clamp';
+import { generatePopulation } from './population';
 import { headlines, seasonEvents, versusGhost } from './report';
 import { draw, hashString } from './rng';
 import { buildSchools, computeDials } from './schools';

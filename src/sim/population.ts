@@ -1,3 +1,4 @@
+import { clamp } from '../clamp';
 import { SCHOOLS, ZONES, type Point, type SchoolData } from '../data';
 import { samplePoint, ZoneIndex } from './geo';
 import { M, MAX_GRADE, oneKid } from './model';
@@ -104,10 +105,6 @@ export function exitCapacityFor(zoneSchool: SchoolId, u: number): number {
 /** model.voice */
 export function voiceFor(exitCapacity: number, u: number): number {
   return clamp(0.1 + 0.4 * exitCapacity + (u - 0.5) * 0.2, 0, 1);
-}
-
-export function clamp(x: number, lo: number, hi: number): number {
-  return Math.min(hi, Math.max(lo, x));
 }
 
 export interface Population {

@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { SCHOOLS, ZONES } from '../data';
 import { fixtureHouseholds, fixtureSchools } from './fixtures';
-import { pointInRings } from './geometry';
+import { inZone } from '../sim/geo';
 
 describe('fixtures', () => {
   it('builds a school state from fall 2025 enrollment and capacity', () => {
@@ -17,7 +17,7 @@ describe('fixtures', () => {
     expect(households).toHaveLength(300);
     for (const h of households) {
       const zone = ZONES.elementary.find((z) => z.school === h.zoneSchool)!;
-      expect(pointInRings(h.pos, zone.rings)).toBe(true);
+      expect(inZone(h.pos, zone)).toBe(true);
       expect(h.school === null).toBe(h.status === 'left');
     }
     expect(new Set(households.map((h) => h.status))).toEqual(new Set(['stayed', 'moved', 'left', 'returned']));

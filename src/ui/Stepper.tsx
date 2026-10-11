@@ -1,5 +1,5 @@
 import type { ComponentChildren } from 'preact';
-import { clamp } from './levers';
+import { clamp } from '../clamp';
 import { Sourced } from './Sourced';
 
 interface StepperProps {

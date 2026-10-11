@@ -1,9 +1,9 @@
+import { clamp } from '../clamp';
 import { ZONES, type Point } from '../data';
 import { classesFor, computeBudget, costIndex, cutCreep } from './budget';
 import { samplePoint, ZoneIndex } from './geo';
 import { gradeOf, M, MAX_GRADE, oneKid } from './model';
 import {
-  clamp,
   ELEM,
   exitCapacityFor,
   middleZoneSchool,

@@ -1,7 +1,7 @@
-import { SCHOOLS, ZONES, type Point } from '../data';
+import { SCHOOLS, ZONES } from '../data';
+import { samplePoint } from '../sim/geo';
+import { stream } from '../sim/rng';
 import type { Household, HouseholdStatus, SchoolId, SchoolState } from '../sim/types';
-import { pointInRings } from './geometry';
-import { boundsOf } from './projection';
 
 const GRADES: Record<string, [number, number]> = { K5: [0, 5], K8: [0, 8], MS: [6, 8], ALT: [0, 8] };
 
@@ -35,16 +35,13 @@ const STATUSES: [HouseholdStatus, number][] = [
 
 /** Fake households scattered inside elementary zones. */
 export function fixtureHouseholds(n = 400, seed = 1): Household[] {
-  const rand = mulberry32(seed);
+  const rand = stream(seed);
   const pick = <T,>(xs: T[]) => xs[Math.floor(rand() * xs.length)];
   const zones = ZONES.elementary;
   const out: Household[] = [];
   for (let id = 0; id < n; id++) {
     const zone = pick(zones);
-    const b = boundsOf(zone.rings.flat());
-    let pos: Point;
-    do pos = [Math.round(b.minX + rand() * (b.maxX - b.minX)), Math.round(b.minY + rand() * (b.maxY - b.minY))];
-    while (!pointInRings(pos, zone.rings));
+    const pos = samplePoint(zone, rand);
     let r = rand();
     const status = STATUSES.find(([, w]) => (r -= w) < 0)?.[0] ?? 'stayed';
     const kids = Array<number>(9).fill(0);
@@ -63,15 +60,4 @@ export function fixtureHouseholds(n = 400, seed = 1): Household[] {
     });
   }
   return out;
-}
-
-function mulberry32(seed: number): () => number {
-  let a = seed >>> 0;
-  return () => {
-    a = (a + 0x6d2b79f5) >>> 0;
-    let t = a;
-    t = Math.imul(t ^ (t >>> 15), t | 1);
-    t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
-    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
-  };
 }
