@@ -55,11 +55,13 @@ interface SchoolSheetProps {
   closing?: Closure;
   /** Schools the plan closes into this one. */
   receivesFrom?: string[];
+  /** The plan re-zones blocks into this school. */
+  rezonedInto?: boolean;
   /** Offered while planning, for an open school with a zone. */
   onEditBoundary?: () => void;
 }
 
-export function SchoolSheet({ id, state, onClose, onCloseSend, closing, receivesFrom = [], onEditBoundary }: SchoolSheetProps) {
+export function SchoolSheet({ id, state, onClose, onCloseSend, closing, receivesFrom = [], rezonedInto = false, onEditBoundary }: SchoolSheetProps) {
   const school = SCHOOLS.find((s) => s.id === id);
   if (!school) return null;
   return (
@@ -82,6 +84,7 @@ export function SchoolSheet({ id, state, onClose, onCloseSend, closing, receives
           In the plan: takes kids from {receivesFrom.map(nameOf).join(' and ')}. Change that closure to close this school.
         </p>
       )}
+      {rezonedInto && <p class="note">In the plan: blocks re-zone into this school. Undo those edits to close it.</p>}
       {onCloseSend && (
         <button type="button" class="btn primary wide" onClick={onCloseSend}>
           {closing ? 'Change closure' : 'Close & send'}

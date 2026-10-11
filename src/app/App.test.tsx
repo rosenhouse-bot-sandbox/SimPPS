@@ -535,6 +535,18 @@ describe('App', () => {
       expect(screen.getByText(/K-5 walkers/).textContent).toContain(`${next.dials.walkK5.toLocaleString('en-US')}`);
     });
 
+    it('offers no closure of a school that blocks re-zone into in the plan', () => {
+      setup();
+      openRosaParks();
+      click('Slice…');
+      choose('Zone', 'peninsula');
+      click('Add to plan');
+      click('Plan');
+      click('Rosa Parks Elementary School');
+      expect(screen.getByText(/blocks re-zone into this school/)).toBeTruthy();
+      expect(screen.queryByRole('button', { name: 'Close & send' })).toBeNull();
+    });
+
     it('drops an unfinished boundary at End year', () => {
       setup();
       openRosaParks();

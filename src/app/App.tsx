@@ -120,8 +120,9 @@ export function App({ sim, seed, start = 'status-quo', onStart, playbackMs }: Ap
     else if (!drafting) setSelected(id);
   };
   const closing = s.draft.closures.find((c) => c.school === selected);
-  /** Closing a receiver would silently drop the closures it takes kids from, so it can't close. */
+  /** Closing a receiver or a boundary edit's target would silently drop those edits, so it can't close. */
   const receivesFrom = s.draft.closures.filter((c) => c.receivers.some((r) => r.school === selected)).map((c) => c.school);
+  const rezonedInto = s.draft.boundaryEdits.some((e) => e.to === selected);
   const commit = (c: Closure) =>
     dispatch({ type: 'edit', policy: { closures: [...s.draft.closures.filter((x) => x.school !== c.school), c] } });
   const when =
@@ -215,8 +216,9 @@ export function App({ sim, seed, start = 'status-quo', onStart, playbackMs }: Ap
             onClose={() => setSelected(null)}
             closing={closing}
             receivesFrom={receivesFrom}
+            rezonedInto={rezonedInto}
             onCloseSend={
-              s.phase === 'plan' && receivesFrom.length === 0 && sim.canClose(s.game.schools, selected)
+              s.phase === 'plan' && receivesFrom.length === 0 && !rezonedInto && sim.canClose(s.game.schools, selected)
                 ? () => setCloseDraft(startDraft(selected, closing))
                 : undefined
             }
