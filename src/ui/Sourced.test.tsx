@@ -1,7 +1,7 @@
 import { cleanup, fireEvent, render, screen } from '@testing-library/preact';
 import { afterEach, describe, expect, it } from 'vitest';
 import { registerSources } from '../sources/registry';
-import { Sourced } from './Sourced';
+import { Revealed, Sourced } from './Sourced';
 
 afterEach(cleanup);
 
@@ -48,7 +48,19 @@ describe('Sourced', () => {
     render(<Sourced k="test.hidden">?</Sourced>);
     fireEvent.click(screen.getByRole('button', { name: '?' }));
     const text = screen.getByRole('dialog').textContent!;
-    expect(text).toContain('Hidden until year 3');
+    expect(text).toContain('Hidden until the December 2029 report.');
     expect(text).not.toContain('95%');
+  });
+
+  it('shows the value this game drew once revealed', () => {
+    render(
+      <Revealed.Provider value={{ 'model.followRate': 0.8 }}>
+        <Sourced k="model.followRate">?</Sourced>
+      </Revealed.Provider>,
+    );
+    fireEvent.click(screen.getByRole('button', { name: '?' }));
+    const text = screen.getByRole('dialog').textContent!;
+    expect(text).toContain('Revealed: this game drew 80%.');
+    expect(text).not.toContain('Hidden until');
   });
 });

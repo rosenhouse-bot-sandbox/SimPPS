@@ -62,6 +62,8 @@ describe('App', () => {
     expect(top).toContain('Gap −$65.2M');
     expect(top).toContain('Kids 26.6K');
     expect(top).toContain('Res 4.8%');
+    expect(top).toContain(`Trust ${Math.round(realSim.newGame({ seed: 't' }).dials.trust)}`);
+    expect(document.querySelector('.topbar [data-source="dial.trust"]')).toBeTruthy();
   });
 
   it('sources the top bar numbers', () => {
@@ -160,7 +162,8 @@ describe('App', () => {
     );
     hold('End year');
     const pre = screen.getByRole('region', { name: 'Play 2027-28?' });
-    expect(pre.textContent).toContain('May: levy at $1.89 per $1,000, assumed to pass');
+    const poll = realSim.ballotPreview(start, { ...start.policy, levyRate: 1.89 })!.poll;
+    expect(pre.textContent).toContain(`May 2027: levy at $1.89 per $1,000 · poll ${Math.round(poll.lo * 100)}–${Math.round(poll.hi * 100)}%~`);
     expect(pre.textContent).toContain('Draw $4M from reserves');
     expect(pre.textContent).toContain('Reserves cover $4M');
   });

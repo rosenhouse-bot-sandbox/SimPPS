@@ -1,7 +1,9 @@
 import { fmtCount, fmtMoney } from '../format';
 import { legislatureVotes } from '../sim/budget';
+import type { BallotPreview } from '../sim';
 import type { Budget, Policy } from '../sim/types';
-import { ballotItems, listEdits, type EditLine } from './edits';
+import { BallotItem } from './Ballot';
+import { listEdits, type EditLine } from './edits';
 import { HoldButton } from './HoldButton';
 import { Sourced } from './Sourced';
 import { K } from './sources';
@@ -13,6 +15,7 @@ interface PreflightProps {
   base: Policy;
   /** The sim's plan for the draft. */
   budget: Budget;
+  ballot: BallotPreview | null;
   onBack: () => void;
   onConfirm: () => void;
 }
@@ -33,7 +36,7 @@ function List({ items, empty }: { items: EditLine[]; empty: string }) {
   );
 }
 
-export function PreflightSheet({ year, draft, base, budget, onBack, onConfirm }: PreflightProps) {
+export function PreflightSheet({ year, draft, base, budget, ballot, onBack, onConfirm }: PreflightProps) {
   const applied = { ...draft, reserveDraw: budget.reserveDraw };
   const { autoCutPositions: june, midYearCuts: winter } = budget;
   return (
@@ -75,7 +78,16 @@ export function PreflightSheet({ year, draft, base, budget, onBack, onConfirm }:
           <p>None</p>
         )}
         <h3>Ballot</h3>
-        <List items={ballotItems(draft, base)} empty="None" />
+        {ballot ? (
+          <>
+            <p class="ballot">
+              <BallotItem ballot={ballot} year={year} />
+            </p>
+            {ballot.when === 'may' && <p class="note">The plan books it as passing.</p>}
+          </>
+        ) : (
+          <p class="note">None</p>
+        )}
         <div class="actions">
           <button type="button" class="btn" onClick={onBack}>
             Back

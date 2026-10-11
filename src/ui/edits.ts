@@ -46,9 +46,3 @@ export function listEdits(draft: Policy, base: Policy): EditLine[] {
     out.push({ text: `Draw ${fmtMoney(draft.reserveDraw)} from reserves`, sourceKey: K.reserveDraw, undo: { reserveDraw: 0 } });
   return out;
 }
-
-/** A new levy rate goes to voters in May. Until elections exist, it passes. A lapse needs no vote. */
-export function ballotItems(draft: Policy, base: Policy): EditLine[] {
-  if (draft.levyRate === base.levyRate || draft.levyRate === 0) return [];
-  return [{ text: `May: levy at ${fmtLevy(draft.levyRate)} per $1,000, assumed to pass`, sourceKey: K.levy }];
-}

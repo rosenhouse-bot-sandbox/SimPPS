@@ -1,4 +1,5 @@
-import type { ClosureOutcome, Dials, Flows, Range, RezoneOutcome, YearReport } from '../sim/types';
+import type { ClosureOutcome, Dials, ElectionOutcome, Flows, Range, RezoneOutcome, YearReport } from '../sim/types';
+import { RevealSheet } from './RevealSheet';
 import { fmtMoney, fmtPct, fmtRange } from '../format';
 import { nameOf } from './closeSend';
 import { Sourced } from './Sourced';
@@ -115,6 +116,29 @@ function RezoneReport({ r }: { r: RezoneOutcome }) {
   );
 }
 
+function VoteRow({ who, e }: { who: string; e: ElectionOutcome }) {
+  return (
+    <li class={e.passed ? 'call hit' : 'call'}>
+      {`${who}: $${e.rate.toFixed(2)}, `}
+      <Sourced k={K.election}>{`${Math.round(e.yes * 100)}%~`}</Sourced> yes{' '}
+      <span class="stamp">{e.passed ? 'PASSED' : 'FAILED'}</span>
+    </li>
+  );
+}
+
+/** Citywide totals only. */
+function LevyVote({ you, ghost }: { you?: ElectionOutcome; ghost?: ElectionOutcome }) {
+  return (
+    <section class="levy-vote" aria-label="Levy vote">
+      <h3>Levy vote</h3>
+      <ul class="ghost">
+        {you && <VoteRow who="You" e={you} />}
+        {ghost && <VoteRow who="Ghost" e={ghost} />}
+      </ul>
+    </section>
+  );
+}
+
 /** The ghost list shows the three largest gaps, and the Walk dials whenever they differ. */
 const ALWAYS: (keyof Dials)[] = ['walkK5', 'newBusRiders'];
 
@@ -129,6 +153,9 @@ interface ReportProps {
 export function ReportView({ report, turn, onNext, walk }: ReportProps) {
   return (
     <Window title={`DEC ${report.year} · YEAR ${turn}`} class="panel report">
+      {report.reveals.map((r) => (
+        <RevealSheet key={r.sourceKey} reveal={r} />
+      ))}
       <h3>Where kids went</h3>
       {report.closures.map((c) => (
         <ClosureReport key={c.school} c={c} />
@@ -141,6 +168,7 @@ export function ReportView({ report, turn, onNext, walk }: ReportProps) {
         </p>
       )}
       <WhereKidsWent flows={report.flows} />
+      {(report.election || report.ghostElection) && <LevyVote you={report.election} ghost={report.ghostElection} />}
       <h3>Vs. do-nothing ghost</h3>
       {report.vsGhost.length === 0 && <p class="note">No difference yet.</p>}
       <ul class="ghost">

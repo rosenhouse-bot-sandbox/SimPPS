@@ -10,6 +10,11 @@ export const K = {
   capture: dialSourceKey('capture'),
   classSize: 'ui.k5ClassSize',
   levy: 'model.levy',
+  levyTerm: 'model.levyTerm',
+  election: 'model.election',
+  electionBill: 'model.electionBill',
+  bargaining: 'ui.bargaining',
+  trust: dialSourceKey('trust'),
   stateFunding: 'model.stateFunding',
   reserveDraw: 'ui.reserveDraw',
   autoCuts: 'model.autoCuts',
@@ -44,6 +49,13 @@ export const K = {
 } as const;
 
 const UI_SOURCES: Source[] = [
+  {
+    key: K.bargaining,
+    label: 'Teacher bargaining',
+    tag: 'F',
+    explain: 'Teacher contracts run 3 years. Bargaining with the Portland Association of Teachers opens in January 2027. Strikes are not modeled yet.',
+    links: [{ title: 'SimPPS design (issue #1)', url: 'https://github.com/rosenhouse-bot-sandbox/SimPPS/issues/1' }],
+  },
   {
     key: K.calendar,
     label: 'Calendar',

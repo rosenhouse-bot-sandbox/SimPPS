@@ -165,8 +165,10 @@ export function plannedZones(state: GameState, policy: Policy): ZoneMap {
   return planZoning(state, effectiveClosures(state.schools, plan.closures), plan.boundaryEdits).zoning.zones;
 }
 
+export type BallotPreview = Ballot & { poll: Range };
+
 /** The levy measure `policy` puts on this year's ballot, with a poll of the yes share. */
-export function ballotPreview(state: GameState, policy: Policy): (Ballot & { poll: Range }) | null {
+export function ballotPreview(state: GameState, policy: Policy): BallotPreview | null {
   const sim = state.sim!;
   const ballot = levyBallot(sim.levy, state.year, normalizePolicy(policy));
   if (!ballot) return null;

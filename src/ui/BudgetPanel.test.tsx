@@ -1,6 +1,7 @@
-import { cleanup, render, screen } from '@testing-library/preact';
-import { afterEach, describe, expect, it } from 'vitest';
-import { DEFAULT_POLICY } from '../sim';
+import { cleanup, fireEvent, render, screen } from '@testing-library/preact';
+import { afterEach, describe, expect, it, vi } from 'vitest';
+import { fmtSignedMoney } from '../format';
+import { DEFAULT_POLICY, levyRevenue, type BallotPreview, type Policy } from '../sim';
 import { BudgetPanel } from './BudgetPanel';
 import { FIXTURE_GAME } from './fixtures';
 
@@ -16,10 +17,62 @@ const shortfall = {
   midYearCuts: 12,
 };
 
-function setup() {
-  const draft = { ...DEFAULT_POLICY, reserveDraw: 26_000_000 };
-  render(<BudgetPanel game={FIXTURE_GAME} draft={draft} plan={shortfall} onEdit={() => {}} onClose={() => {}} />);
+function setup(opts: { ballot?: BallotPreview | null; levyThrough?: number; draft?: Partial<Policy> } = {}) {
+  const draft = { ...DEFAULT_POLICY, reserveDraw: 26_000_000, ...opts.draft };
+  const onEdit = vi.fn();
+  render(
+    <BudgetPanel
+      game={FIXTURE_GAME}
+      draft={draft}
+      plan={shortfall}
+      ballot={opts.ballot ?? null}
+      levyThrough={opts.levyThrough ?? 2029}
+      onEdit={onEdit}
+      onClose={() => {}}
+    />,
+  );
+  return onEdit;
 }
+
+const ballot: BallotPreview = { rate: 1.8, when: 'may', renewal: false, poll: { lo: 0.62, hi: 0.72 } };
+
+describe('BudgetPanel levy', () => {
+  it('says when the levy runs out', () => {
+    setup();
+    const note = screen.getByText(/Levy runs through/);
+    expect(note.textContent).toBe('Levy runs through June 2030');
+    expect(note.closest('[data-source]')!.getAttribute('data-source')).toBe('model.levyTerm');
+    cleanup();
+    setup({ levyThrough: 2026 });
+    expect(screen.getByText(/Levy expired/).textContent).toBe('Levy expired June 2027');
+  });
+
+  it('shows the ballot item with its poll and lets it move to November', () => {
+    const onEdit = setup({ ballot, draft: { levyRate: 1.8 } });
+    const item = screen.getByRole('group', { name: 'Levy ballot' });
+    expect(item.textContent).toContain('May 2027: levy at $1.80 per $1,000 · poll 62–72%~');
+    fireEvent.click(screen.getByRole('radio', { name: 'November' }));
+    expect(onEdit).toHaveBeenLastCalledWith({ levyElection: 'november' });
+  });
+
+  it('offers a November renewal in the last funded year only', () => {
+    setup();
+    expect(screen.queryByRole('group', { name: 'Levy ballot' })).toBeNull();
+    cleanup();
+    setup({ levyThrough: 2027 });
+    expect(screen.getByRole('radio', { name: 'May' })).toBeTruthy();
+    expect(screen.getByRole('group', { name: 'Levy ballot' }).textContent).toContain('No vote this year.');
+  });
+
+  it('prices a new rate net of its election bill', () => {
+    const plan = { ...shortfall, lines: [{ key: 'election', label: 'Election bill', amount: -500_000, sourceKey: 'model.electionBill' }] };
+    render(
+      <BudgetPanel game={FIXTURE_GAME} draft={{ ...DEFAULT_POLICY, levyRate: 0.99 }} plan={plan} ballot={ballot} levyThrough={2029} onEdit={() => {}} onClose={() => {}} />,
+    );
+    const chip = document.querySelector('.chip')!.textContent!;
+    expect(chip).toContain(`Now${fmtSignedMoney(levyRevenue(0.99) - levyRevenue(1.99) - 500_000)}`);
+  });
+});
 
 describe('BudgetPanel', () => {
   it('shows and caps the reserve draw at the shortfall the sim applies', () => {

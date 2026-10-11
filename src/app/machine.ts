@@ -1,4 +1,4 @@
-import type { BoundaryChip, ClosureChip, Start } from '../sim';
+import type { BallotPreview, BoundaryChip, ClosureChip, Start } from '../sim';
 import type { BoundaryEdit, Budget, Closure, GameState, Household, Policy, SchoolId, SchoolState, Season, YearReport, ZoneLevel, ZoneMap } from '../sim/types';
 
 export type Phase = 'plan' | 'preflight' | 'playing' | 'report';
@@ -24,6 +24,8 @@ export interface Sim {
     percent: number,
   ): number[];
   boundaryChip(state: GameState, edit: BoundaryEdit, plan: Policy): BoundaryChip;
+  ballotPreview(state: GameState, policy: Policy): BallotPreview | null;
+  levyThrough(state: GameState): number;
 }
 
 /** One played year. */

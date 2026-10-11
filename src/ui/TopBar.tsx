@@ -23,6 +23,9 @@ export function TopBar({ when, dials, gapLabel = 'Gap' }: { when: string; dials:
         <span>
           Res <Sourced k={K.reservePct}>{fmtPct(dials.reservePct)}</Sourced>
         </span>
+        <span>
+          Trust <Sourced k={K.trust}>{String(Math.round(dials.trust))}</Sourced>
+        </span>
       </div>
     </header>
   );

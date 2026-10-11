@@ -779,3 +779,104 @@ legend {
 .zonesheet .actions .btn {
   padding: 0 10px;
 }
+
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+}
+
+/* The calendar strip: what's coming, soonest first. */
+.calendar {
+  display: flex;
+  gap: 4px;
+  margin: 0 0 8px;
+  padding: 0;
+  list-style: none;
+}
+
+.calendar li {
+  flex: 1 1 0;
+  min-width: 0;
+  padding: 4px;
+  border: 2px solid;
+  border-color: var(--shade) var(--light) var(--light) var(--shade);
+  font-size: 14px;
+  line-height: 1.2;
+}
+
+.calendar .when {
+  display: block;
+  font-size: 18px;
+  color: var(--title);
+}
+
+.ballot {
+  margin: 4px 0;
+}
+
+.levy-ballot .row {
+  display: inline-flex;
+  margin-right: 16px;
+}
+
+.levy-vote .stamp,
+.levy-vote .call .stamp {
+  transform: none;
+  font-size: 16px;
+}
+
+.reveal {
+  margin-bottom: 12px;
+  padding: 8px;
+  border: 2px solid var(--title);
+  background: var(--light);
+}
+
+.reveal h3 {
+  margin-top: 0;
+}
+
+.histogram {
+  display: block;
+  width: 100%;
+  max-width: 360px;
+  height: auto;
+}
+
+.histogram rect {
+  fill: var(--shade);
+}
+
+.histogram .drawn rect {
+  fill: var(--title);
+}
+
+.histogram text {
+  font: 16px var(--pixel);
+  fill: var(--ink);
+}
+
+.histogram .drawn text {
+  fill: var(--title);
+}
+
+.histogram .baseline {
+  stroke: var(--ink);
+  stroke-width: 1;
+}
+
+.reveal-table {
+  border-collapse: collapse;
+  margin: 4px 0;
+  font-size: 14px;
+}
+
+.reveal-table th,
+.reveal-table td {
+  padding: 2px 8px 2px 0;
+  text-align: left;
+}
