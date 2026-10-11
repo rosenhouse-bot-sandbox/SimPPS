@@ -1,4 +1,5 @@
 import { FIELD_SOURCES } from '../data';
+import { DIAL_SOURCES, MODEL_SOURCES as SIM_SOURCES } from './model';
 import type { Source } from './types';
 
 export * from './types';
@@ -24,7 +25,7 @@ const FIELD: Source[] = Object.entries(FIELD_SOURCES).map(([column, f]) => ({
   links: [PPS_DATA],
 }));
 
-const REGISTRY = new Map([...MODEL_SOURCES, ...FIELD].map((s) => [s.key, s]));
+const REGISTRY = new Map([...MODEL_SOURCES, ...SIM_SOURCES, ...DIAL_SOURCES, ...FIELD].map((s) => [s.key, s]));
 
 export function getSource(key: string): Source | undefined {
   return REGISTRY.get(key);

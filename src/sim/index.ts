@@ -1,25 +1,100 @@
-// Placeholder until the simulation lands. It keeps the contract compiling for the UI.
-import type { GameState, Policy, YearReport } from './types';
+import { computeBudget, FIRST_YEAR, generalFund } from './budget';
+import { CLOSED_ZONE_CAPTURE_DROPS, FOLLOW_RATES, M } from './model';
+import { clamp, generatePopulation } from './population';
+import { headlines, seasonEvents, versusGhost } from './report';
+import { draw, hashString } from './rng';
+import { buildSchools, computeDials } from './schools';
+import { stepYear } from './step';
+import type { Budget, GameState, Policy, SimMemory, YearReport } from './types';
 
 export * from './types';
+export { modeledRange } from './range';
 
 export const DEFAULT_POLICY: Policy = { k5ClassSize: 24, levyRate: 1.99, reserveDraw: 0, closures: [] };
 
 export function newGame(opts: { seed: string }): GameState {
+  const seedHash = hashString(opts.seed);
+  const pop = generatePopulation(seedHash);
+  const schools = buildSchools(pop.households, DEFAULT_POLICY.k5ClassSize);
+  const input = {
+    year: FIRST_YEAR,
+    schools,
+    policy: DEFAULT_POLICY,
+    reserves: M.reserves,
+    cumulativeCuts: 0,
+    restRevenue: 0,
+    restCost: 0,
+  };
+  const k8 = computeBudget(input).lines;
+  const revenue = k8.filter((l) => l.amount > 0).reduce((a, l) => a + l.amount, 0);
+  const cost = -k8.filter((l) => l.amount < 0).reduce((a, l) => a + l.amount, 0);
+  const total = generalFund(FIRST_YEAR);
+  const sim: SimMemory = {
+    seedHash,
+    nextId: pop.households.length,
+    kChoice: pop.kChoice,
+    msMix: pop.msMix,
+    zoneKeep: pop.zoneKeep,
+    kCohort: pop.kCohort,
+    kCapture: pop.kCapture,
+    cumulativeCuts: 0,
+    restRevenue: total + M.startGap - revenue,
+    restCost: total - cost,
+    cards: {
+      followRate: FOLLOW_RATES[Math.floor(draw(seedHash, 1) * FOLLOW_RATES.length)],
+      closedZoneCaptureDrop: CLOSED_ZONE_CAPTURE_DROPS[Math.floor(draw(seedHash, 2) * CLOSED_ZONE_CAPTURE_DROPS.length)],
+    },
+  };
+  const budget = computeBudget({ ...input, restRevenue: sim.restRevenue, restCost: sim.restCost });
   return {
     seed: opts.seed,
-    year: 2027,
-    schools: {},
-    households: [],
-    budget: { lines: [], gap: -65_200_000, autoCutPositions: 0, reserves: 41_100_000, reservePct: 0.048 },
-    dials: { kids: 26_400, capture: 0.766, kindergartenCapture: 0.74, gap: -65_200_000, positionsCut: 0, reservePct: 0.048, kidsInUrm: 4_500 },
+    year: FIRST_YEAR,
+    schools,
+    households: pop.households,
+    budget,
+    dials: computeDials({ households: pop.households, schools, budget }, 0),
     policy: DEFAULT_POLICY,
+    sim,
   };
 }
 
-export function endYear(state: GameState, policy: Policy): { next: GameState; report: YearReport } {
+/** Clamps K-5 class size to 22-28 and keeps the levy rate and reserve draw at or above zero. */
+export function normalizePolicy(p: Policy): Policy {
   return {
-    next: { ...state, year: state.year + 1, policy },
-    report: { year: state.year, events: [], flows: { stayed: 0, movedWithinPps: 0, leftPps: 0, cameBack: 0 }, vsGhost: [], headlines: [] },
+    ...p,
+    k5ClassSize: clamp(Math.round(p.k5ClassSize), 22, 28),
+    levyRate: Math.max(0, p.levyRate),
+    reserveDraw: Math.max(0, p.reserveDraw),
+  };
+}
+
+/** The coming year's budget if the player commits `policy`. Use it to preview edits before End Year. */
+export function previewBudget(state: GameState, policy: Policy): Budget {
+  const sim = state.sim!;
+  return computeBudget({
+    year: state.year,
+    schools: state.schools,
+    policy: normalizePolicy(policy),
+    reserves: state.budget.reserves,
+    cumulativeCuts: sim.cumulativeCuts,
+    restRevenue: sim.restRevenue,
+    restCost: sim.restCost,
+  });
+}
+
+/** Plays a year for the player and for the do-nothing ghost (model.ghost). */
+export function endYear(state: GameState, policy: Policy): { next: GameState; report: YearReport } {
+  const mine = stepYear(state, normalizePolicy(policy));
+  const ghost = stepYear(state.sim!.ghost ?? state, DEFAULT_POLICY).next;
+  const next: GameState = { ...mine.next, sim: { ...mine.next.sim!, ghost } };
+  return {
+    next,
+    report: {
+      year: state.year,
+      events: seasonEvents(mine.facts),
+      flows: mine.facts.flows,
+      vsGhost: versusGhost(next.dials, ghost.dials),
+      headlines: headlines(mine.facts, state.dials, next.dials),
+    },
   };
 }

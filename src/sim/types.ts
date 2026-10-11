@@ -33,6 +33,7 @@ export interface Household {
   pos: Point;
   /** Kids per grade, index 0 = K … 8 = grade 8. */
   kids: number[];
+  /** The elementary zone school for K-5 kids; the middle zone school for grades 6-8. */
   zoneSchool: SchoolId;
   /** null when the household's kids are outside PPS. */
   school: SchoolId | null;
@@ -40,6 +41,8 @@ export interface Household {
   loyalty: number;
   voice: number;
   status: HouseholdStatus;
+  /** The household left Portland this year. It drops off the map next year. */
+  movedAway?: boolean;
 }
 
 export interface SchoolState {
@@ -114,4 +117,36 @@ export interface GameState {
   budget: Budget;
   dials: Dials;
   policy: Policy;
+  /** Simulation memory. newGame sets it; the UI can ignore it. */
+  sim?: SimMemory;
+}
+
+/** Cumulative weights for picking a school. */
+export interface SchoolChoice {
+  ids: SchoolId[];
+  cum: number[];
+}
+
+export interface SimMemory {
+  seedHash: number;
+  nextId: number;
+  /** Per elementary zone: where its K-5 PPS kids go. */
+  kChoice: SchoolChoice[];
+  /** Citywide mix of middle schools, for grade-6 kids who skip the feeder. */
+  msMix: SchoolChoice;
+  /** Per elementary zone: share of its PPS K-5 kids at the zone school. */
+  zoneKeep: number[];
+  /** Per elementary zone: resident kindergartners in fall 2025, in and out of PPS. */
+  kCohort: number[];
+  /** Per elementary zone: share of those kindergartners in PPS. */
+  kCapture: number[];
+  /** Positions removed by automatic and mid-year cuts so far. */
+  cumulativeCuts: number;
+  /** The lumped rest of the general fund, in 2027-28 dollars. */
+  restRevenue: number;
+  restCost: number;
+  /** Hidden cards drawn for this game. */
+  cards: { followRate: number; closedZoneCaptureDrop: number };
+  /** The do-nothing ghost: same luck, DEFAULT_POLICY every year. */
+  ghost?: GameState;
 }
