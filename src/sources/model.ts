@@ -1,5 +1,6 @@
 import { MEDIAN_SQFT, STATE_PER_STUDENT } from '../sim/budget';
 import { CLOSED_ZONE_CAPTURE_DROPS, FOLLOW_RATES, M } from '../sim/model';
+import { CITYWIDE_INTAKE } from '../sim/population';
 import type { Dials } from '../sim/types';
 import type { Source, SourceLink } from './types';
 
@@ -22,6 +23,8 @@ const $ = (n: number) => `$${(n / 1e6).toFixed(1)}M`;
 const $b = (n: number) => `$${(n / 1e9).toFixed(2)}B`;
 const $k = (n: number) => `$${(n / 1e3).toFixed(1)}K`;
 const pct = (x: number) => `${+(x * 100).toFixed(2)}%`;
+
+const ACCESS_INTAKE = CITYWIDE_INTAKE.find((p) => p.school === 'access-academy')!.kids;
 
 export function dialSourceKey(dial: keyof Dials): string {
   return `dial.${dial}`;
@@ -53,7 +56,7 @@ export const MODEL_SOURCES: Source[] = [
     key: 'model.altPrograms',
     label: 'Alternative programs',
     tag: 'I',
-    explain: "The game simulates K-8 kids only. Alliance's 215 high schoolers and MLC's high schoolers (4 of its 13 grades) stay fixed. ACCESS serves grades 1-8; it starts from PSU's 2026 forecast of 315, because the state reports no count for it, and it takes no kindergartners.",
+    explain: `The game simulates K-8 kids only. Alliance's 215 high schoolers and MLC's high schoolers (4 of its 13 grades) stay fixed. ACCESS serves grades 1-8; it starts from PSU's 2026 forecast of 315, because the state reports no count for it. It has no zone, so each fall it takes ${ACCESS_INTAKE} first graders from other PPS schools across the city, enough to hold its size.`,
     links: [PPS_DATA, PSU],
   },
   {

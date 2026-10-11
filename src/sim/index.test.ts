@@ -161,6 +161,16 @@ describe('endYear', () => {
     expect(next.households.filter((h) => gradeOf(h) === 0 && h.school).length).toBeGreaterThan(2500);
   });
 
+  it('moves first graders from across the city into ACCESS, which has no zone', () => {
+    const { next, report } = endYear(start, DEFAULT_POLICY);
+    const intake = next.households.filter((h) => h.school === 'access-academy' && gradeOf(h) === 1);
+    expect(intake).toHaveLength(Math.round(315 / 8));
+    for (const h of intake) expect(h.status).toBe('moved');
+    expect(report.flows.movedWithinPps).toBe(next.households.filter((h) => h.status === 'moved').length);
+    expect(fall2035.schools['access-academy'].enrollment).toBeGreaterThan(250);
+    expect(fall2035.schools['access-academy'].enrollment).toBeLessThan(330);
+  });
+
   it('sends grade-6 kids from K-5 schools to middle grades', () => {
     const { next } = endYear(start, DEFAULT_POLICY);
     const sixth = next.households.filter((h) => gradeOf(h) === 6 && h.school);

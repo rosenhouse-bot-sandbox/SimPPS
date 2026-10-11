@@ -47,6 +47,11 @@ export const SCHOOL_INFO: Map<SchoolId, SchoolInfo> = new Map(
   }),
 );
 
+/** model.altPrograms: zoneless programs that start past kindergarten take their entry grade from across the city. */
+export const CITYWIDE_INTAKE = [...SCHOOL_INFO.values()]
+  .filter((i) => i.elemZone < 0 && i.middleZone < 0 && i.lo > 0 && i.lo < 6 && i.k8 > 0)
+  .map((i) => ({ school: i.data.id, grade: i.lo, kids: Math.round(i.k8 / (i.hi - i.lo + 1)) }));
+
 const MIDDLE_SCHOOLS = SCHOOLS.filter((s) => s.level === 'MS');
 const MEDIAN_DIRECT_CERT = median(SCHOOLS.map((s) => s.pctDirectCert).filter((x): x is number => x !== null));
 

@@ -4,6 +4,7 @@ import { classesFor, computeBudget, costIndex, cutCreep, legislatureVotes, state
 import { samplePoint, ZoneIndex } from './geo';
 import { gradeOf, M, MAX_GRADE, oneKid } from './model';
 import {
+  CITYWIDE_INTAKE,
   ELEM,
   exitCapacityFor,
   middleZoneSchool,
@@ -49,6 +50,7 @@ const D = {
   MiddleSchool: 13,
   Return: 14,
   ReturnSchool: 15,
+  Citywide: 16,
 };
 
 /** PPS kids at the start of the year and those who left, by region. */
@@ -198,6 +200,19 @@ export function familiesDecide(
       }
     }
     households.push(next);
+  }
+  for (const { school, grade, kids } of CITYWIDE_INTAKE) {
+    const picked = households
+      .filter((h) => h.status === 'stayed' && h.school !== school && gradeOf(h) === grade)
+      .map((h) => ({ h, u: draw(seed, year, h.id, D.Citywide) }))
+      .sort((a, b) => a.u - b.u)
+      .slice(0, kids);
+    for (const { h } of picked) {
+      h.school = school;
+      h.status = 'moved';
+      flows.stayed--;
+      flows.movedWithinPps++;
+    }
   }
   flows.graduated = graduates;
   return { households, nextId, kResidents, kEnrolled, graduates, flows, regions };
