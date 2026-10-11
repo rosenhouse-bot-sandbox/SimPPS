@@ -23,6 +23,8 @@ export interface SchoolData {
   squareFeet: number | null;
   yearBuilt: number | null;
   isUrm: boolean;
+  /** 'planned_*' is scheduled by the 2025 bond; null is none. */
+  seismicRetrofitStatus: 'targeted' | 'full' | 'planned_targeted' | 'planned_full' | null;
   retrofitRemaining: number | null;
   pctDirectCert: number | null;
   pctFrl: number | null;

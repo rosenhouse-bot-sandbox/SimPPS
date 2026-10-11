@@ -111,6 +111,7 @@ const schools = web.schools.map((s) => {
     squareFeet: num(s.square_feet),
     yearBuilt: num(s.year_built),
     isUrm: s.is_urm_building === true,
+    seismicRetrofitStatus: s.seismic_retrofit_status || null,
     retrofitRemaining: num(s.retrofit_cost_remaining_usd),
     pctDirectCert: num(s.pct_direct_cert),
     pctFrl: num(s.pct_frl),

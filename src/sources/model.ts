@@ -262,5 +262,5 @@ export const DIAL_SOURCES: Source[] = [
   { key: dialSourceKey('gap'), label: 'Gap', tag: 'M', explain: 'Revenue minus costs in the coming year\'s plan, before automatic cuts. It starts at the reported -$65.2M.', links: [DESIGN] },
   { key: dialSourceKey('positionsCut'), label: 'Positions cut', tag: 'M', explain: 'Positions removed by automatic and mid-year cuts in the year just played.', links: [DESIGN] },
   { key: dialSourceKey('reservePct'), label: 'Reserves', tag: 'M', explain: 'Reserves over last year\'s spending. They start at $41.1M, 4.8% of the $862.1M 2026-27 general fund. Below 5% breaches policy; below 3% forces mid-year cuts.', links: [PPS_DATA] },
-  { key: dialSourceKey('kidsInUrm'), label: 'Kids in URM buildings', tag: 'M', explain: 'Simulated kids in the 18 unreinforced-masonry buildings (Holmes 2024).', links: [PPS_DATA] },
+  { key: dialSourceKey('kidsInUrm'), label: 'Kids in URM buildings', tag: 'M', explain: 'Simulated kids in unreinforced-masonry buildings (Holmes 2024) without a full retrofit. In fall 2025 about 4,500 attended URM buildings with no retrofit yet and 1,400 attended ones with a targeted retrofit.', links: [PPS_DATA] },
 ];

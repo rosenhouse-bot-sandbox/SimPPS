@@ -51,8 +51,8 @@ describe('newGame', () => {
     expect(start.dials.kindergartenCapture).toBeCloseTo(kCaptureTrend(2026), 2);
   });
 
-  it('counts kids in URM buildings', () => {
-    const urm = SCHOOLS.filter((s) => s.isUrm).reduce((a, s) => a + (s.enrollment ?? 0), 0);
+  it('counts kids in URM buildings without a full retrofit', () => {
+    const urm = SCHOOLS.filter((s) => s.isUrm && s.seismicRetrofitStatus !== 'full').reduce((a, s) => a + (s.enrollment ?? 0), 0);
     expect(Math.abs(start.dials.kidsInUrm - urm) / urm).toBeLessThan(0.05);
   });
 

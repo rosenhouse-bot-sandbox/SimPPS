@@ -46,7 +46,10 @@ export function computeDials(state: Pick<GameState, 'households' | 'schools' | '
     if (k) kInPps++;
   }
   let kidsInUrm = 0;
-  for (const s of Object.values(state.schools)) if (SCHOOL_INFO.get(s.id)!.data.isUrm) kidsInUrm += s.enrollment;
+  for (const s of Object.values(state.schools)) {
+    const { isUrm, seismicRetrofitStatus } = SCHOOL_INFO.get(s.id)!.data;
+    if (isUrm && seismicRetrofitStatus !== 'full') kidsInUrm += s.enrollment;
+  }
   return {
     kids: inPps,
     capture: inPps / residents,
