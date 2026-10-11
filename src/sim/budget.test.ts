@@ -81,7 +81,7 @@ describe('computeBudget', () => {
     const b = computeBudget(base);
     expect(amount(b, 'homerooms')).toBeCloseTo(-6 * 159_600 * 1.035, 0);
     expect(amount(b, 'staff')).toBeCloseTo(-6 * 155_000 * 1.035, 0);
-    expect(amount(b, 'plant')).toBeCloseTo(-46_657 * 9.57 * 1.035, 0);
+    expect(amount(b, 'plant')).toBeCloseTo(-46_657 * 13.8 * 1.035, 0);
     expect(amount(b, 'stateK8')).toBeCloseTo(144 * revenuePerStudent(0.6294), 0);
   });
 

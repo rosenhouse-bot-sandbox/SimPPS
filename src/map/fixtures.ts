@@ -5,7 +5,7 @@ import { boundsOf } from './projection';
 
 const GRADES: Record<string, [number, number]> = { K5: [0, 5], K8: [0, 8], MS: [6, 8], ALT: [0, 8] };
 
-/** Fall 2025 schools, for building the map before the simulation lands. */
+/** Fall 2025 schools. */
 export function fixtureSchools(): Record<SchoolId, SchoolState> {
   const out: Record<SchoolId, SchoolState> = {};
   for (const s of SCHOOLS) {

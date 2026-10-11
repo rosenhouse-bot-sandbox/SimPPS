@@ -23,7 +23,7 @@ export const FIXTURE_GAME: GameState = {
   ),
   households: [],
   budget: {
-    lines: [{ key: 'generalFund', label: 'General fund', amount: 862_100_000, sourceKey: 'budget.generalFund' }],
+    lines: [{ key: 'generalFund', label: 'General fund', amount: 862_100_000, sourceKey: 'model.generalFund' }],
     gap: -65_200_000,
     reserveDraw: 0,
     autoCutPositions: 421,

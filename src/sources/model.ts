@@ -1,11 +1,21 @@
+import { SCHOOLS } from '../data';
+import { MEDIAN_SQFT, revenuePerStudent } from '../sim/budget';
 import { CLOSED_ZONE_CAPTURE_DROPS, FOLLOW_RATES, M } from '../sim/model';
 import type { Dials } from '../sim/types';
 import type { Source, SourceLink } from './types';
 
-const PPS_DATA: SourceLink = { title: 'meub/pps-data', url: 'https://github.com/meub/pps-data' };
+export const PPS_DATA: SourceLink = { title: 'meub/pps-data', url: 'https://github.com/meub/pps-data' };
 const PSU: SourceLink = {
   title: 'PSU Population Research Center school forecasts',
   url: 'https://www.pdx.edu/population-research/school-enrollment-forecasts',
+};
+const OPB_GAP: SourceLink = {
+  title: 'OPB, Oct 5 2026',
+  url: 'https://www.opb.org/article/2026/10/05/portland-public-schools-closures-rightsizing/',
+};
+const WW_GAP: SourceLink = {
+  title: 'Willamette Week, Apr 28 2026',
+  url: 'https://www.wweek.com/news/schools/2026/04/28/portland-public-schools-faces-56-million-budget-deficit-as-superintendent-proposes-336-layoffs/',
 };
 const DESIGN: SourceLink = { title: 'SimPPS design (issue #1)', url: 'https://github.com/rosenhouse-bot-sandbox/SimPPS/issues/1' };
 
@@ -13,11 +23,29 @@ const $ = (n: number) => `$${(n / 1e6).toFixed(1)}M`;
 const $k = (n: number) => `$${(n / 1e3).toFixed(1)}K`;
 const pct = (x: number) => `${+(x * 100).toFixed(2)}%`;
 
+/** State dollars per student at fall 2025's mix of schools. */
+const STATE_PER_STUDENT = (() => {
+  let kids = 0;
+  let dollars = 0;
+  for (const s of SCHOOLS) {
+    kids += s.enrollment ?? 0;
+    dollars += (s.enrollment ?? 0) * revenuePerStudent(s.pctDirectCert ?? 0);
+  }
+  return dollars / kids;
+})();
+
 export function dialSourceKey(dial: keyof Dials): string {
   return `dial.${dial}`;
 }
 
 export const MODEL_SOURCES: Source[] = [
+  {
+    key: 'model.generalFund',
+    label: 'General fund',
+    tag: 'F',
+    explain: `PPS adopted a general fund of ${$(M.generalFund)} for 2026-27.`,
+    links: [PPS_DATA],
+  },
   {
     key: 'model.households',
     label: 'Simulated households',
@@ -63,7 +91,7 @@ export const MODEL_SOURCES: Source[] = [
   {
     key: 'model.kCapture',
     label: 'Kindergarten capture',
-    tag: 'F',
+    tag: 'I',
     explain: `The share of resident kindergartners who enroll in PPS. It was 68% in 2020 and about ${pct(M.kCapture2025)} in 2025. PSU assumes ${pct(M.kCapture2028)} by 2028, and the game follows that trend. Each zone keeps its own starting share.`,
     links: [PSU],
   },
@@ -119,7 +147,7 @@ export const MODEL_SOURCES: Source[] = [
   {
     key: 'model.staffSteps',
     label: 'Other school staff',
-    tag: 'F',
+    tag: 'I',
     explain: `Schools get 6, 7, 8 or 10 other positions as they grow past 300, 450 and 600 kids, at ${$k(M.positionCost)} each. The steps come from PPS's Oct 6 deck; the thresholds are ours.`,
     links: [PPS_DATA],
   },
@@ -134,7 +162,7 @@ export const MODEL_SOURCES: Source[] = [
     key: 'model.plant',
     label: 'Buildings',
     tag: 'I',
-    explain: `Plant costs $${M.plantPerSqft} per square foot a year, about $0.9M at a typical site. Square footage dates from 2009.`,
+    explain: `Plant costs $${M.plantPerSqft.toFixed(2)} per square foot a year, ${$(MEDIAN_SQFT * M.plantPerSqft)} at the median site, to match PPS's figure of about $0.9M a site. Square footage dates from 2009.`,
     links: [PPS_DATA],
   },
   {
@@ -148,43 +176,43 @@ export const MODEL_SOURCES: Source[] = [
     key: 'model.revenuePerStudent',
     label: 'State revenue per student',
     tag: 'I',
-    explain: `Each student brings ${$k(M.revenueBase)} to ${$k(M.revenueBase + M.revenuePoverty)} a year, weighted by the school's direct-certification share, on the prior year's count. Losing 1,000 students costs about $10-13M.`,
+    explain: `Each student brings ${$k(M.revenueBase)} to ${$k(M.revenueBase + M.revenuePoverty)} a year, weighted by the school's direct-certification share, on the prior year's count. At today's mix, 1,000 fewer students cost about ${$(1000 * STATE_PER_STUDENT)} of state revenue. PPS puts the loss at $10-13M, because it also counts revenue that the game holds fixed.`,
     links: [PPS_DATA],
   },
   {
     key: 'model.stateFunding',
     label: 'State funding',
     tag: 'M',
-    explain: 'The state holds funding flat at $11.36B for now. Later versions draw it as an outside card.',
+    explain: 'The state holds K-12 funding flat in dollars at $11.36B every year of the game, while costs grow. That is the low end of the range from flat to $12.56B a biennium, so the do-nothing ghost cuts positions every year.',
     links: [DESIGN],
   },
   {
     key: 'model.levy',
     label: 'Local option levy',
     tag: 'F',
-    explain: `At $${M.levyRate} per $1,000 the levy projects ${$(M.levyNet)} for 2026-27, about 686 teachers. Revenue scales with the rate, and compression grows faster than the rate, so a higher rate nets less than face value. At 0 the levy lapses and its revenue is gone.`,
+    explain: `At $${M.levyRate} per $1,000 the levy projects ${$(M.levyNet)} for 2026-27, about 686 teachers. At 0 the levy lapses and its revenue is gone. Other rates follow the compression model.`,
     links: [PPS_DATA],
   },
   {
     key: 'model.compression',
     label: 'Measure 5 compression',
-    tag: 'F',
-    explain: `Compression deletes ${$(M.compression)} of the levy at $${M.levyRate}. The game scales it with the rate to the power ${M.compressionPower} [M].`,
+    tag: 'M',
+    explain: `Compression deletes ${$(M.compression)} of the levy at $${M.levyRate}, PPS's figure. The game scales gross levy revenue with the rate and compression with the rate to the power ${M.compressionPower}, so a higher rate nets less than face value.`,
     links: [PPS_DATA],
   },
   {
     key: 'model.reserves',
     label: 'Reserves',
-    tag: 'F',
-    explain: `PPS holds ${$(M.reserves)} in reserves, 4.8% of an ${$(M.generalFund)} general fund. Below 5% breaches policy.`,
+    tag: 'I',
+    explain: `PPS holds ${$(M.reserves)} in reserves. Divided by the ${$(M.generalFund)} general fund, that is 4.8%; PPS calls it its 5% floor. Below 5% breaches policy.`,
     links: [PPS_DATA],
   },
   {
     key: 'model.gap2027',
     label: '2027-28 gap',
     tag: 'N',
-    explain: `OPB and Willamette Week report a 2027-28 gap of ${$(-M.startGap)} at flat state funding. PPS has published no breakdown, so the game sizes the rest-of-district lines to reproduce it.`,
-    links: [PPS_DATA],
+    explain: `OPB and Willamette Week report a 2027-28 gap of ${$(-M.startGap)} at flat state funding. PPS has published no breakdown, so the game back-solves the rest-of-district lines to reproduce it [I].`,
+    links: [OPB_GAP, WW_GAP],
   },
   {
     key: 'model.restOfDistrict',

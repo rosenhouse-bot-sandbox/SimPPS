@@ -1,12 +1,13 @@
+import { dialSourceKey } from '../sources/model';
 import { registerSources, type Source } from '../sources/registry';
 
 /** Keys the shell shows. Keys outside "ui." belong to the sim. */
 export const K = {
   calendar: 'ui.calendar',
-  gap: 'dial.gap',
-  reservePct: 'dial.reservePct',
-  kids: 'dial.kids',
-  capture: 'dial.capture',
+  gap: dialSourceKey('gap'),
+  reservePct: dialSourceKey('reservePct'),
+  kids: dialSourceKey('kids'),
+  capture: dialSourceKey('capture'),
   classSize: 'ui.k5ClassSize',
   levy: 'model.levy',
   reserveDraw: 'ui.reserveDraw',

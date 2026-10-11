@@ -60,7 +60,7 @@ export function generalFund(year: number): number {
   return M.generalFund * costIndex(year + 1);
 }
 
-const MEDIAN_SQFT = (() => {
+export const MEDIAN_SQFT = (() => {
   const s = [...SCHOOL_INFO.values()].map((i) => i.data.squareFeet).filter((x): x is number => x !== null).sort((a, b) => a - b);
   return s[Math.floor(s.length / 2)];
 })();

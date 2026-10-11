@@ -9,7 +9,7 @@ export interface Sim {
   normalizePolicy(policy: Policy): Policy;
 }
 
-/** One played year. A later milestone branches from `start`. */
+/** One played year. */
 export interface Turn {
   start: GameState;
   policy: Policy;

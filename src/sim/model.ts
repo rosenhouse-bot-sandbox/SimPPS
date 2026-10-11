@@ -58,7 +58,7 @@ export const M = {
   // model.positionCost
   positionCost: 155_000,
   // model.plant
-  plantPerSqft: 9.57,
+  plantPerSqft: 13.8,
   // model.costGrowth
   costGrowth: 0.035,
   // model.revenuePerStudent
@@ -71,7 +71,7 @@ export const M = {
   // model.compression
   compression: 53_400_000,
   compressionPower: 1.5,
-  // budget.generalFund
+  // model.generalFund
   generalFund: 862_100_000,
   // model.reserves
   reserves: 41_100_000,
