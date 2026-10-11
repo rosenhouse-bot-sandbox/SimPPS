@@ -334,7 +334,7 @@ export const MODEL_SOURCES: Source[] = [
     key: 'model.busing',
     label: 'New bus riders',
     tag: 'V',
-    explain: `A new rider costs $${M.busRider.lo.toLocaleString('en-US')}-${M.busRider.hi.toLocaleString('en-US')} a year. A new rider is a kid at its zone school past the walk limit whose zone before any change was within it. The budget books the middle for the kids expected to ride next fall. Kids whose new zone is closer save nothing here. General-fund transportation is $47.6M [F].`,
+    explain: `A new rider costs $${M.busRider.lo.toLocaleString('en-US')}-${M.busRider.hi.toLocaleString('en-US')} a year. A new rider is a kid at its zone school past the walk limit whose zone before any change was within it. The budget books the middle for the kids expected to ride next fall if every kid stays in PPS, counting kindergartners like this year's at the same homes and expected returners. Kids whose new zone is closer save nothing here. General-fund transportation is $47.6M [F].`,
     links: [DESIGN],
   },
   {

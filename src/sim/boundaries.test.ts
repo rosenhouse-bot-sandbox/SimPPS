@@ -156,6 +156,15 @@ describe('walk and buses', () => {
     expect(line(year2.report.budget, 'busReimbursement')).toBeCloseTo(-0.8 * busing, 0);
   });
 
+  it.each([true, false])("projects next fall's riders as if every kid stays, kindergartners included, when grandfather is %s", (grandfather) => {
+    const lent = sliceEdit(start, 'elementary', 'lent', 'chapman', 100, grandfather);
+    const projected = boundaryChip(start, lent, DEFAULT_POLICY).riders.now;
+    const actual = play(lent).next.dials.newBusRiders;
+    expect(actual).toBeGreaterThan(15);
+    expect(projected).toBeGreaterThanOrEqual(0.8 * actual);
+    expect(projected).toBeLessThanOrEqual(1.3 * actual);
+  });
+
   it('books no buses without a change', () => {
     expect(line(quo.report.budget, 'busing')).toBe(0);
     expect(line(quo.next.budget, 'busReimbursement')).toBe(0);
@@ -192,7 +201,7 @@ describe('boundaryChip', () => {
     for (const s of chip.seats) expect(s.after).toEqual(s.before);
     expect(chip.walk).toBe(full.walk);
     expect(chip.walk).toBeLessThan(0);
-    expect(chip.riders.now).toBe(0);
+    expect(chip.riders.now).toBeLessThan(full.riders.now);
   });
 
   it('flags blocks that do not touch the new zone', () => {

@@ -17,7 +17,7 @@ import { modeledRange } from './range';
 import { draw } from './rng';
 import type { BoundaryEdit, Closure, Flows, GameState, Household, Policy, Range, SchoolId, ZoneLevel } from './types';
 import { milesTo, ridesNewBus } from './walk';
-import { isContiguous, levelOf, mappedZone, nextZone, normalizeBoundaryEdits, sliceCells, zoningYear, type ZoningYear } from './zones';
+import { defaultZones, ENTRY_GRADE, isContiguous, levelOf, mappedZone, nextZone, normalizeBoundaryEdits, sliceCells, zoningYear, type ZoningYear } from './zones';
 
 /** "The N% of zone `from` nearest `to`" moved into `to`'s zone. */
 export function sliceEdit(
@@ -32,8 +32,9 @@ export function sliceEdit(
 }
 
 /**
- * Next fall's new bus riders if every kid stays in PPS: kids who must move, change levels or lose a
- * closing zone school go to their zone school.
+ * Next fall's new bus riders: continuing kids, kindergartners like this year's at the same homes,
+ * and the expected returners. Kids who must move, change levels or lose a closing zone school go
+ * to their zone school.
  */
 export function projectRiders(
   households: readonly Household[],
@@ -41,17 +42,28 @@ export function projectRiders(
   closed: readonly Pick<Closure, 'school'>[],
   closing: ReadonlySet<SchoolId>,
 ): number {
+  const today = defaultZones();
+  if (zoning.zones.elementary === today.elementary && zoning.zones.middle === today.middle) return 0;
   const shut = new Set(closed.map((c) => c.school));
   let n = 0;
   for (const h of households) {
-    if (h.school === null) continue;
-    const ng = gradeOf(h) + 1;
+    if (h.movedAway) continue;
+    const g = gradeOf(h);
+    const ng = g + 1;
     if (ng > MAX_GRADE) continue;
     const { zone, forced } = nextZone(h, ng, zoning, shut);
+    if (h.school === null) {
+      if (ridesNewBus(h, ng, zone, zone)) n += ng === ENTRY_GRADE.middle ? M.grade6Return : M.returnRate;
+      continue;
+    }
+    if (g === 0 && h.school === h.zoneSchool) {
+      const k = zoning.zones.elementary[h.cell];
+      if (ridesNewBus(h, 0, k, k)) n++;
+    }
     const moves = forced || ng > SCHOOL_INFO.get(h.school)!.hi || (closing.has(h.school) && h.school === h.zoneSchool);
     if (ridesNewBus(h, ng, moves ? zone : h.school, zone)) n++;
   }
-  return n;
+  return Math.round(n);
 }
 
 /** Arithmetic for a boundary edit. It never predicts family choices. */
