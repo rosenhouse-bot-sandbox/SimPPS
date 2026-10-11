@@ -135,10 +135,12 @@ describe('App', () => {
       vi.advanceTimersByTime(5000);
     });
     expect(topBar()).toContain('DEC 2027');
+    expect(topBar()).toMatch(/2028-29 gap −\$[\d.]+M/);
     expect(screen.getByRole('region', { name: 'The Bulletin' }).querySelectorAll('li')).toHaveLength(3);
 
     click('Plan 2028');
     expect(topBar()).toContain('JAN 2028');
+    expect(topBar()).not.toContain('2028-29 gap');
 
     click('News');
     expect(screen.getByRole('region', { name: 'Bulletin 2027' }).textContent).toContain('Cuts reach every school');
