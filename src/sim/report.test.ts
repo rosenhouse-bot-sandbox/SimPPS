@@ -106,6 +106,8 @@ describe('seasonEvents', () => {
       '~330 of ~402 kids follow to receiving schools, ~22 go to other PPS schools and ~50 leave PPS.',
     );
     expect(seasonEvents(f).length - seasonEvents(facts).length).toBe(2);
+    const one = { ...f, closing: [closing('peninsula')], closures: [tally('peninsula', 180, 12, 20)] };
+    expect(detail(one, '1 school closes')).toBe('Peninsula Elementary School closes. Its building is mothballed.');
   });
 
   it('adds mid-year cuts only when they happen', () => {

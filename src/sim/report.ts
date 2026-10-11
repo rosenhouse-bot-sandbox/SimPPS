@@ -34,7 +34,7 @@ function closureEvents(f: YearFacts): SeasonEvent[] {
     {
       season: 'summer',
       title: `${n} school${n === 1 ? ' closes' : 's close'}`,
-      detail: `${list(f.closing.map((c) => name(c.school)))} close. ${buildings}`,
+      detail: `${list(f.closing.map((c) => name(c.school)))} ${n === 1 ? 'closes' : 'close'}. ${buildings}`,
       sourceKey: 'model.buildingFate',
     },
     {
