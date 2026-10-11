@@ -1,11 +1,8 @@
+import { fmtMoney } from '../format';
 import { M } from './model';
+import { dialSourceKey } from '../sources/model';
 import type { YearFacts } from './step';
-import type { Dials, SeasonEvent, YearReport } from './types';
-
-export function money(dollars: number): string {
-  const sign = dollars < 0 ? '-' : '';
-  return `${sign}$${(Math.abs(dollars) / 1e6).toFixed(1)}M`;
-}
+import type { Dials, Headline, SeasonEvent, YearReport } from './types';
 
 function count(n: number): string {
   return Math.round(n).toLocaleString('en-US');
@@ -17,7 +14,7 @@ function pct(x: number): string {
 
 export function seasonEvents(f: YearFacts): SeasonEvent[] {
   const cuts = f.autoCuts > 0 ? ` Automatic cuts remove ${count(f.autoCuts)} positions by seniority and spare IEP services.` : '';
-  const draw = f.reserveDraw > 0 ? ` Reserves cover ${money(f.reserveDraw)}.` : '';
+  const draw = f.reserveDraw > 0 ? ` Reserves cover ${fmtMoney(f.reserveDraw)}.` : '';
   const events: SeasonEvent[] = [
     {
       season: 'spring',
@@ -34,7 +31,7 @@ export function seasonEvents(f: YearFacts): SeasonEvent[] {
     {
       season: 'spring',
       title: f.autoCuts > 0 ? 'June budget closes with cuts' : 'June budget closes',
-      detail: `The gap is ${money(f.plan.gap)}.${draw}${cuts}`,
+      detail: `The gap is ${fmtMoney(f.plan.gap)}.${draw}${cuts}`,
       sourceKey: 'model.autoCuts',
     },
     {
@@ -72,18 +69,28 @@ export function seasonEvents(f: YearFacts): SeasonEvent[] {
   return events;
 }
 
-/** Headlines about totals and regions only. They never name a school. */
-export function headlines(f: YearFacts, before: Dials, after: Dials): string[] {
+/** Headlines about totals and regions. They never name a school. */
+export function headlines(f: YearFacts, before: Dials, after: Dials): Headline[] {
   const cut = f.autoCuts + f.midYearCuts;
-  const money =
+  const money: Headline =
     cut > 0
-      ? `Cuts reach every school: ${count(cut)} positions`
+      ? { text: `Cuts reach every school: ${count(cut)} positions`, sourceKey: 'model.autoCuts' }
       : f.reserveDraw > 0
-        ? 'Reserves cover the gap'
-        : 'Budget balances without cuts';
-  const kids = `Enrollment ${after.kids < before.kids ? 'falls' : 'rises'} to ~${count(after.kids)}`;
-  const [region, n] = [...f.leaversByRegion].sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]))[0] ?? [];
-  const where = region ? `Most leavers live in the ${region} area: ~${count(n)} kids` : 'No region loses kids';
+        ? { text: 'Reserves cover the gap', sourceKey: 'model.reserves' }
+        : { text: 'Budget balances without cuts', sourceKey: dialSourceKey('gap') };
+  const kids: Headline = {
+    text: `Enrollment ${after.kids < before.kids ? 'falls' : 'rises'} to ~${count(after.kids)}`,
+    sourceKey: dialSourceKey('kids'),
+  };
+  const rates = [...f.regions]
+    .filter(([, r]) => r.kids > 0)
+    .map(([name, r]) => [name, r.leavers / r.kids] as const)
+    .sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]));
+  const [region, rate] = rates[0] ?? [];
+  const where: Headline = {
+    text: region && rate ? `Leavers run highest in ${region}: ~${(rate * 100).toFixed(1)}%` : 'No region loses kids',
+    sourceKey: 'model.movingRoll',
+  };
   return [money, kids, where];
 }
 
@@ -108,8 +115,10 @@ const SCALE: Record<keyof Dials, number> = {
   kidsInUrm: 100,
 };
 
+/** Dials that differ from the ghost by at least half a unit, biggest gap first. */
 export function versusGhost(you: Dials, ghost: Dials): YearReport['vsGhost'] {
   return (Object.keys(HIGHER_IS_BETTER) as (keyof Dials)[])
+    .filter((dial) => Math.abs(you[dial] - ghost[dial]) >= SCALE[dial] / 2)
     .map((dial) => ({
       dial,
       you: you[dial],

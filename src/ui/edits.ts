@@ -1,5 +1,5 @@
 import type { Policy } from '../sim/types';
-import { fmtMoney } from './format';
+import { fmtMoney } from '../format';
 
 export function fmtLevy(rate: number): string {
   return rate === 0 ? 'lapse' : `$${rate.toFixed(2)}`;

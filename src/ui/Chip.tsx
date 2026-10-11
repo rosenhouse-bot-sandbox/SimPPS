@@ -1,5 +1,5 @@
 import type { Range } from '../sim/types';
-import { fmtMoney, fmtRange, fmtSignedMoney } from './format';
+import { fmtMoney, fmtRange, fmtSignedMoney } from '../format';
 import type { Chip as ChipData } from './levers';
 
 function money(r: Range): string {

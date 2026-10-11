@@ -442,9 +442,14 @@ legend {
 
 .flow {
   display: grid;
-  grid-template-columns: 7.5em 1fr;
+  grid-template-columns: 9.5em 1fr;
   align-items: center;
   min-height: 36px;
+}
+
+.flow.total {
+  border-top: 2px solid var(--ink);
+  margin-bottom: 6px;
 }
 
 .flow dd {

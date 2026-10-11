@@ -1,5 +1,5 @@
 import type { Budget } from '../sim/types';
-import { fmtCount, fmtMoney } from './format';
+import { fmtCount, fmtMoney } from '../format';
 import { Sourced } from './Sourced';
 import { K } from './sources';
 

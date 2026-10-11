@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { SCHOOLS } from '../data';
+import { HIGH_SCHOOLS, SCHOOLS } from '../data';
 import { getSource } from '../sources/registry';
 import { DEFAULT_POLICY, endYear, newGame, previewBudget, type GameState, type Policy } from '.';
 import { classesFor } from './budget';
@@ -173,6 +173,8 @@ describe('endYear', () => {
     const graduates = start.households.filter((h) => h.school && gradeOf(h) === 8).length;
     expect(stayed + movedWithinPps + leftPps).toBe(start.dials.kids - graduates);
     const entrants = next.households.filter((h) => !before.has(h.id) && h.school).length;
+    expect(report.flows.enteredK).toBe(entrants);
+    expect(report.flows.graduated).toBe(graduates);
     expect(stayed + movedWithinPps + cameBack + entrants).toBe(next.dials.kids);
   });
 
@@ -257,13 +259,16 @@ describe('endYear', () => {
     expect(two.sim!.ghost!.dials).toEqual(ghostTwo.dials);
   });
 
-  it('prints three Bulletin headlines that never name a K-8 school', () => {
+  it('prints three Bulletin headlines that never name a school', () => {
     const { report } = endYear(start, DEFAULT_POLICY);
     expect(report.headlines).toHaveLength(3);
-    const names = SCHOOLS.map((s) =>
-      s.name.replace(/ (Elementary School|Middle School|K-8 School|School|Program \(K-8\))$/, ''),
+    const names = [...SCHOOLS, ...HIGH_SCHOOLS].map((s) =>
+      s.name.replace(/ (Elementary School|Middle School|High School|K-8 School|School|Program \(K-8\))$/, ''),
     );
-    for (const h of report.headlines) for (const n of names) expect(h).not.toMatch(new RegExp(`\\b${n}\\b`));
+    for (const h of report.headlines) {
+      expect(getSource(h.sourceKey)).toBeDefined();
+      for (const n of names) expect(h.text).not.toMatch(new RegExp(`\\b${n}\\b`));
+    }
   });
 
   it('plays every season and cites a registered source', () => {

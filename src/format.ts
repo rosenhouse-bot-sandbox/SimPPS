@@ -1,4 +1,4 @@
-import type { Range } from '../sim/types';
+import type { Range } from './sim/types';
 
 const MINUS = '−';
 

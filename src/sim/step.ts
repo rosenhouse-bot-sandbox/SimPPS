@@ -1,4 +1,4 @@
-import { ZONES } from '../data';
+import { ZONES, type Point } from '../data';
 import { classesFor, computeBudget, costIndex, cutCreep } from './budget';
 import { samplePoint, ZoneIndex } from './geo';
 import { gradeOf, M, MAX_GRADE, oneKid } from './model';
@@ -16,6 +16,24 @@ import { buildSchools, computeDials } from './schools';
 import type { Budget, Flows, GameState, Household, Policy, SchoolChoice, SchoolId, SimMemory } from './types';
 
 const HIGH = new ZoneIndex(ZONES.high);
+/** Neutral names for high school zones, so headlines never name a school. */
+const REGION: Record<string, string> = {
+  Cleveland: 'Inner Southeast',
+  Franklin: 'Outer Southeast',
+  Grant: 'Northeast',
+  'Ida B. Wells': 'Southwest',
+  'Jefferson / Grant': 'Northeast',
+  'Jefferson / McDaniel': 'Outer Northeast',
+  'Jefferson / Roosevelt': 'North',
+  Lincoln: 'Northwest',
+  McDaniel: 'Outer Northeast',
+  Roosevelt: 'North',
+};
+
+export function regionOf(pos: Point): string | null {
+  const z = HIGH.find(pos);
+  return z >= 0 ? REGION[ZONES.high[z].name] : null;
+}
 const ELEM_ZONE_OF = new Map(ZONES.elementary.map((z, i) => [z.school, i]));
 
 /** Draw purposes, so each decision has its own dice. */
@@ -41,7 +59,8 @@ export interface YearFacts {
   kEnrolled: number;
   graduates: number;
   flows: Flows;
-  leaversByRegion: Map<string, number>;
+  /** PPS kids at the start of the year and those who left, by region. */
+  regions: Map<string, { kids: number; leavers: number }>;
   k5Homerooms: number;
   /** Homerooms that cuts have removed by October. */
   homeroomsCut: number;
@@ -70,7 +89,7 @@ export interface FamilyYear {
   kEnrolled: number;
   graduates: number;
   flows: Flows;
-  leaversByRegion: Map<string, number>;
+  regions: Map<string, { kids: number; leavers: number }>;
 }
 
 /** Spring to fall of `year`: kindergartners choose, 8th graders leave and everyone else may move. */
@@ -119,8 +138,8 @@ export function familiesDecide(
   // Summer: 8th graders leave. Fall: everyone else may move.
   const bumpK5 = worseYear(classSize, positionsCut);
   const bumpOther = worseYear(24, positionsCut);
-  const flows: Flows = { stayed: 0, movedWithinPps: 0, leftPps: 0, cameBack: 0 };
-  const leaversByRegion = new Map<string, number>();
+  const flows: Flows = { stayed: 0, movedWithinPps: 0, leftPps: 0, cameBack: 0, enteredK: kEnrolled, graduated: 0 };
+  const regions = new Map<string, { kids: number; leavers: number }>();
   let graduates = 0;
   for (const h of before) {
     if (h.movedAway) continue;
@@ -136,6 +155,7 @@ export function familiesDecide(
     const feeder = ng === 6 ? middleZoneSchool(h.pos, h.zoneSchool) : h.zoneSchool;
     next.zoneSchool = feeder;
     if (h.school !== null) {
+      const region = countKid(regions, h.pos);
       const transition = ng > SCHOOL_INFO.get(h.school)!.hi;
       const base = transition ? M.grade6Exit : M.leaveRate * (0.7 + 0.6 * h.exitCapacity);
       const pLeave = base + (ng <= 5 ? bumpK5 : bumpOther) * (1.25 - 0.5 * h.loyalty);
@@ -145,9 +165,7 @@ export function familiesDecide(
         next.leftThisYear = true;
         if (draw(seed, year, h.id, D.Away) < M.awayShare) next.movedAway = true;
         flows.leftPps++;
-        const region = HIGH.find(h.pos);
-        const name = region >= 0 ? ZONES.high[region].name : 'Outer';
-        leaversByRegion.set(name, (leaversByRegion.get(name) ?? 0) + 1);
+        if (region) region.leavers++;
       } else if (transition) {
         next.school =
           draw(seed, year, h.id, D.Feeder) < M.feederShare
@@ -172,7 +190,8 @@ export function familiesDecide(
     }
     households.push(next);
   }
-  return { households, nextId, kResidents, kEnrolled, graduates, flows, leaversByRegion };
+  flows.graduated = graduates;
+  return { households, nextId, kResidents, kEnrolled, graduates, flows, regions };
 }
 
 export function stepYear(state: GameState, policy: Policy): { next: GameState; facts: YearFacts } {
@@ -196,7 +215,7 @@ export function stepYear(state: GameState, policy: Policy): { next: GameState; f
   const position = M.positionCost * index;
   const classroomShare = -plan.lines.find((l) => l.key === 'homerooms')!.amount / (plan.spending + autoCuts * position);
 
-  const { households, nextId, kResidents, kEnrolled, graduates, flows, leaversByRegion } = familiesDecide(
+  const { households, nextId, kResidents, kEnrolled, graduates, flows, regions } = familiesDecide(
     mem,
     state.households,
     year,
@@ -259,13 +278,22 @@ export function stepYear(state: GameState, policy: Policy): { next: GameState; f
       kEnrolled,
       graduates,
       flows,
-      leaversByRegion,
+      regions,
       k5Homerooms,
       homeroomsCut: octoberCut,
       blended,
       crowded,
     },
   };
+}
+
+function countKid(regions: FamilyYear['regions'], pos: Point): { kids: number; leavers: number } | null {
+  const name = regionOf(pos);
+  if (!name) return null;
+  let r = regions.get(name);
+  if (!r) regions.set(name, (r = { kids: 0, leavers: 0 }));
+  r.kids++;
+  return r;
 }
 
 function returnSchool(

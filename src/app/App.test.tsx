@@ -4,7 +4,7 @@ import { ZONES } from '../data';
 import { FALLBACK_SIZE } from '../map/MapView';
 import * as realSim from '../sim';
 import { getSource } from '../sources/registry';
-import { fmtCount, fmtMoney } from '../ui/format';
+import { fmtCount, fmtMoney } from '../format';
 import { App } from './App';
 import type { Sim } from './machine';
 

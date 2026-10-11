@@ -1,6 +1,6 @@
 import type { Budget, Policy } from '../sim/types';
 import { ballotItems, listEdits } from './edits';
-import { fmtCount, fmtMoney } from './format';
+import { fmtCount, fmtMoney } from '../format';
 import { HoldButton } from './HoldButton';
 import { Sourced } from './Sourced';
 import { K } from './sources';

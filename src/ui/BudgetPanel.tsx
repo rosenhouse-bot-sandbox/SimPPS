@@ -1,7 +1,7 @@
 import type { GameState, Policy } from '../sim/types';
 import { Chip } from './Chip';
 import { fmtLevy } from './edits';
-import { fmtMoney, fmtPct } from './format';
+import { fmtMoney, fmtPct } from '../format';
 import { CLASS_SIZE, classSizeChip, LEVY, levyChip, RESERVE_STEP, reserveChip } from './levers';
 import { Sourced } from './Sourced';
 import { K } from './sources';

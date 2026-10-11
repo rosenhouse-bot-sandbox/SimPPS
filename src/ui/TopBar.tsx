@@ -1,5 +1,5 @@
 import type { Dials } from '../sim/types';
-import { fmtCount, fmtMoney, fmtPct } from './format';
+import { fmtCount, fmtMoney, fmtPct } from '../format';
 import { Sourced } from './Sourced';
 import { K } from './sources';
 

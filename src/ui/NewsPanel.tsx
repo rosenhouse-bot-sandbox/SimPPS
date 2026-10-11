@@ -1,4 +1,5 @@
 import type { YearReport } from '../sim/types';
+import { Sourced } from './Sourced';
 import { Window } from './Window';
 
 export function NewsPanel({ reports, onClose }: { reports: YearReport[]; onClose: () => void }) {
@@ -12,7 +13,9 @@ export function NewsPanel({ reports, onClose }: { reports: YearReport[]; onClose
           <h3>{r.year}</h3>
           <ul>
             {r.headlines.slice(0, 3).map((h) => (
-              <li key={h}>{h}</li>
+              <li key={h.text}>
+                <Sourced k={h.sourceKey}>{h.text}</Sourced>
+              </li>
             ))}
           </ul>
         </section>

@@ -56,12 +56,17 @@ export const FIXTURE_REPORT: YearReport = {
     { season: 'october', title: 'Classes form', detail: 'Blended classes rise in small schools.' },
     { season: 'winter', title: 'Costs land', detail: 'Pensions and compression grow.' },
   ],
-  flows: { stayed: 24_100, movedWithinPps: 820, leftPps: 610, cameBack: 140 },
+  flows: { stayed: 22_100, movedWithinPps: 820, leftPps: 610, cameBack: 140, enteredK: 2_900, graduated: 3_100 },
   vsGhost: [
     { dial: 'positionsCut', you: 270, ghost: 420, better: true },
     { dial: 'kids', you: 26_050, ghost: 26_075, better: false },
     { dial: 'gap', you: -43_000_000, ghost: -65_200_000, better: true },
     { dial: 'capture', you: 0.765, ghost: 0.766, better: false },
   ],
-  headlines: ['CUTS REACH EVERY SCHOOL', 'Kindergarten sign-ups dip', 'Reserves fall below policy', 'A fourth headline'],
+  headlines: [
+    { text: 'Cuts reach every school: 270 positions', sourceKey: 'model.autoCuts' },
+    { text: 'Enrollment falls to ~26,050', sourceKey: 'dial.kids' },
+    { text: 'Leavers run highest in North: ~2.4%', sourceKey: 'model.movingRoll' },
+    { text: 'A fourth headline', sourceKey: 'model.movingRoll' },
+  ],
 };

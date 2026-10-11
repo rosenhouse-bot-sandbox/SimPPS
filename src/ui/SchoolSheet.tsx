@@ -2,7 +2,7 @@ import type { ComponentChildren } from 'preact';
 import { SCHOOLS, type SchoolData } from '../data';
 import { modeledRange } from '../sim';
 import type { SchoolState } from '../sim/types';
-import { fmtCount, fmtMoney, fmtPct, fmtRange } from './format';
+import { fmtCount, fmtMoney, fmtPct, fmtRange } from '../format';
 import { Sourced } from './Sourced';
 import { K } from './sources';
 import { Window } from './Window';

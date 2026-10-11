@@ -104,11 +104,19 @@ export interface SeasonEvent {
   sourceKey?: string;
 }
 
+/** Kids now = stayed + movedWithinPps + cameBack + enteredK. */
 export interface Flows {
   stayed: number;
   movedWithinPps: number;
   leftPps: number;
   cameBack: number;
+  enteredK: number;
+  graduated: number;
+}
+
+export interface Headline {
+  text: string;
+  sourceKey: string;
 }
 
 export interface YearReport {
@@ -118,7 +126,7 @@ export interface YearReport {
   flows: Flows;
   /** Largest gaps against the do-nothing ghost, biggest first. */
   vsGhost: { dial: keyof Dials; you: number; ghost: number; better: boolean }[];
-  headlines: string[];
+  headlines: Headline[];
 }
 
 export interface GameState {
