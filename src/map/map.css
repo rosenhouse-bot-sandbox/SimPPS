@@ -1,0 +1,164 @@
+.pps-map {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  touch-action: none;
+  user-select: none;
+  -webkit-user-select: none;
+  background: #151b16;
+  font-family: ui-monospace, 'SF Mono', Menlo, Consolas, monospace;
+}
+
+.pps-map-layer {
+  position: absolute;
+  inset: 0;
+  display: block;
+}
+
+.pps-map-zone {
+  stroke: #56704a;
+  stroke-width: 1;
+  vector-effect: non-scaling-stroke;
+}
+
+.pps-map-zone-selected {
+  fill: rgba(255, 236, 170, 0.12);
+  stroke: #ffe9a8;
+  stroke-width: 2;
+  vector-effect: non-scaling-stroke;
+}
+
+.pps-map-rivers polyline {
+  fill: none;
+  stroke: #2d5f8f;
+  stroke-linejoin: round;
+  stroke-linecap: round;
+}
+
+.pps-map-badge rect,
+.pps-map-hs rect {
+  shape-rendering: crispEdges;
+}
+
+.pps-map-badge > rect:not(.pps-map-roof):not(.pps-map-badge-ring) {
+  stroke: #0d0d0d;
+  stroke-width: 1;
+}
+
+.pps-map-badge.closed > rect {
+  stroke: #8a8a8a;
+  stroke-dasharray: 2 2;
+}
+
+.pps-map-roof {
+  fill: #9c4a2c;
+}
+
+.pps-map-badge-ring {
+  fill: none;
+  stroke: #ffffff;
+  stroke-width: 2;
+}
+
+.pps-map-overlay-families .pps-map-badge {
+  opacity: 0.7;
+}
+
+.pps-map-hs {
+  pointer-events: none;
+}
+
+.pps-map-hs rect {
+  fill: #3d3652;
+  stroke: #c9b8ff;
+  stroke-width: 1.5;
+}
+
+.pps-map text {
+  font-size: 10px;
+  text-anchor: middle;
+  fill: #f5f0e0;
+  stroke: #000;
+  stroke-width: 3px;
+  paint-order: stroke;
+  pointer-events: none;
+}
+
+.pps-map-hs text {
+  fill: #c9b8ff;
+  font-style: italic;
+}
+
+.pps-map-legend {
+  position: absolute;
+  left: 8px;
+  bottom: 8px;
+  padding: 6px 8px;
+  background: rgba(10, 12, 10, 0.85);
+  border: 1px solid #56704a;
+  color: #f5f0e0;
+  font-size: 11px;
+  line-height: 16px;
+}
+
+.pps-map-legend strong {
+  display: block;
+  font-weight: normal;
+  text-transform: uppercase;
+}
+
+.pps-map-legend i {
+  display: inline-block;
+  width: 10px;
+  height: 10px;
+  margin-right: 6px;
+  vertical-align: -1px;
+  border: 1px solid #000;
+}
+
+.pps-map-zoom {
+  position: absolute;
+  right: 8px;
+  bottom: 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.pps-map-zoom button,
+.pps-map-picker button {
+  min-width: 44px;
+  min-height: 44px;
+  font: inherit;
+  color: #f5f0e0;
+  background: #26301f;
+  border: 2px outset #6d8a5f;
+}
+
+.pps-map-zoom button {
+  font-size: 22px;
+}
+
+.pps-map-zoom button:disabled {
+  opacity: 0.4;
+}
+
+.pps-map-picker {
+  position: absolute;
+  width: 180px;
+  display: flex;
+  flex-direction: column;
+  background: #111;
+  border: 2px solid #c9b8ff;
+}
+
+.pps-map-picker button {
+  text-align: left;
+  padding: 0 10px;
+  border-width: 0 0 1px;
+}
+
+.pps-map-picker .pps-map-picker-close {
+  color: #b9b9b9;
+}
