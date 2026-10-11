@@ -2,21 +2,31 @@ import { cleanup, fireEvent, render, screen, within } from '@testing-library/pre
 import { useState } from 'preact/hooks';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { fmtCount, fmtMoneyRange, fmtRange } from '../format';
-import { closureChip, modeledRange, newGame } from '../sim';
+import { closureChip, modeledRange, newGame, receiverCandidates } from '../sim';
 import type { Closure } from '../sim/types';
-import { startDraft, type CloseDraft } from './closeSend';
+import { startDraft, withNames, type CloseDraft } from './closeSend';
 import { CloseSendSheet } from './CloseSendSheet';
 
 afterEach(cleanup);
 
 const game = newGame({ seed: 'p52' });
 
-function setup(school = 'peninsula', plan: Closure[] = []) {
+function setup(school = 'peninsula', plan: Closure[] = [], existing?: Closure) {
   const onCommit = vi.fn();
   const onClose = vi.fn();
+  const candidates = withNames(receiverCandidates(game.schools, school, plan));
   function Harness() {
-    const [d, setD] = useState<CloseDraft>(startDraft(school));
-    return <CloseSendSheet draft={d} game={game} plan={plan} classSize={24} onChange={setD} onCommit={onCommit} onClose={onClose} />;
+    const [d, setD] = useState<CloseDraft>(startDraft(school, existing));
+    return (
+      <CloseSendSheet
+        draft={d}
+        candidates={candidates}
+        chipFor={(c) => closureChip(game, c, plan, 24)}
+        onChange={setD}
+        onCommit={onCommit}
+        onClose={onClose}
+      />
+    );
   }
   render(<Harness />);
   return { onCommit, onClose };
@@ -61,7 +71,7 @@ describe('CloseSendSheet', () => {
     setup();
     click(/Rosa Parks/);
     click('Next >');
-    const c = closureChip(game, { school: 'peninsula', receivers: [{ school: 'rosa-parks', share: 1 }], building: 'mothball' });
+    const c = closureChip(game, { school: 'peninsula', receivers: [{ school: 'rosa-parks', share: 1 }], building: 'mothball' }, [], 24);
     expect(c.seats.kids).toBe(399);
     const cells = [...chip().querySelectorAll('dt')].map((dt) => `${dt.textContent} ${dt.nextElementSibling!.textContent}`);
     expect(cells).toEqual(['Seats 377–421~/594', 'Walk +0.5 mi~', 'Now −$0.3–0.6M~', `At maturity, 2029 ${fmtMoneyRange(c.atMaturity)}`]);
@@ -91,7 +101,7 @@ describe('CloseSendSheet', () => {
     click('Close it');
     const sold: Closure = { school: 'peninsula', receivers: [{ school: 'rosa-parks', share: 1 }], building: 'sell' };
     expect(onCommit).toHaveBeenLastCalledWith(sold);
-    const moving = closureChip(game, sold).kidsMoving;
+    const moving = closureChip(game, sold, [], 24).kidsMoving;
     expect(within(screen.getByRole('group', { name: 'Stay in PPS' })).getByRole('status').textContent).toBe(fmtCount(moving));
     click('Less Stay in PPS');
     click('Call it');
@@ -108,6 +118,17 @@ describe('CloseSendSheet', () => {
     click('Skip');
     expect(onCommit).toHaveBeenCalledOnce();
     expect(onClose).toHaveBeenCalledOnce();
+  });
+
+  it('keeps the guess of a closure being changed when the player skips', () => {
+    const existing: Closure = { school: 'peninsula', receivers: [{ school: 'rosa-parks', share: 1 }], building: 'mothball', guess: 150 };
+    const { onCommit } = setup('peninsula', [existing], existing);
+    click('Next >');
+    click('Next >');
+    click('Close it');
+    expect(within(screen.getByRole('group', { name: 'Stay in PPS' })).getByRole('status').textContent).toBe('150');
+    click('Skip');
+    expect(onCommit).toHaveBeenLastCalledWith(existing);
   });
 
   it('does not offer schools closing elsewhere in the plan', () => {

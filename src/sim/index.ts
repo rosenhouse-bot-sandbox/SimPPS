@@ -13,8 +13,10 @@ import type { Budget, GameState, Household, Policy, SimMemory, YearReport } from
 export * from './types';
 export { modeledRange } from './range';
 export { legislatureVotes, levyRevenue } from './budget';
-export { closureChip, type ClosureChip } from './closures';
+export { canClose, closureChip, receiverCandidates, type ClosureChip } from './closures';
 export { SCENARIOS, type Start } from './scenarios';
+export { FATE_DONE } from './report';
+export const MOTHBALL_PER_YEAR = M.mothball;
 
 export const DEFAULT_POLICY: Policy = { k5ClassSize: 24, levyRate: 1.99, reserveDraw: 0, closures: [] };
 
@@ -42,6 +44,7 @@ export function newGame(opts: { seed: string; start?: Start }): GameState {
     restRevenue: 0,
     restCost: 0,
     stateFunding: stateFundingLevel(seedHash, FIRST_YEAR, 'january'),
+    closed: [],
   };
   const k8 = computeBudget(input).lines;
   const revenue = k8.filter((l) => l.amount > 0).reduce((a, l) => a + l.amount, 0);

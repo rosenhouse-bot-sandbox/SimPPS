@@ -1,18 +1,31 @@
 import { describe, expect, it } from 'vitest';
 import { DEFAULT_POLICY, endYear, modeledRange, newGame } from '.';
-import { computeBudget, costIndex, revenuePerStudent } from './budget';
+import { computeBudget, costIndex, otherStaff, revenuePerStudent } from './budget';
 import {
+  canClose,
   closureChip,
   closureOutcomes,
   closureSaving,
+  closuresTakingEffect,
+  decideClosures,
   followChance,
+  followFactors,
+  isRiskier,
+  nearestOpen,
   nonFollowerChoice,
   normalizeClosures,
+  receiverCandidates,
+  receiversFor,
+  schoolFollowOffset,
+  withArrivals,
   type FollowFactors,
+  type Mover,
 } from './closures';
+import { gradeOf, METERS_PER_MILE, oneKid } from './model';
+import { SCHOOL_INFO } from './population';
 import { buildSchools } from './schools';
 import { familiesDecide } from './step';
-import type { ClosedSchool, Closure, GameState, SchoolState } from './types';
+import type { ClosedSchool, Closure, Flows, GameState, Household, SchoolState } from './types';
 
 const none: FollowFactors = {
   miles: 0.5,
@@ -95,6 +108,7 @@ describe('closure budget lines', () => {
     enrollment: 0,
     byGrade: new Array(9).fill(0),
     capacity: 500,
+    stateRevenue: 0,
     homerooms: 0,
     blendedHomerooms: 0,
   });
@@ -109,6 +123,7 @@ describe('closure budget lines', () => {
     restRevenue: 0,
     restCost: 0,
     stateFunding: 1,
+    closed: [],
   };
   const amount = (b: ReturnType<typeof computeBudget>, key: string) => b.lines.find((l) => l.key === key)?.amount ?? 0;
   const closure = { school: 'peninsula', receivers: [{ school: 'rosa-parks', share: 1 }], building: 'mothball' as const };
@@ -155,7 +170,7 @@ describe('closure budget lines', () => {
 describe('closureChip', () => {
   const game = newGame({ seed: 'chip' });
   const peninsula: Closure = { school: 'peninsula', receivers: [{ school: 'rosa-parks', share: 1 }], building: 'mothball' };
-  const chip = closureChip(game, peninsula);
+  const chip = closureChip(game, peninsula, [], 24);
   const net = (closureSaving(game.schools, peninsula, 24) - 70_000) * costIndex(2029);
 
   it('counts seats if all follow: Peninsula into Rosa Parks', () => {
@@ -181,7 +196,7 @@ describe('closureChip', () => {
     expect(chip.atMaturity.hi / chip.atMaturity.lo).toBeCloseTo(1.15 / 0.85, 5);
     expect(chip.atMaturity.lo).toBeGreaterThan(300_000);
     expect(chip.atMaturity.hi).toBeLessThan(1_500_000);
-    const lease = closureChip(game, { ...peninsula, building: 'lease' });
+    const lease = closureChip(game, { ...peninsula, building: 'lease' }, [], 24);
     expect((lease.atMaturity.lo + lease.atMaturity.hi) / 2 - net).toBeCloseTo(70_000 * costIndex(2029), 0);
   });
 
@@ -189,14 +204,18 @@ describe('closureChip', () => {
     expect(chip.paysOffIfFewerThan).toBe(Math.floor(net / revenuePerStudent(0.2)));
   });
 
-  it('saves $0.3-1.5M gross at each PPS Scenario A closure', () => {
+  it('saves $0.5-1.8M gross at each PPS Scenario A closure and within PPS\'s $5-20M in all', () => {
     const a = newGame({ seed: 'chip', start: 'scenario-a' });
     expect(a.policy.closures).toHaveLength(14);
+    let total = 0;
     for (const c of a.policy.closures) {
       const s = closureSaving(a.schools, c, 24);
-      expect(s, c.school).toBeGreaterThan(300_000);
-      expect(s, c.school).toBeLessThan(1_500_000);
+      expect(s, c.school).toBeGreaterThan(500_000);
+      expect(s, c.school).toBeLessThan(1_800_000);
+      total += s;
     }
+    expect(total).toBeGreaterThan(5e6);
+    expect(total).toBeLessThan(20e6);
   });
 });
 
@@ -231,8 +250,8 @@ describe('Close & send over the years', () => {
   });
 
   it('moves every kid still in its grades and marks them for trails', () => {
-    expect(movers.length).toBe(closureChip(start, peninsula).kidsMoving);
-    expect(outcome.kids).toBe(movers.length);
+    expect(movers.length).toBe(closureChip(start, peninsula, [], 24).kidsMoving);
+    expect(outcome.kids).toEqual(modeledRange(movers.length));
     for (const h of movers) {
       expect(h.forcedMoves).toBe(1);
       expect(h.status === 'moved' || h.leftThisYear).toBe(true);
@@ -264,11 +283,6 @@ describe('Close & send over the years', () => {
     expect(score(undefined)).toBeUndefined();
   });
 
-  it('counts movers who stayed without a choice at the school\'s direct-certification share', () => {
-    const stayed = movers.filter((h) => h.school !== null).length;
-    expect(outcome.stayedWithoutChoice).toBeCloseTo(stayed * 0.2);
-  });
-
   it('re-zones the closed zone so its kindergartners enter the receiver', () => {
     expect(next.households.some((h) => h.zoneSchool === 'peninsula')).toBe(false);
     const k = next.households.filter((h) => h.kids[0] && h.school === 'rosa-parks').length;
@@ -291,7 +305,7 @@ describe('Close & send over the years', () => {
   });
 
   it('saves about what the chip promised once mature, if revenue is set aside', () => {
-    const atMaturity = closureChip(start, peninsula).atMaturity;
+    const atMaturity = closureChip(start, peninsula, [], 24).atMaturity;
     const noCuts = { ...DEFAULT_POLICY, levyRate: 5 };
     const play = (p: typeof policy) => [p, noCuts, noCuts].reduce((s, x) => endYear(s, x).next, start);
     const y3 = play({ ...noCuts, closures: [peninsula] });
@@ -315,11 +329,11 @@ describe('Close & send over the years', () => {
     expect(strip(a.next.sim!.ghost!)).toEqual(strip(quo));
   });
 
-  it('sends crowding past 110% of seats to decide again', () => {
+  it('keeps a crowded receiver at 110% of its seats', () => {
     const small: Closure = { school: 'forest-park', receivers: [{ school: 'skyline', share: 1 }], building: 'sell' };
     const crowded = endYear(start, { ...DEFAULT_POLICY, closures: [small] }).next;
     expect(crowded.schools.skyline.enrollment).toBeLessThanOrEqual(Math.floor(1.1 * 282));
-    expect(start.schools.skyline.enrollment + closureChip(start, small).kidsMoving * 0.6).toBeGreaterThan(1.1 * 282);
+    expect(start.schools.skyline.enrollment + closureChip(start, small, [], 24).kidsMoving * 0.6).toBeGreaterThan(1.1 * 282);
   });
 });
 
@@ -380,5 +394,269 @@ describe('buildSchools', () => {
     const schools = buildSchools([], 24, 0, [mlc]);
     expect(schools['metropolitan-learning-center']).toMatchObject({ open: false, enrollment: 0, closed: { year: 2027, building: 'lease' } });
     expect(buildSchools([], 24)['metropolitan-learning-center'].enrollment).toBeGreaterThan(0);
+  });
+});
+
+const close = (school: string, ...to: [string, number][]): Closure => ({
+  school,
+  receivers: to.map(([r, share]) => ({ school: r, share })),
+  building: 'mothball',
+});
+const asClosed = (c: Closure, year = 2027): ClosedSchool => ({ ...c, year, saving: 0, staffKept: 0 });
+
+describe('who can close and who can receive', () => {
+  const game = newGame({ seed: 'rules' });
+
+  it('closes only open schools with K-8 kids', () => {
+    expect(canClose(game.schools, 'peninsula')).toBe(true);
+    expect(canClose(game.schools, 'alliance')).toBe(false);
+    expect(canClose({ ...game.schools, peninsula: { ...game.schools.peninsula, open: false } }, 'peninsula')).toBe(false);
+  });
+
+  it('sends kids only to open neighborhood schools serving some of their grades, nearest first', () => {
+    const ids = receiverCandidates(game.schools, 'peninsula', [close('sitton', ['rosa-parks', 1])]).map((c) => c.id);
+    for (const id of ['peninsula', 'sitton', 'alliance', 'access-academy', 'richmond', 'beaumont']) expect(ids).not.toContain(id);
+    expect(ids).toContain('rosa-parks');
+    const all = receiverCandidates(game.schools, 'peninsula', []);
+    expect(all.map((c) => c.miles)).toEqual([...all.map((c) => c.miles)].sort((a, b) => a - b));
+    const closed = { ...game.schools, 'rosa-parks': { ...game.schools['rosa-parks'], open: false } };
+    expect(receiverCandidates(closed, 'peninsula', []).map((c) => c.id)).not.toContain('rosa-parks');
+  });
+
+  it('drops receivers that are citywide programs or serve none of the grades', () => {
+    for (const r of ['alliance', 'access-academy', 'richmond', 'beaumont'])
+      expect(normalizeClosures([close('peninsula', [r, 1])]), r).toEqual([]);
+  });
+
+  it('rounds the guess and drops one that is not a number', () => {
+    const guess = (g: number) => normalizeClosures([{ ...close('peninsula', ['rosa-parks', 1]), guess: g }])[0].guess;
+    expect(guess(3.7)).toBe(4);
+    expect(guess(-2)).toBe(0);
+    expect(guess(NaN)).toBeUndefined();
+  });
+
+  it('splits a grade only among receivers that serve it', () => {
+    const c = close('cesar-chavez', ['woodlawn', 0.7], ['george', 0.3]);
+    expect(receiversFor(c, 2)).toEqual([{ school: 'woodlawn', share: 1 }]);
+    expect(receiversFor(c, 7)).toEqual([{ school: 'george', share: 1 }]);
+  });
+});
+
+describe('closures taking effect', () => {
+  const game = newGame({ seed: 'rules' });
+  const peninsula = close('peninsula', ['rosa-parks', 1]);
+  const sitton = close('sitton', ['rosa-parks', 1]);
+
+  it('skips closures of closed schools and keeps only open receivers', () => {
+    const schools = { ...game.schools, woodlawn: { ...game.schools.woodlawn, open: false } };
+    const out = closuresTakingEffect(schools, [close('woodlawn', ['rosa-parks', 1]), close('peninsula', ['woodlawn', 0.5], ['rosa-parks', 0.5])], 24, 2027);
+    expect(out.map((c) => c.school)).toEqual(['peninsula']);
+    expect(out[0].receivers).toEqual([{ school: 'rosa-parks', share: 1 }]);
+  });
+
+  it('prices a second closure into the same receiver after the first has moved in', () => {
+    const [, second] = closuresTakingEffect(game.schools, [peninsula, sitton], 24, 2027);
+    expect(second.saving).toBe(closureSaving(withArrivals(game.schools, peninsula), sitton, 24));
+    expect(second.saving).not.toBe(closureSaving(game.schools, sitton, 24));
+  });
+
+  it("keeps on the payroll only the closed school's staff the receivers' new steps don't need", () => {
+    const [c] = closuresTakingEffect(game.schools, [peninsula], 24, 2027);
+    const rp = game.schools['rosa-parks'].enrollment;
+    const pen = game.schools.peninsula.enrollment;
+    expect(c.staffKept).toBe(otherStaff(pen) - 2 - (otherStaff(rp + pen) - otherStaff(rp)));
+  });
+
+  it('books the one-time cost only for closures that can happen', () => {
+    const schools = { ...game.schools, peninsula: { ...game.schools.peninsula, open: false } };
+    const plan = (closures: Closure[]) =>
+      computeBudget({ ...game.sim!, ...budgetArgs(game), schools, policy: { ...DEFAULT_POLICY, closures } }).lines.find(
+        (l) => l.key === 'closureOneTime',
+      );
+    expect(plan([close('chief-joseph', ['peninsula', 1])])).toBeUndefined();
+    expect(plan([peninsula])).toBeUndefined();
+    expect(plan([close('chief-joseph', ['beach', 1])])).toBeDefined();
+  });
+
+  it('counts the other closures in the plan on the chip', () => {
+    const chip = closureChip(game, sitton, [peninsula, sitton], 24);
+    const s = game.schools;
+    expect(chip.seats.kids).toBe(s['rosa-parks'].enrollment + s.peninsula.enrollment + s.sitton.enrollment);
+    expect(closureChip(game, sitton, [], 24).seats.kids).toBe(s['rosa-parks'].enrollment + s.sitton.enrollment);
+  });
+
+  it('counts seats only for the grades each receiver serves', () => {
+    const chip = closureChip(game, close('cesar-chavez', ['george', 1]), [], 24);
+    const middle = game.schools['cesar-chavez'].byGrade.slice(6).reduce((a, n) => a + n, 0);
+    expect(chip.seats.kids).toBe(game.schools.george.enrollment + middle);
+    const pos = (id: string): [number, number] => [SCHOOL_INFO.get(id)!.data.x, SCHOOL_INFO.get(id)!.data.y];
+    const dist = (a: [number, number], b: [number, number]) => Math.hypot(a[0] - b[0], a[1] - b[1]) / METERS_PER_MILE;
+    const kids = game.households.filter((h) => h.school === 'cesar-chavez' && gradeOf(h) >= 6);
+    const walk = kids.reduce((a, h) => a + dist(h.pos, pos('george')) - dist(h.pos, pos('cesar-chavez')), 0) / kids.length;
+    expect(chip.walkMiles).toBeCloseTo(walk, 6);
+  });
+});
+
+function budgetArgs(game: GameState) {
+  const sim = game.sim!;
+  return {
+    year: game.year,
+    reserves: game.budget.reserves,
+    priorSpending: sim.spending,
+    restRevenue: sim.restRevenue,
+    restCost: sim.restCost,
+    stateFunding: 1,
+    closed: sim.closed,
+  };
+}
+
+describe('closure phasing past maturity', () => {
+  it('books nothing unrealized years later', () => {
+    const game = newGame({ seed: 'rules' });
+    const schools = { ...game.schools, peninsula: { ...game.schools.peninsula, open: false } };
+    const closed = { ...asClosed(close('peninsula', ['rosa-parks', 1])), saving: 1e6 };
+    const b = computeBudget({ ...budgetArgs(game), year: 2031, cumulativeCuts: 0, homeroomsCut: 0, schools, policy: DEFAULT_POLICY, closed: [closed] });
+    expect(b.lines.find((l) => l.key === 'closurePhasing')).toBeUndefined();
+    expect(Number.isFinite(b.gap)).toBe(true);
+  });
+});
+
+describe('a mover\'s choice', () => {
+  const h = newGame({ seed: 'rules' }).households.find((x) => x.school === 'peninsula')!;
+
+  it('finds a riskier building only when the closed one was safer', () => {
+    expect(isRiskier('rieke', 'peninsula')).toBe(true);
+    expect(isRiskier('rieke', 'creston')).toBe(false);
+    expect(isRiskier('rosa-parks', 'peninsula')).toBe(false);
+  });
+
+  it('reads its factors from the household, the closure and the target', () => {
+    const one = close('peninsula', ['rieke', 1]);
+    const f = followFactors(h, one, 'rieke');
+    expect(f).toMatchObject({ riskier: true, movedBefore: false, wholeClasses: true, loyalty: h.loyalty, exitCapacity: h.exitCapacity });
+    expect(f.miles).toBeGreaterThan(1);
+    expect(followFactors({ ...h, forcedMoves: 1 }, one, 'rieke').movedBefore).toBe(true);
+    expect(followFactors(h, close('peninsula', ['rieke', 0.5], ['rosa-parks', 0.5]), 'rosa-parks')).toMatchObject({
+      riskier: false,
+      wholeClasses: false,
+    });
+  });
+
+  it('shifts each school\'s follow rate by up to 5 points', () => {
+    const offsets = [...SCHOOL_INFO.keys()].map((id) => schoolFollowOffset(7, id));
+    for (const o of offsets) expect(Math.abs(o)).toBeLessThanOrEqual(0.05);
+    expect(Math.max(...offsets) - Math.min(...offsets)).toBeGreaterThan(0.05);
+  });
+});
+
+describe('nearestOpen', () => {
+  const at = (id: string): [number, number] => [SCHOOL_INFO.get(id)!.data.x, SCHOOL_INFO.get(id)!.data.y];
+  const none = new Map<string, ClosedSchool>();
+
+  it('prefers a school with a free seat', () => {
+    expect(nearestOpen(at('rosa-parks'), 2, none)).toBe('rosa-parks');
+    const full = new Map([['rosa-parks', 594]]);
+    expect(nearestOpen(at('rosa-parks'), 2, none, new Set(), full)).not.toBe('rosa-parks');
+  });
+
+  it('falls back to any open school when none serves the grade', () => {
+    const closed = new Map(
+      [...SCHOOL_INFO.values()].filter((i) => i.hi >= 7).map((i) => [i.data.id, asClosed(close(i.data.id, ['rosa-parks', 1]))]),
+    );
+    const id = nearestOpen(at('george'), 7, closed);
+    expect(id).toBeTruthy();
+    expect(closed.has(id)).toBe(false);
+  });
+});
+
+describe('decideClosures', () => {
+  const game = newGame({ seed: 'rules' });
+  function decide(closure: Closure, followRate: number) {
+    const closed = asClosed(closure);
+    const flows: Flows = { stayed: 0, movedWithinPps: 0, leftPps: 0, cameBack: 0, enteredK: 0, graduated: 0 };
+    const region = { kids: 0, leavers: 0 };
+    const movers: Mover[] = [];
+    const households: Household[] = [];
+    for (const before of game.households) {
+      if (before.school !== closure.school || gradeOf(before) >= 5) {
+        households.push(before);
+        continue;
+      }
+      const next: Household = { ...before, kids: oneKid(gradeOf(before) + 1), school: null, status: 'moved' };
+      movers.push({ before, next, closure: closed, fallback: closure.receivers[0].school, region });
+      households.push(next);
+    }
+    const [tally] = decideClosures({
+      seed: 1,
+      year: 2027,
+      followRate,
+      closed: new Map([[closure.school, closed]]),
+      closing: [closed],
+      movers,
+      households,
+      flows,
+    });
+    return { flows, region, tally, nexts: movers.map((m) => m.next), households };
+  }
+
+  it('sorts every mover into moved within PPS or left, by region too', () => {
+    const { flows, region, nexts } = decide(close('peninsula', ['rosa-parks', 1]), 0);
+    const left = nexts.filter((h) => h.school === null);
+    expect(flows.movedWithinPps).toBe(nexts.length - left.length);
+    expect(flows.leftPps).toBe(left.length);
+    expect(region.leavers).toBe(left.length);
+    expect(left.some((h) => h.movedAway)).toBe(true);
+    expect(nexts.every((h) => h.fundedAs === 'peninsula')).toBe(true);
+  });
+
+  it('moves kids crowded out of a receiver to another PPS school', () => {
+    const { flows, tally, nexts, households } = decide(close('forest-park', ['skyline', 1]), 2);
+    expect(tally.left).toBe(0);
+    expect(tally.otherPps).toBeGreaterThan(0);
+    expect(flows.movedWithinPps).toBe(nexts.length);
+    expect(households.filter((h) => h.school === 'skyline').length).toBe(Math.floor(1.1 * 282));
+  });
+});
+
+describe('familiesDecide and closures', () => {
+  const game = newGame({ seed: 'rules' });
+
+  it('clears last year\'s trails', () => {
+    const marked = game.households.map((h) => ({ ...h, movedFrom: 'peninsula' }));
+    expect(familiesDecide(game.sim!, marked, 2027, 24, 0).households.some((h) => h.movedFrom)).toBe(false);
+  });
+
+  it('takes no citywide intake into a closed program', () => {
+    const access = asClosed(close('access-academy', ['beaumont', 1]), 2026);
+    const was = new Map(game.households.map((h) => [h.id, h.school]));
+    const out = familiesDecide(game.sim!, game.households, 2027, 24, 0, {
+      closed: [access],
+      cards: { followRate: 0.9, closedZoneCaptureDrop: 0 },
+    }).households;
+    expect(out.filter((h) => h.school === 'access-academy' && was.get(h.id) !== 'access-academy')).toEqual([]);
+  });
+
+  it('funds kindergartners from a closed zone at the closed school\'s weight', () => {
+    const out = familiesDecide(game.sim!, game.households, 2027, 24, 0, {
+      closed: [asClosed(close('peninsula', ['rosa-parks', 1]), 2026)],
+      cards: { followRate: 0.9, closedZoneCaptureDrop: 0 },
+    }).households;
+    const funded = out.filter((h) => h.fundedAs === 'peninsula');
+    expect(funded.length).toBeGreaterThan(10);
+    for (const h of funded) expect(h.kids[0]).toBe(1);
+  });
+});
+
+describe('state revenue', () => {
+  it('follows each kid\'s funding weight, not the building', () => {
+    const h = newGame({ seed: 'rules' }).households.find((x) => x.school === 'rosa-parks')!;
+    expect(buildSchools([h], 24)['rosa-parks'].stateRevenue).toBeCloseTo(revenuePerStudent(0.6294));
+    expect(buildSchools([{ ...h, fundedAs: 'peninsula' }], 24)['rosa-parks'].stateRevenue).toBeCloseTo(revenuePerStudent(0.2));
+  });
+
+  it('adds up in the budget', () => {
+    const game = newGame({ seed: 'rules' });
+    const total = Object.values(game.schools).reduce((a, s) => a + s.stateRevenue, 0);
+    expect(game.budget.lines.find((l) => l.key === 'stateK8')!.amount).toBeCloseTo(total, 0);
   });
 });

@@ -13,15 +13,7 @@ import {
   voiceFor,
 } from './population';
 import { draw, stream } from './rng';
-import {
-  closureSaving,
-  decideClosures,
-  rezoneDraw,
-  resolveSchool,
-  staffKept,
-  type ClosureTally,
-  type Mover,
-} from './closures';
+import { closuresTakingEffect, decideClosures, rezoneDraw, resolveSchool, type ClosureTally, type Mover } from './closures';
 import { buildSchools, computeDials } from './schools';
 import type {
   Budget,
@@ -32,7 +24,6 @@ import type {
   Policy,
   SchoolChoice,
   SchoolId,
-  SchoolState,
   SimMemory,
 } from './types';
 
@@ -179,6 +170,7 @@ export function familiesDecide(
         pos,
         kids: oneKid(0),
         zoneSchool: resolve(zone.school, 0, { id, pos }),
+        ...(closed.has(zone.school) ? { fundedAs: zone.school } : {}),
         school: joins ? resolve(pick(mem.kChoice[z], draw(seed, year, id, D.EntrantSchool)), 0, { id, pos }) : null,
         exitCapacity,
         loyalty: clamp(mem.zoneKeep[z] + (rand() - 0.5) * 0.2, 0, 1),
@@ -279,29 +271,11 @@ export function familiesDecide(
   return { households, nextId, kResidents, kEnrolled, graduates, flows, regions, closures: closureTallies };
 }
 
-/** This year's closures of open schools, with receivers that are open. */
-function closuresTakingEffect(schools: Record<SchoolId, SchoolState>, policy: Policy, year: number): ClosedSchool[] {
-  return policy.closures.flatMap((c) => {
-    const receivers = c.receivers.filter((r) => schools[r.school]?.open);
-    if (!schools[c.school]?.open || receivers.length === 0) return [];
-    const total = receivers.reduce((a, r) => a + r.share, 0);
-    const closure = { ...c, receivers: receivers.map((r) => ({ school: r.school, share: r.share / total })) };
-    return [
-      {
-        ...closure,
-        year,
-        saving: closureSaving(schools, closure, policy.k5ClassSize),
-        staffKept: staffKept(schools[c.school]),
-      },
-    ];
-  });
-}
-
 export function stepYear(state: GameState, policy: Policy): { next: GameState; facts: YearFacts } {
   const mem = state.sim!;
   const year = state.year;
   const index = costIndex(year);
-  const closing = closuresTakingEffect(state.schools, policy, year);
+  const closing = closuresTakingEffect(state.schools, policy.closures, policy.k5ClassSize, year);
   const closed = [...mem.closed, ...closing];
 
   // June: the budget closes.

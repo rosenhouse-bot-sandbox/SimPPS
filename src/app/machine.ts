@@ -1,5 +1,5 @@
-import type { Start } from '../sim';
-import type { Budget, GameState, Policy, Season, YearReport } from '../sim/types';
+import type { ClosureChip, Start } from '../sim';
+import type { Budget, Closure, GameState, Policy, SchoolId, SchoolState, Season, YearReport } from '../sim/types';
 
 export type Phase = 'plan' | 'preflight' | 'playing' | 'report';
 
@@ -8,6 +8,13 @@ export interface Sim {
   endYear(state: GameState, policy: Policy): { next: GameState; report: YearReport };
   previewBudget(state: GameState, policy: Policy): Budget;
   normalizePolicy(policy: Policy): Policy;
+  canClose(schools: Record<SchoolId, SchoolState>, school: SchoolId): boolean;
+  receiverCandidates(
+    schools: Record<SchoolId, SchoolState>,
+    closing: SchoolId,
+    plan: Closure[],
+  ): { id: SchoolId; miles: number; kids: number; capacity: number }[];
+  closureChip(state: GameState, closure: Closure, plan: Closure[], classSize: number): ClosureChip;
 }
 
 /** One played year. */

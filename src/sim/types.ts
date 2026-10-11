@@ -27,7 +27,7 @@ export interface ClosedSchool extends Closure {
   year: number;
   /** Yearly gross saving at maturity if all follow, in 2027-28 dollars. */
   saving: number;
-  /** Staff positions that followed the kids to receivers. */
+  /** Staff positions that followed the kids beyond the receivers' new staff steps. */
   staffKept: number;
 }
 
@@ -65,6 +65,8 @@ export interface Household {
   movedFrom?: SchoolId;
   /** Times a closure has moved the household. */
   forcedMoves?: number;
+  /** A closed school whose state funding weight the household's kids keep. */
+  fundedAs?: SchoolId;
 }
 
 export interface SchoolState {
@@ -74,6 +76,8 @@ export interface SchoolState {
   /** Enrollment per grade, index 0 = K … 8 = grade 8. */
   byGrade: number[];
   capacity: number;
+  /** State K-8 revenue its kids bring, by each kid's funding weight. */
+  stateRevenue: number;
   homerooms: number;
   blendedHomerooms: number;
   /** Set when a closure has emptied the building. */
@@ -143,12 +147,10 @@ export interface Headline {
 /** Where a closed school's kids went. Kids are those still in its grades this fall. */
 export interface ClosureOutcome {
   school: SchoolId;
-  kids: number;
+  kids: Range;
   receivers: { school: SchoolId; kids: Range }[];
   otherPps: Range;
   leftPps: Range;
-  /** Movers who stayed in PPS, times the school's direct-certification share. For the Fairness dial. */
-  stayedWithoutChoice: number;
   /** The player's "Call it", scored against the kids who stayed in PPS. */
   guess?: { stayInPps: number; actual: Range; hit: boolean };
 }

@@ -2,7 +2,7 @@ import { useMemo, useReducer, useState } from 'preact/hooks';
 import type { Mark } from '../map/MapView';
 import type { Start } from '../sim';
 import type { Closure, SchoolId, Season } from '../sim/types';
-import { NEARBY, receiverCandidates, startDraft, toggleReceiver, type CloseDraft } from '../ui/closeSend';
+import { NEARBY, startDraft, toggleReceiver, withNames, type CloseDraft } from '../ui/closeSend';
 import { CloseSendSheet } from '../ui/CloseSendSheet';
 import { StartPicker } from '../ui/StartPicker';
 import { BudgetPanel } from '../ui/BudgetPanel';
@@ -68,15 +68,14 @@ export function App({ sim, seed, start = 'status-quo', onStart, playbackMs }: Ap
   const planning = s.phase === 'plan' || s.phase === 'preflight';
   const close = () => setTool('map');
   const drafting = s.phase === 'plan' && tool === 'map' && closeDraft ? closeDraft : null;
-  const candidates =
-    drafting?.step === 1
-      ? receiverCandidates(s.game.schools, drafting.school, s.draft.closures.filter((c) => c.school !== drafting.school))
-      : [];
+  const candidates = drafting
+    ? withNames(sim.receiverCandidates(s.game.schools, drafting.school, s.draft.closures.filter((c) => c.school !== drafting.school)))
+    : [];
   const played = s.phase === 'playing' || s.phase === 'report' ? (turn?.report.closures ?? []) : [];
   const { marks, links } = closureMarks(
     planning ? s.draft.closures : played,
     drafting,
-    candidates.slice(0, NEARBY).map((c) => c.id),
+    drafting?.step === 1 ? candidates.slice(0, NEARBY).map((c) => c.id) : [],
   );
   const flows = s.phase === 'playing' && played.length > 0 && DECIDED.includes(season);
   const focus =
@@ -85,6 +84,9 @@ export function App({ sim, seed, start = 'status-quo', onStart, playbackMs }: Ap
     if (drafting?.step === 1 && candidates.some((c) => c.id === id)) setCloseDraft(toggleReceiver(drafting, id));
     else if (!drafting) setSelected(id);
   };
+  const closing = s.draft.closures.find((c) => c.school === selected);
+  /** Closing a receiver would silently drop the closures it takes kids from, so it can't close. */
+  const receivesFrom = s.draft.closures.filter((c) => c.receivers.some((r) => r.school === selected)).map((c) => c.school);
   const commit = (c: Closure) =>
     dispatch({ type: 'edit', policy: { closures: [...s.draft.closures.filter((x) => x.school !== c.school), c] } });
   const when =
@@ -139,9 +141,8 @@ export function App({ sim, seed, start = 'status-quo', onStart, playbackMs }: Ap
         {drafting && (
           <CloseSendSheet
             draft={drafting}
-            game={s.game}
-            plan={s.draft.closures}
-            classSize={s.draft.k5ClassSize}
+            candidates={candidates}
+            chipFor={(c) => sim.closureChip(s.game, c, s.draft.closures, s.draft.k5ClassSize)}
             onChange={setCloseDraft}
             onCommit={commit}
             onClose={() => setCloseDraft(null)}
@@ -152,11 +153,11 @@ export function App({ sim, seed, start = 'status-quo', onStart, playbackMs }: Ap
             id={selected}
             state={shown.schools[selected]}
             onClose={() => setSelected(null)}
-            closing={s.draft.closures.find((c) => c.school === selected)}
-            receivesFrom={s.draft.closures.filter((c) => c.receivers.some((r) => r.school === selected)).map((c) => c.school)}
+            closing={closing}
+            receivesFrom={receivesFrom}
             onCloseSend={
-              s.phase === 'plan'
-                ? () => setCloseDraft(startDraft(selected, s.draft.closures.find((c) => c.school === selected)))
+              s.phase === 'plan' && receivesFrom.length === 0 && sim.canClose(s.game.schools, selected)
+                ? () => setCloseDraft(startDraft(selected, closing))
                 : undefined
             }
           />

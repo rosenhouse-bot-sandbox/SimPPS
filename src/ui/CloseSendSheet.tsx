@@ -1,9 +1,8 @@
 import { useState } from 'preact/hooks';
 import { fmtCount, fmtMiles, fmtMoney, fmtMoneyRange, fmtRange } from '../format';
-import { closureChip, modeledRange, type ClosureChip } from '../sim';
-import type { BuildingFate, Closure, GameState } from '../sim/types';
-import { M } from '../sim/model';
-import { NEARBY, nameOf, receiverCandidates, toClosure, toggleReceiver, type Candidate, type CloseDraft } from './closeSend';
+import { modeledRange, MOTHBALL_PER_YEAR, type ClosureChip } from '../sim';
+import type { BuildingFate, Closure } from '../sim/types';
+import { NEARBY, nameOf, toClosure, toggleReceiver, type Candidate, type CloseDraft } from './closeSend';
 import { Sourced } from './Sourced';
 import { K } from './sources';
 import { Stepper } from './Stepper';
@@ -81,34 +80,28 @@ function StepHead({ title, step }: { title: string; step?: number }) {
 }
 
 const FATES: { id: BuildingFate; label: string; cost: number }[] = [
-  { id: 'mothball', label: 'Mothball', cost: M.mothball },
+  { id: 'mothball', label: 'Mothball', cost: MOTHBALL_PER_YEAR },
   { id: 'lease', label: 'Lease', cost: 0 },
   { id: 'sell', label: 'Sell', cost: 0 },
 ];
 
 interface CloseSendProps {
   draft: CloseDraft;
-  game: Pick<GameState, 'year' | 'schools' | 'households'>;
-  /** Closures already in the plan. */
-  plan: Closure[];
-  classSize: number;
+  /** Schools that can take the kids, nearest first. */
+  candidates: Candidate[];
+  chipFor: (c: Closure) => ClosureChip;
   onChange: (d: CloseDraft) => void;
   onCommit: (c: Closure) => void;
   onClose: () => void;
 }
 
 /** Close & send in three steps, then an optional guess. The plan gets the closure at step 3. */
-export function CloseSendSheet({ draft, game, plan, classSize, onChange, onCommit, onClose }: CloseSendProps) {
+export function CloseSendSheet({ draft, candidates: all, chipFor, onChange, onCommit, onClose }: CloseSendProps) {
   const [az, setAz] = useState(false);
-  const all = receiverCandidates(
-    game.schools,
-    draft.school,
-    plan.filter((c) => c.school !== draft.school),
-  );
   const picked = draft.receivers.map((id) => all.find((c) => c.id === id)).filter((c): c is Candidate => !!c);
   const shown = az ? [...all].sort((a, b) => a.name.localeCompare(b.name)) : all.slice(0, NEARBY);
   const extra = az ? [] : picked.filter((c) => !shown.includes(c));
-  const chip = picked.length ? closureChip(game, toClosure(draft), classSize) : null;
+  const chip = picked.length ? chipFor(toClosure(draft)) : null;
   const [guess, setGuess] = useState<number | null>(null);
   const go = (step: CloseDraft['step']) => onChange({ ...draft, step });
   const toggle = (id: string) => onChange(toggleReceiver(draft, id));
@@ -227,7 +220,7 @@ export function CloseSendSheet({ draft, game, plan, classSize, onChange, onCommi
           <Stepper
             label="Stay in PPS"
             sourceKey={K.callIt}
-            value={guess ?? chip.kidsMoving}
+            value={guess ?? draft.guess ?? chip.kidsMoving}
             min={0}
             max={chip.kidsMoving}
             step={5}
@@ -242,7 +235,7 @@ export function CloseSendSheet({ draft, game, plan, classSize, onChange, onCommi
               type="button"
               class="btn primary"
               onClick={() => {
-                onCommit(toClosure(draft, guess ?? chip.kidsMoving));
+                onCommit(toClosure(draft, guess ?? draft.guess ?? chip.kidsMoving));
                 onClose();
               }}
             >

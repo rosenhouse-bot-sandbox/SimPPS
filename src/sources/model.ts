@@ -171,7 +171,7 @@ export const MODEL_SOURCES: Source[] = [
     key: 'model.revenuePerStudent',
     label: 'State revenue per student',
     tag: 'I',
-    explain: `Each student brings ${$k(M.revenueBase)} to ${$k(M.revenueBase + M.revenuePoverty)} a year, weighted by the school's direct-certification share, on the prior year's count. At today's mix, 1,000 fewer students cost about ${$(1000 * STATE_PER_STUDENT)} of state revenue. PPS puts the loss at $10-13M, because it also counts revenue that the game holds fixed.`,
+    explain: `Each student brings ${$k(M.revenueBase)} to ${$k(M.revenueBase + M.revenuePoverty)} a year, weighted by the school's direct-certification share, on the prior year's count. Kids a closure moves, and kindergartners from a closed zone, keep the closed school's weight. At today's mix, 1,000 fewer students cost about ${$(1000 * STATE_PER_STUDENT)} of state revenue. PPS puts the loss at $10-13M, because it also counts revenue that the game holds fixed.`,
     links: [PPS_DATA],
   },
   {
@@ -241,7 +241,7 @@ export const MODEL_SOURCES: Source[] = [
     key: 'model.followRate',
     label: 'Follow a closed school',
     tag: 'M',
-    explain: 'The share of a closed school\'s kids who follow it to a receiver. Anchors disagree: PPS says ">93% stayed"; Bridger fell from 752 to 446; Stanford found about 287 kids lost per closure. Each game draws one value, and each school varies ±5 points.',
+    explain: 'The share of a closed school\'s kids who follow it to a receiver. Anchors disagree: PPS says ">93% stayed"; Bridger fell from 752 to 446; Stanford found about 287 kids lost per closure. Each game draws one value, and each school varies ±5 points. Most adjustments under "Who follows a closed school" lower a kid\'s chance, so fewer kids follow than the card says, and even the 95% card keeps fewer kids in PPS than PPS reports.',
     links: [DESIGN],
     hidden: {
       outcomes: FOLLOW_RATES.map((value) => ({ value, label: pct(value), weight: 1 })),
@@ -263,7 +263,7 @@ export const MODEL_SOURCES: Source[] = [
     key: 'model.closureSavings',
     label: 'Closure savings',
     tag: 'I',
-    explain: `A closed building's plant cost and its principal's office (${M.principalOffice} positions) go. Its other staff follow the kids. Receivers add the homerooms and staff steps the kids need. The project's closure analysis estimates $0.3-1.5M a school, and this arithmetic lands each Scenario A closure in that range. The chip shows the saving if every kid follows, ±${pct(M.closureSavingsSpread)}, net of building upkeep.`,
+    explain: `A closed building's plant cost and its principal's office (${M.principalOffice} positions) go. Its other staff follow the kids and fill the staff steps the receivers need; any left over stay on the payroll. Receivers add the homerooms the kids need. The project's closure analysis estimates $0.3-1.5M a school, and PPS estimates $5-20M for its scenarios. This arithmetic puts Scenario A's closures at $0.7-1.7M each and about $17M in all. The chip shows the saving if every kid follows, ±${pct(M.closureSavingsSpread)}, net of building upkeep.`,
     links: [DESIGN],
   },
   {
@@ -298,14 +298,14 @@ export const MODEL_SOURCES: Source[] = [
     key: 'model.nonFollowers',
     label: "Kids who don't follow",
     tag: 'M',
-    explain: `${pct(M.nonFollowerOtherPps)} go to the nearest other PPS school with room, ${pct(M.nonFollowerCharter)} to a charter and the rest leave PPS. Their closed zone sends future kindergartners to the receivers. A mover who stays counts as "stayed without a choice" at the school's direct-certification share.`,
+    explain: `${pct(M.nonFollowerOtherPps)} go to the nearest other PPS school with room, ${pct(M.nonFollowerCharter)} to a charter and the rest leave PPS. Their closed zone sends future kindergartners to the receivers.`,
     links: [DESIGN],
   },
   {
     key: 'model.crowding',
     label: 'Crowded receivers',
     tag: 'M',
-    explain: `A receiver past ${pct(M.crowdingLine)} of its seats sends the newest arrivals beyond that line to decide again, as kids who don't follow.`,
+    explain: `A receiver past ${pct(M.crowdingLine)} of its seats sends the arrivals beyond that line on to the nearest PPS school with room.`,
     links: [DESIGN],
   },
   {

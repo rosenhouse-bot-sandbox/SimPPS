@@ -1,6 +1,5 @@
 import type { ClosureOutcome, Dials, Flows, Range, YearReport } from '../sim/types';
 import { fmtMoney, fmtPct, fmtRange } from '../format';
-import { modeledRange } from '../sim';
 import { nameOf } from './closeSend';
 import { Sourced } from './Sourced';
 import { K } from './sources';
@@ -74,17 +73,18 @@ function OutcomeRow({ label, kids, of, k }: { label: string; kids: Range; of: nu
 }
 
 function ClosureReport({ c }: { c: ClosureOutcome }) {
+  const of = (c.kids.lo + c.kids.hi) / 2;
   return (
     <section class="closure-report" aria-label={`Where ${nameOf(c.school)} kids went`}>
       <p>
-        {nameOf(c.school)}, <Sourced k={K.enrollment}>{fmtRange(modeledRange(c.kids))}</Sourced> kids:
+        {nameOf(c.school)}, <Sourced k={K.enrollment}>{fmtRange(c.kids)}</Sourced> kids:
       </p>
       <dl class="flows">
         {c.receivers.map((r) => (
-          <OutcomeRow key={r.school} label={nameOf(r.school)} kids={r.kids} of={c.kids} k={K.followRate} />
+          <OutcomeRow key={r.school} label={nameOf(r.school)} kids={r.kids} of={of} k={K.followRate} />
         ))}
-        <OutcomeRow label="Other PPS" kids={c.otherPps} of={c.kids} k={K.nonFollowers} />
-        <OutcomeRow label="Left PPS" kids={c.leftPps} of={c.kids} k={K.nonFollowers} />
+        <OutcomeRow label="Other PPS" kids={c.otherPps} of={of} k={K.nonFollowers} />
+        <OutcomeRow label="Left PPS" kids={c.leftPps} of={of} k={K.nonFollowers} />
       </dl>
       {c.guess && (
         <p class={c.guess.hit ? 'call hit' : 'call'}>

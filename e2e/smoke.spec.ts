@@ -111,7 +111,7 @@ test('closes Peninsula into Rosa Parks and reports where the kids went', async (
 
   const playback = page.getByTestId('playback');
   await expect(playback.locator('.season')).toHaveText('Fall', { timeout: 20_000 });
-  await expect(playback).toContainText("Closed schools' families decide");
+  await expect(playback).toContainText('Families of the closed school decide');
   await page.getByRole('button', { name: 'Pause' }).tap();
   await page.waitForTimeout(1700);
   await shot(page, 'm2-playback');

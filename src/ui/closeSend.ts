@@ -1,8 +1,6 @@
 import { SCHOOLS } from '../data';
 import { shortName } from '../map/geometry';
-import { miles, schoolPos } from '../sim/closures';
-import { SCHOOL_INFO } from '../sim/population';
-import type { BuildingFate, Closure, SchoolId, SchoolState } from '../sim/types';
+import type { BuildingFate, Closure, SchoolId } from '../sim/types';
 
 export interface Candidate {
   id: SchoolId;
@@ -18,29 +16,8 @@ export function nameOf(id: SchoolId): string {
   return shortName(SCHOOLS.find((s) => s.id === id)?.name ?? id);
 }
 
-export function canClose(s: SchoolState | undefined): boolean {
-  return !!s && s.open && s.enrollment > 0;
-}
-
-/** Open schools that serve some of the closing school's grades, nearest first. */
-export function receiverCandidates(
-  schools: Record<SchoolId, SchoolState>,
-  closing: SchoolId,
-  plan: Closure[],
-): Candidate[] {
-  const from = SCHOOL_INFO.get(closing)!;
-  const busy = new Set(plan.map((c) => c.school));
-  const home = schoolPos(closing);
-  return [...SCHOOL_INFO.values()]
-    .filter((i) => {
-      const s = schools[i.data.id];
-      return s?.open && i.data.id !== closing && !busy.has(i.data.id) && i.lo <= from.hi && i.hi >= from.lo;
-    })
-    .map((i) => {
-      const s = schools[i.data.id];
-      return { id: s.id, name: nameOf(s.id), miles: miles(home, schoolPos(s.id)), kids: s.enrollment, capacity: s.capacity };
-    })
-    .sort((a, b) => a.miles - b.miles);
+export function withNames(candidates: Omit<Candidate, 'name'>[]): Candidate[] {
+  return candidates.map((c) => ({ ...c, name: nameOf(c.id) }));
 }
 
 export interface CloseDraft {
@@ -51,6 +28,8 @@ export interface CloseDraft {
   /** The first receiver's percent; the second takes the rest. */
   firstShare: number;
   building: BuildingFate;
+  /** A guess kept from the closure being changed. */
+  guess?: number;
 }
 
 export function startDraft(school: SchoolId, existing?: Closure): CloseDraft {
@@ -61,6 +40,7 @@ export function startDraft(school: SchoolId, existing?: Closure): CloseDraft {
     receivers: existing.receivers.map((r) => r.school),
     firstShare: Math.round(existing.receivers[0].share * 100),
     building: existing.building,
+    ...(existing.guess === undefined ? {} : { guess: existing.guess }),
   };
 }
 
@@ -70,7 +50,7 @@ export function toggleReceiver(d: CloseDraft, id: SchoolId): CloseDraft {
   return { ...d, receivers, firstShare: receivers.length === 2 ? 70 : 100 };
 }
 
-export function toClosure(d: CloseDraft, guess?: number): Closure {
+export function toClosure(d: CloseDraft, guess = d.guess): Closure {
   const shares = d.receivers.length === 2 ? [d.firstShare / 100, 1 - d.firstShare / 100] : [1];
   return {
     school: d.school,

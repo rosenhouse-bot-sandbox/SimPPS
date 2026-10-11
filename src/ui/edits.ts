@@ -1,4 +1,5 @@
 import { fmtMoney } from '../format';
+import { FATE_DONE } from '../sim';
 import type { Closure, Policy } from '../sim/types';
 import { nameOf } from './closeSend';
 import { K } from './sources';
@@ -10,11 +11,9 @@ export interface EditLine {
   undo?: Partial<Policy>;
 }
 
-const FATE = { mothball: '', lease: ' · leased', sell: ' · sold' };
-
 export function closureText(c: Closure): string {
   const to = c.receivers.map((r) => (c.receivers.length > 1 ? `${nameOf(r.school)} ${Math.round(r.share * 100)}%` : nameOf(r.school)));
-  return `Close ${nameOf(c.school)} → ${to.join(', ')}${FATE[c.building]}`;
+  return `Close ${nameOf(c.school)} → ${to.join(', ')}${c.building === 'mothball' ? '' : ` · ${FATE_DONE[c.building]}`}`;
 }
 
 export function fmtLevy(rate: number): string {

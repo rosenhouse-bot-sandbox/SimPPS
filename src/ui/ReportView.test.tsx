@@ -55,11 +55,10 @@ describe('ReportView', () => {
       closures: [
         {
           school: 'peninsula',
-          kids: 188,
+          kids: { lo: 177, hi: 199 },
           receivers: [{ school: 'rosa-parks', kids: { lo: 136, hi: 154 } }],
           otherPps: { lo: 14, hi: 20 },
           leftPps: { lo: 23, hi: 29 },
-          stayedWithoutChoice: 32,
           guess: { stayInPps: 160, actual: { lo: 152, hi: 172 }, hit: true },
         },
       ],
@@ -81,11 +80,10 @@ describe('ReportView', () => {
   it('says MISS for a call outside the range, and nothing without one', () => {
     const outcome = {
       school: 'peninsula',
-      kids: 188,
+      kids: { lo: 177, hi: 199 },
       receivers: [{ school: 'rosa-parks', kids: { lo: 136, hi: 154 } }],
       otherPps: { lo: 14, hi: 20 },
       leftPps: { lo: 23, hi: 29 },
-      stayedWithoutChoice: 32,
     };
     render(<ReportView report={{ ...FIXTURE_REPORT, closures: [{ ...outcome, guess: { stayInPps: 220, actual: { lo: 152, hi: 172 }, hit: false } }] }} turn={1} onNext={() => {}} />);
     expect(document.querySelector('.call')!.textContent).toContain('MISS');

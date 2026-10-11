@@ -3,7 +3,8 @@ import { clamp } from '../clamp';
 import { SCHOOLS } from '../data';
 import { SCHOOL_INFO } from './population';
 import { draw } from './rng';
-import type { Budget, BudgetLine, ClosedSchool, Policy, SchoolState } from './types';
+import { effectiveClosures } from './closures';
+import type { Budget, BudgetLine, ClosedSchool, Policy, SchoolId, SchoolState } from './types';
 
 export const FIRST_YEAR = 2027;
 
@@ -47,6 +48,11 @@ export function otherStaff(enrollment: number): number {
 
 export function revenuePerStudent(directCert: number): number {
   return M.revenueBase + M.revenuePoverty * clamp(directCert / M.directCertForMaxWeight, 0, 1);
+}
+
+/** State dollars a kid brings at `school`'s poverty weight. */
+export function stateWeight(school: SchoolId): number {
+  return revenuePerStudent(SCHOOL_INFO.get(school)?.data.pctDirectCert ?? 0);
 }
 
 /** State dollars per student at fall 2025's mix of schools. */
@@ -117,7 +123,7 @@ export interface BudgetInput {
   /** State funding over 2025-27's, from stateFundingLevel. */
   stateFunding: number;
   /** Closures in force before this year. */
-  closed?: ClosedSchool[];
+  closed: ClosedSchool[];
 }
 
 /** model.closureOneTime: the budget books the middle of the range. */
@@ -141,7 +147,7 @@ export function computeBudget(input: BudgetInput): Budget {
   let plant = 0;
   for (const s of Object.values(input.schools)) {
     const info = SCHOOL_INFO.get(s.id)!;
-    state += s.enrollment * revenuePerStudent(info.data.pctDirectCert ?? 0);
+    state += s.stateRevenue;
     if (!s.open) continue;
     homerooms += classesFor(s.byGrade, input.policy.k5ClassSize, creep).homerooms;
     staff += otherStaff(s.enrollment);
@@ -166,8 +172,8 @@ export function computeBudget(input: BudgetInput): Budget {
       sourceKey: 'model.autoCuts',
     });
   // Year 1 runs on last fall's schools, so a closure's building is still in the lines above.
-  const closed = (input.closed ?? []).filter((c) => input.year > c.year);
-  const closing = input.policy.closures.filter((c) => input.schools[c.school]?.open).length;
+  const closed = input.closed.filter((c) => input.year > c.year);
+  const closing = effectiveClosures(input.schools, input.policy.closures).length;
   const optional: [string, string, number, string][] = [
     ['closureOneTime', 'Closures, once', -closing * CLOSURE_ONE_TIME * index, 'model.closureOneTime'],
     [

@@ -1,36 +1,11 @@
 import { describe, expect, it } from 'vitest';
-import { fixtureSchools } from '../map/fixtures';
-import type { Closure } from '../sim/types';
-import { canClose, receiverCandidates, startDraft, toClosure, toggleReceiver, type CloseDraft } from './closeSend';
+import { startDraft, toClosure, toggleReceiver, withNames, type CloseDraft } from './closeSend';
 
-const schools = fixtureSchools();
-
-describe('receiverCandidates', () => {
-  it('lists open schools nearest first, with miles and seats', () => {
-    const c = receiverCandidates(schools, 'peninsula', []);
-    expect(c[0]).toMatchObject({ id: 'rosa-parks', name: 'Rosa Parks', kids: 160, capacity: 594 });
-    expect(c[0].miles).toBeCloseTo(0.73, 1);
-    for (let i = 1; i < c.length; i++) expect(c[i].miles).toBeGreaterThanOrEqual(c[i - 1].miles);
-    expect(c.some((x) => x.id === 'peninsula')).toBe(false);
-  });
-
-  it('leaves out closed schools, schools closing in the plan and schools serving none of its grades', () => {
-    const closed = { ...schools, 'rosa-parks': { ...schools['rosa-parks'], open: false } };
-    const plan: Closure[] = [{ school: 'james-john', receivers: [{ school: 'sitton', share: 1 }], building: 'mothball' }];
-    const ids = receiverCandidates(closed, 'peninsula', plan).map((c) => c.id);
-    expect(ids).not.toContain('rosa-parks');
-    expect(ids).not.toContain('james-john');
-    expect(receiverCandidates(schools, 'sellwood', []).map((c) => c.id)).not.toContain('duniway');
-    expect(receiverCandidates(schools, 'sellwood', []).map((c) => c.id)).toContain('lane');
-  });
-});
-
-describe('canClose', () => {
-  it('needs an open school with K-8 kids', () => {
-    expect(canClose(schools['peninsula'])).toBe(true);
-    expect(canClose({ ...schools['peninsula'], open: false })).toBe(false);
-    expect(canClose({ ...schools['peninsula'], enrollment: 0 })).toBe(false);
-    expect(canClose(undefined)).toBe(false);
+describe('withNames', () => {
+  it('names each candidate', () => {
+    expect(withNames([{ id: 'rosa-parks', miles: 0.7, kids: 160, capacity: 594 }])).toEqual([
+      { id: 'rosa-parks', name: 'Rosa Parks', miles: 0.7, kids: 160, capacity: 594 },
+    ]);
   });
 });
 
@@ -62,7 +37,8 @@ describe('the draft', () => {
       building: 'sell',
       guess: 120,
     });
-    expect(startDraft('maplewood', c)).toEqual({ ...d, step: 1 });
+    expect(startDraft('maplewood', c)).toEqual({ ...d, step: 1, guess: 120 });
+    expect(toClosure(startDraft('maplewood', c))).toEqual(c);
     expect(toClosure({ ...d, receivers: ['hayhurst'], firstShare: 100 }).receivers).toEqual([{ school: 'hayhurst', share: 1 }]);
   });
 });

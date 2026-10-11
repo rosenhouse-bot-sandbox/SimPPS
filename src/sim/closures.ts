@@ -1,9 +1,9 @@
 import { clamp } from '../clamp';
 import type { Point } from '../data';
-import { classesFor, costIndex, MEDIAN_SQFT, otherStaff, revenuePerStudent } from './budget';
+import { classesFor, costIndex, MEDIAN_SQFT, otherStaff, stateWeight } from './budget';
 import { acrossWillamette } from './geo';
 import { gradeOf, M, METERS_PER_MILE } from './model';
-import { directCert, SCHOOL_INFO } from './population';
+import { SCHOOL_INFO, type SchoolInfo } from './population';
 import { modeledRange } from './range';
 import { draw, hashString } from './rng';
 import type {
@@ -60,9 +60,31 @@ export function nonFollowerChoice(u: number): NonFollowerChoice {
 
 const MAX_RECEIVERS = 2;
 
+/** Shares rescaled to sum to 1, or equal when none is positive. */
+export function renormalize(receivers: Closure['receivers']): Closure['receivers'] {
+  const total = receivers.reduce((a, r) => a + r.share, 0);
+  return receivers.map((r) => ({ school: r.school, share: total > 0 ? r.share / total : 1 / receivers.length }));
+}
+
+/** Schools that take neighborhood kids: a zone, not a citywide program. */
+const isZoned = (i: SchoolInfo) => i.elemZone >= 0 || i.middleZone >= 0;
+const ZONED = [...SCHOOL_INFO.values()].filter(isZoned);
+
+/** An open school with K-8 kids. */
+export function canClose(schools: Record<SchoolId, SchoolState>, school: SchoolId): boolean {
+  return !!schools[school]?.open && (SCHOOL_INFO.get(school)?.k8 ?? 0) > 0;
+}
+
+/** A neighborhood school that serves some of the closing school's grades. */
+export function canReceive(closing: SchoolId, receiver: SchoolId): boolean {
+  const from = SCHOOL_INFO.get(closing);
+  const to = SCHOOL_INFO.get(receiver);
+  return !!from && !!to && receiver !== closing && isZoned(to) && to.lo <= from.hi && to.hi >= from.lo;
+}
+
 /**
- * Keeps one closure per school with K-8 kids and 1-2 distinct receivers that are real schools and not closing,
- * with shares that sum to 1. A closure left with no receiver is dropped.
+ * Keeps one closure per school with K-8 kids and 1-2 distinct receivers that can take its kids and
+ * are not closing, with shares that sum to 1. A closure left with no receiver is dropped.
  */
 export function normalizeClosures(closures: Closure[]): Closure[] {
   const seen = new Set<string>();
@@ -73,18 +95,22 @@ export function normalizeClosures(closures: Closure[]): Closure[] {
   return unique.flatMap((c) => {
     const picked = new Set<string>();
     const receivers = c.receivers
-      .filter((r) => SCHOOL_INFO.has(r.school) && !closing.has(r.school) && !picked.has(r.school) && picked.add(r.school))
+      .filter((r) => canReceive(c.school, r.school) && !closing.has(r.school) && !picked.has(r.school) && picked.add(r.school))
       .slice(0, MAX_RECEIVERS)
       .map((r) => ({ school: r.school, share: Math.max(0, Number.isFinite(r.share) ? r.share : 0) }));
     if (receivers.length === 0) return [];
-    const total = receivers.reduce((a, r) => a + r.share, 0);
-    const out: Closure = {
-      ...c,
-      receivers: receivers.map((r) => ({ school: r.school, share: total > 0 ? r.share / total : 1 / receivers.length })),
-    };
+    const out: Closure = { ...c, receivers: renormalize(receivers) };
     if (out.guess === undefined || !Number.isFinite(out.guess)) delete out.guess;
     else out.guess = Math.max(0, Math.round(out.guess));
     return [out];
+  });
+}
+
+/** Closures of open schools, kept to their open receivers. */
+export function effectiveClosures(schools: Record<SchoolId, SchoolState>, closures: Closure[]): Closure[] {
+  return closures.flatMap((c) => {
+    const receivers = c.receivers.filter((r) => schools[r.school]?.open);
+    return schools[c.school]?.open && receivers.length ? [{ ...c, receivers: renormalize(receivers) }] : [];
   });
 }
 
@@ -95,9 +121,24 @@ function serves(school: SchoolId, grade: number): boolean {
 
 /** Receivers that serve a grade, shares renormalized. Empty when none does. */
 export function receiversFor(closure: Closure, grade: number): Closure['receivers'] {
-  const serving = closure.receivers.filter((r) => serves(r.school, grade));
-  const total = serving.reduce((a, r) => a + r.share, 0);
-  return serving.map((r) => ({ school: r.school, share: total > 0 ? r.share / total : 1 / serving.length }));
+  return renormalize(closure.receivers.filter((r) => serves(r.school, grade)));
+}
+
+const sum = (xs: number[]) => xs.reduce((a, n) => a + n, 0);
+
+/** Schools after every kid of the closed school follows to the receivers that serve its grade. */
+export function withArrivals(schools: Record<SchoolId, SchoolState>, closure: Closure): Record<SchoolId, SchoolState> {
+  const closed = schools[closure.school];
+  const out = { ...schools };
+  for (const r of closure.receivers) {
+    const s = schools[r.school];
+    const byGrade = s.byGrade.map((n, g) => {
+      const share = receiversFor(closure, g).find((x) => x.school === r.school)?.share ?? 0;
+      return n + Math.round(share * closed.byGrade[g]);
+    });
+    out[r.school] = { ...s, byGrade, enrollment: s.enrollment + sum(byGrade) - sum(s.byGrade) };
+  }
+  return out;
 }
 
 function plant(school: SchoolId): number {
@@ -110,9 +151,14 @@ function siteCost(school: SchoolId, byGrade: number[], enrollment: number, class
   );
 }
 
-/** model.closureSavings: the closed school's staff beyond the principal's office follow its kids. */
-export function staffKept(closed: SchoolState): number {
-  return Math.max(0, otherStaff(closed.enrollment) - M.principalOffice);
+/**
+ * model.closureSavings: the closed school's staff beyond the principal's office follow its kids and
+ * fill the receivers' new staff steps. Those left over stay on the payroll.
+ */
+export function staffKept(schools: Record<SchoolId, SchoolState>, closure: Closure): number {
+  const after = withArrivals(schools, closure);
+  const steps = sum(closure.receivers.map((r) => otherStaff(after[r.school].enrollment) - otherStaff(schools[r.school].enrollment)));
+  return Math.max(0, otherStaff(schools[closure.school].enrollment) - M.principalOffice - steps);
 }
 
 /**
@@ -122,20 +168,31 @@ export function staffKept(closed: SchoolState): number {
  */
 export function closureSaving(schools: Record<SchoolId, SchoolState>, closure: Closure, classSize: number): number {
   const closed = schools[closure.school];
-  let saving = siteCost(closed.id, closed.byGrade, closed.enrollment, classSize) - staffKept(closed) * M.positionCost;
+  const after = withArrivals(schools, closure);
+  let saving = siteCost(closed.id, closed.byGrade, closed.enrollment, classSize) - staffKept(schools, closure) * M.positionCost;
   closed.byGrade.forEach((n, g) => {
     if (receiversFor(closure, g).length === 0) saving -= (n / M.msClassSize) * M.homeroomCost;
   });
   for (const r of closure.receivers) {
-    const s = schools[r.school];
-    const byGrade = s.byGrade.map((n, g) => {
-      const share = receiversFor(closure, g).find((x) => x.school === r.school)?.share ?? 0;
-      return n + Math.round(share * closed.byGrade[g]);
-    });
-    const arriving = byGrade.reduce((a, n) => a + n, 0) - s.byGrade.reduce((a, n) => a + n, 0);
-    saving += siteCost(s.id, s.byGrade, s.enrollment, classSize) - siteCost(s.id, byGrade, s.enrollment + arriving, classSize);
+    const [s, t] = [schools[r.school], after[r.school]];
+    saving += siteCost(s.id, s.byGrade, s.enrollment, classSize) - siteCost(t.id, t.byGrade, t.enrollment, classSize);
   }
   return saving;
+}
+
+/** This year's closures that can happen, each priced after the ones before it have moved in. */
+export function closuresTakingEffect(
+  schools: Record<SchoolId, SchoolState>,
+  closures: Closure[],
+  classSize: number,
+  year: number,
+): ClosedSchool[] {
+  let at = schools;
+  return effectiveClosures(schools, closures).map((c) => {
+    const closed = { ...c, year, saving: closureSaving(at, c, classSize), staffKept: staffKept(at, c) };
+    at = withArrivals(at, c);
+    return closed;
+  });
 }
 
 export function schoolPos(school: SchoolId): Point {
@@ -164,35 +221,58 @@ export interface ClosureChip {
   paysOffIfFewerThan: number;
 }
 
+/** `plan` holds the other closures in the plan; their kids count at shared receivers. */
 export function closureChip(
   state: Pick<GameState, 'year' | 'schools' | 'households'>,
   closure: Closure,
-  classSize = 24,
+  plan: Closure[],
+  classSize: number,
 ): ClosureChip {
-  const closed = state.schools[closure.school];
+  const schools = effectiveClosures(
+    state.schools,
+    plan.filter((c) => c.school !== closure.school),
+  ).reduce(withArrivals, state.schools);
+  const after = withArrivals(schools, closure);
   const home = schoolPos(closure.school);
   const kids = state.households.filter((h) => h.school === closure.school);
   const hi = SCHOOL_INFO.get(closure.school)!.hi;
-  const added = kids.reduce(
-    (a, h) => a + closure.receivers.reduce((b, r) => b + r.share * (miles(h.pos, schoolPos(r.school)) - miles(h.pos, home)), 0),
-    0,
-  );
+  let walkers = 0;
+  let added = 0;
+  for (const h of kids) {
+    const serving = receiversFor(closure, gradeOf(h));
+    if (serving.length) walkers++;
+    for (const r of serving) added += r.share * (miles(h.pos, schoolPos(r.school)) - miles(h.pos, home));
+  }
   const maturesIn = state.year + M.closurePhasing.length - 1;
   const upkeep = closure.building === 'mothball' ? M.mothball : 0;
-  const net = (closureSaving(state.schools, closure, classSize) - upkeep) * costIndex(maturesIn);
+  const net = (closureSaving(schools, closure, classSize) - upkeep) * costIndex(maturesIn);
   const index = costIndex(state.year);
   return {
     seats: {
-      kids: closure.receivers.reduce((a, r) => a + state.schools[r.school].enrollment, closed.enrollment),
-      capacity: closure.receivers.reduce((a, r) => a + state.schools[r.school].capacity, 0),
+      kids: sum(closure.receivers.map((r) => after[r.school].enrollment)),
+      capacity: sum(closure.receivers.map((r) => schools[r.school].capacity)),
     },
     kidsMoving: kids.filter((h) => gradeOf(h) < hi).length,
-    walkMiles: kids.length ? added / kids.length : 0,
+    walkMiles: walkers ? added / walkers : 0,
     now: { lo: -M.closureOneTime.hi * index, hi: -M.closureOneTime.lo * index },
     atMaturity: { lo: net * (1 - M.closureSavingsSpread), hi: net * (1 + M.closureSavingsSpread) },
     maturesIn,
-    paysOffIfFewerThan: Math.max(0, Math.floor(net / revenuePerStudent(directCert(closure.school)))),
+    paysOffIfFewerThan: Math.max(0, Math.floor(net / stateWeight(closure.school))),
   };
+}
+
+/** Open neighborhood schools that can take the closing school's kids, nearest first. Plan closures can't receive. */
+export function receiverCandidates(
+  schools: Record<SchoolId, SchoolState>,
+  closing: SchoolId,
+  plan: Closure[],
+): { id: SchoolId; miles: number; kids: number; capacity: number }[] {
+  const busy = new Set(plan.map((c) => c.school));
+  const home = schoolPos(closing);
+  return ZONED.map((i) => schools[i.data.id])
+    .filter((s) => s?.open && !busy.has(s.id) && canReceive(closing, s.id))
+    .map((s) => ({ id: s.id, miles: miles(home, schoolPos(s.id)), kids: s.enrollment, capacity: s.capacity }))
+    .sort((a, b) => a.miles - b.miles);
 }
 
 /** Draw purposes for closure decisions, apart from step.ts's. */
@@ -204,13 +284,12 @@ const D = {
   Away: 34,
   Crowd: 35,
   FollowSchool: 36,
-  Recrowd: 37,
 };
 
-/** Schools that take neighborhood kids: a zone, not a citywide program. */
-const ZONED = [...SCHOOL_INFO.values()].filter((i) => i.elemZone >= 0 || i.middleZone >= 0);
-
-/** The nearest open zoned school serving `grade`, preferring one with a free seat when `counts` is given. */
+/**
+ * The nearest open zoned school serving `grade`, preferring one with a free seat when `counts` is
+ * given. When no open school serves the grade, the nearest open school.
+ */
 export function nearestOpen(
   pos: Point,
   grade: number,
@@ -218,16 +297,19 @@ export function nearestOpen(
   exclude: ReadonlySet<SchoolId> = new Set(),
   counts?: ReadonlyMap<SchoolId, number>,
 ): SchoolId {
-  let best: SchoolId | null = null;
-  let bestScore = Infinity;
-  for (const i of ZONED) {
-    const id = i.data.id;
-    if (grade < i.lo || grade > i.hi || closed.has(id) || exclude.has(id)) continue;
-    const full = counts !== undefined && (counts.get(id) ?? 0) >= (i.data.capacity ?? 0);
-    const score = miles(pos, [i.data.x, i.data.y]) + (full ? 1e6 : 0);
-    if (score < bestScore) [best, bestScore] = [id, score];
-  }
-  return best!;
+  const scan = (anyGrade: boolean) => {
+    let best: SchoolId | null = null;
+    let bestScore = Infinity;
+    for (const i of ZONED) {
+      const id = i.data.id;
+      if ((!anyGrade && (grade < i.lo || grade > i.hi)) || closed.has(id) || exclude.has(id)) continue;
+      const full = counts !== undefined && (counts.get(id) ?? 0) >= (i.data.capacity ?? 0);
+      const score = miles(pos, [i.data.x, i.data.y]) + (full ? 1e6 : 0);
+      if (score < bestScore) [best, bestScore] = [id, score];
+    }
+    return best;
+  };
+  return (scan(false) ?? scan(true))!;
 }
 
 function pickShare(receivers: Closure['receivers'], u: number): SchoolId {
@@ -256,12 +338,30 @@ export function rezoneDraw(seed: number, id: number): number {
   return draw(seed, id, 0, D.Rezone);
 }
 
-function isRiskier(receiver: SchoolId, closed: SchoolId): boolean {
+/** The receiver is URM without a full retrofit and the closed school is not. */
+export function isRiskier(receiver: SchoolId, closed: SchoolId): boolean {
   const risky = (id: SchoolId) => {
     const d = SCHOOL_INFO.get(id)!.data;
     return d.isUrm && d.seismicRetrofitStatus !== 'full';
   };
   return risky(receiver) && !risky(closed);
+}
+
+export function followFactors(h: Household, closure: Closure, target: SchoolId): FollowFactors {
+  return {
+    miles: miles(h.pos, schoolPos(target)),
+    barrier: acrossWillamette(h.pos, schoolPos(target)),
+    riskier: isRiskier(target, closure.school),
+    movedBefore: (h.forcedMoves ?? 0) > 0,
+    loyalty: h.loyalty,
+    exitCapacity: h.exitCapacity,
+    wholeClasses: closure.receivers.length === 1,
+  };
+}
+
+/** model.followRate: each school's follow rate sits within ±5 points of the card. */
+export function schoolFollowOffset(seed: number, school: SchoolId): number {
+  return (draw(seed, hashString(school), 0, D.FollowSchool) - 0.5) * 2 * M.followSchoolSpread;
 }
 
 /** A closed school's kid at its fall decision. `next` is already a grade older. */
@@ -315,15 +415,10 @@ export function decideClosures(args: {
     if (m.region) m.region.leavers++;
     tallies.get(m.closure.school)!.left++;
   };
-  /** Non-followers: another PPS school with room, a charter or out of PPS. */
-  const elsewhere = (m: Mover, exclude: Set<SchoolId>, u: number) => {
-    const choice = nonFollowerChoice(u);
-    if (choice !== 'otherPps') return leave(m, choice);
+  const otherPps = (m: Mover, exclude: Set<SchoolId>) => {
     const school = nearestOpen(m.next.pos, gradeOf(m.next), closed, exclude, counts);
     m.next.school = school;
-    m.next.status = 'moved';
     add(school, 1);
-    flows.movedWithinPps++;
     tallies.get(m.closure.school)!.otherPps++;
   };
 
@@ -334,22 +429,20 @@ export function decideClosures(args: {
     t.kids++;
     next.movedFrom = closure.school;
     next.forcedMoves = (before.forcedMoves ?? 0) + 1;
-    const grade = gradeOf(next);
-    const serving = receiversFor(closure, grade);
+    next.fundedAs = before.fundedAs ?? closure.school;
+    const serving = receiversFor(closure, gradeOf(next));
     const target = serving.length ? pickShare(serving, draw(seed, year, before.id, D.Receiver)) : m.fallback;
-    const offset = (draw(seed, hashString(closure.school), 0, D.FollowSchool) - 0.5) * 2 * M.followSchoolSpread;
-    const p = followChance(args.followRate + offset, {
-      miles: miles(before.pos, schoolPos(target)),
-      barrier: acrossWillamette(before.pos, schoolPos(target)),
-      riskier: isRiskier(target, closure.school),
-      movedBefore: (before.forcedMoves ?? 0) > 0,
-      loyalty: before.loyalty,
-      exitCapacity: before.exitCapacity,
-      wholeClasses: closure.receivers.length === 1,
-    });
-    const exclude = new Set([closure.school, ...closure.receivers.map((r) => r.school)]);
+    const p = followChance(args.followRate + schoolFollowOffset(seed, closure.school), followFactors(before, closure, target));
     if (draw(seed, year, before.id, D.Follow) >= p) {
-      elsewhere(m, exclude, draw(seed, year, before.id, D.NonFollower));
+      // model.nonFollowers
+      const choice = nonFollowerChoice(draw(seed, year, before.id, D.NonFollower));
+      if (choice !== 'otherPps') {
+        leave(m, choice);
+        continue;
+      }
+      next.status = 'moved';
+      flows.movedWithinPps++;
+      otherPps(m, new Set([closure.school, ...closure.receivers.map((r) => r.school)]));
       continue;
     }
     next.school = target;
@@ -362,7 +455,7 @@ export function decideClosures(args: {
     } else t.otherPps++;
   }
 
-  // model.crowding
+  // model.crowding: kids past the line move on to the nearest PPS school with room.
   for (const [school, arrived] of arrivals) {
     const line = Math.floor(M.crowdingLine * (SCHOOL_INFO.get(school)!.data.capacity ?? Infinity));
     const over = (counts.get(school) ?? 0) - line;
@@ -373,9 +466,8 @@ export function decideClosures(args: {
       .slice(0, over);
     for (const { m } of decide) {
       add(school, -1);
-      flows.movedWithinPps--;
       tallies.get(m.closure.school)!.receivers[school]--;
-      elsewhere(m, new Set([m.closure.school, school]), draw(seed, year, m.before.id, D.Recrowd));
+      otherPps(m, new Set([m.closure.school, school]));
     }
   }
   return [...tallies.values()];
@@ -385,16 +477,13 @@ export function decideClosures(args: {
 export function closureOutcomes(tallies: ClosureTally[], closing: ClosedSchool[]): ClosureOutcome[] {
   return closing.map((c) => {
     const t = tallies.find((x) => x.school === c.school)!;
-    const receivers = c.receivers.map((r) => ({ school: r.school, kids: t.receivers[r.school] ?? 0 }));
-    const stayed = receivers.reduce((a, r) => a + r.kids, t.otherPps);
-    const actual = modeledRange(stayed);
+    const actual = modeledRange(t.kids - t.left);
     return {
       school: c.school,
-      kids: t.kids,
-      receivers: receivers.map((r) => ({ school: r.school, kids: modeledRange(r.kids) })),
+      kids: modeledRange(t.kids),
+      receivers: c.receivers.map((r) => ({ school: r.school, kids: modeledRange(t.receivers[r.school] ?? 0) })),
       otherPps: modeledRange(t.otherPps),
       leftPps: modeledRange(t.left),
-      stayedWithoutChoice: stayed * directCert(c.school),
       ...(c.guess === undefined
         ? {}
         : { guess: { stayInPps: c.guess, actual, hit: c.guess >= actual.lo && c.guess <= actual.hi } }),

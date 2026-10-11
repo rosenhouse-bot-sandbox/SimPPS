@@ -4,7 +4,7 @@ import { ZONES } from '../data';
 import { FALLBACK_SIZE } from '../map/MapView';
 import * as realSim from '../sim';
 import { getSource } from '../sources/registry';
-import { fmtCount, fmtMoney, fmtPct } from '../format';
+import { fmtCount, fmtMoney, fmtPct, fmtRange } from '../format';
 import { App } from './App';
 import type { Sim } from './machine';
 
@@ -242,7 +242,7 @@ describe('App', () => {
     for (const k of keys) expect(getSource(k), k).toBeDefined();
   });
 
-  describe('Close & send', () => {
+  describe('Close & send', { timeout: 20_000 }, () => {
     function openPeninsula() {
       click('Plan');
       click('Peninsula Elementary School');
@@ -313,6 +313,41 @@ describe('App', () => {
       const report = screen.getByRole('region', { name: 'Where Peninsula kids went' });
       expect(report.textContent).toContain('Rosa Parks');
       expect(report.querySelector('.call')!.textContent).toMatch(/^You called \d+\. Stayed in PPS: \d+–\d+~ (HIT|MISS)$/);
+    });
+
+    function closeInto(receiver: RegExp) {
+      click(receiver);
+      click('Next >');
+      click('Next >');
+      click('Close it');
+      click('Skip');
+    }
+
+    it('offers no closure of a school that takes kids in the plan', () => {
+      setup();
+      openPeninsula();
+      closeInto(/Rosa Parks/);
+      click('Plan');
+      click('Rosa Parks Elementary School');
+      expect(screen.getByText(/takes kids from Peninsula/)).toBeTruthy();
+      expect(screen.queryByRole('button', { name: 'Close & send' })).toBeNull();
+    });
+
+    it("counts the plan's other closures into the same receiver on the chip", () => {
+      setup();
+      openPeninsula();
+      closeInto(/Rosa Parks/);
+      click('Plan');
+      click('Sitton Elementary School');
+      click('Close & send');
+      click('All schools A–Z');
+      click(/Rosa Parks/);
+      click('Next >');
+      const start = realSim.newGame({ seed: 't' });
+      const to = (school: string) => ({ school, receivers: [{ school: 'rosa-parks', share: 1 }], building: 'mothball' as const });
+      const chip = realSim.closureChip(start, to('sitton'), [to('peninsula')], 24);
+      const seats = screen.getByTestId('closure-chip').querySelector('dd')!.textContent;
+      expect(seats).toBe(`${fmtRange(realSim.modeledRange(chip.seats.kids))}/594`);
     });
 
     it('boards up the closed school next year and offers no second closure', () => {
@@ -412,7 +447,9 @@ describe('App', () => {
     expect(screen.getByText(realSim.SCENARIOS['scenario-a'].notModeled!)).toBeTruthy();
     expect(document.querySelectorAll('[data-mark="closing"]')).toHaveLength(14);
     click('Rosa Parks Elementary School');
-    expect(screen.getByText(/takes kids/).textContent).toBe('In the plan: takes kids from Peninsula.');
+    expect(screen.getByText(/takes kids/).textContent).toBe(
+      'In the plan: takes kids from Peninsula. Change that closure to close this school.',
+    );
   });
 });
 
