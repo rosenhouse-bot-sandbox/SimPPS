@@ -70,9 +70,20 @@ export interface Budget {
   lines: BudgetLine[];
   /** Revenue minus costs before automatic cuts. Negative is a shortfall. */
   gap: number;
+  /** The draw that applies: no more than the reserves or the shortfall. */
+  reserveDraw: number;
+  /** June cuts: the shortfall left after the draw. */
   autoCutPositions: number;
+  /** Costs after June cuts. */
+  spending: number;
+  /** Reserves now, over last year's spending. */
   reserves: number;
   reservePct: number;
+  /** Reserves after the draw, over this year's spending. */
+  reservesAfter: number;
+  reservePctAfterDraw: number;
+  /** Winter cuts forced when reserves after the draw fall below 3%. */
+  midYearCuts: number;
 }
 
 export interface Dials {
@@ -144,6 +155,8 @@ export interface SimMemory {
   kCapture: number[];
   /** Positions removed by automatic and mid-year cuts so far. */
   cumulativeCuts: number;
+  /** Last year's spending, the base for the reserve share. */
+  spending: number;
   /** The lumped rest of the general fund, in 2027-28 dollars. */
   restRevenue: number;
   restCost: number;

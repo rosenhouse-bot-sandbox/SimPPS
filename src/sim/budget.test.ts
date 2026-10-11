@@ -69,6 +69,7 @@ describe('computeBudget', () => {
     schools: { 'rosa-parks': rosaParks },
     policy: { k5ClassSize: 24, levyRate: 0, reserveDraw: 5_000_000, closures: [] },
     reserves: 20_000_000,
+    priorSpending: 800_000_000,
     cumulativeCuts: 0,
     restRevenue: 0,
     restCost: 0,

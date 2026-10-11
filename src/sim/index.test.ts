@@ -90,6 +90,31 @@ describe('previewBudget', () => {
   });
 });
 
+describe('previewBudget reserves', () => {
+  it('applies no more draw than the gap', () => {
+    const later = endYear(start, DEFAULT_POLICY).next;
+    const plan = previewBudget(later, { ...DEFAULT_POLICY, reserveDraw: 41 * M });
+    expect(plan.reserveDraw).toBeCloseTo(-plan.gap, 0);
+    expect(plan.reservesAfter).toBeCloseTo(later.budget.reserves + plan.gap, 0);
+    expect(plan.autoCutPositions).toBe(0);
+  });
+
+  it('forecasts the mid-year cuts that a deep draw forces', () => {
+    const policy = { ...DEFAULT_POLICY, reserveDraw: 41.1 * M };
+    const plan = previewBudget(start, policy);
+    expect(plan.reservePctAfterDraw).toBeLessThan(0.03);
+    expect(plan.midYearCuts).toBeGreaterThan(0);
+    const { next } = endYear(start, policy);
+    expect(next.dials.positionsCut).toBe(plan.autoCutPositions + plan.midYearCuts);
+  });
+
+  it('forecasts no mid-year cuts without a draw', () => {
+    expect(start.budget.midYearCuts).toBe(0);
+    expect(start.budget.reservesAfter).toBe(start.budget.reserves);
+    expect(start.budget.reservePctAfterDraw).toBeGreaterThan(0.03);
+  });
+});
+
 describe('endYear', () => {
   it('is deterministic for a seed and policy', () => {
     const a = endYear(newGame({ seed: 'x' }), DEFAULT_POLICY);
@@ -167,6 +192,12 @@ describe('endYear', () => {
     expect(next.dials.positionsCut).toBe(Math.ceil((-start.budget.gap - 5 * M) / 155_000));
     expect(next.policy.reserveDraw).toBe(0);
     expect(next.policy.k5ClassSize).toBe(24);
+  });
+
+  it('keeps the reserve share when reserves hold and spending shrinks', () => {
+    const later = run(start, DEFAULT_POLICY, 5);
+    expect(later.budget.reserves).toBe(start.budget.reserves);
+    expect(later.dials.reservePct).toBeGreaterThanOrEqual(start.dials.reservePct);
   });
 
   it('forces mid-year cuts when reserves fall below 3%', () => {

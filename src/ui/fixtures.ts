@@ -25,9 +25,14 @@ export const FIXTURE_GAME: GameState = {
   budget: {
     lines: [{ key: 'generalFund', label: 'General fund', amount: 862_100_000, sourceKey: 'budget.generalFund' }],
     gap: -65_200_000,
+    reserveDraw: 0,
     autoCutPositions: 421,
+    spending: 827_000_000,
     reserves: 41_100_000,
     reservePct: 0.048,
+    reservesAfter: 41_100_000,
+    reservePctAfterDraw: 0.0497,
+    midYearCuts: 0,
   },
   dials: {
     kids: 26_400,

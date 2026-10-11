@@ -29,6 +29,7 @@ export function newGame(opts: { seed: string }): GameState {
     schools,
     policy: DEFAULT_POLICY,
     reserves: M.reserves,
+    priorSpending: M.generalFund,
     cumulativeCuts: 0,
     restRevenue: 0,
     restCost: 0,
@@ -46,6 +47,7 @@ export function newGame(opts: { seed: string }): GameState {
     kCohort: pop.kCohort,
     kCapture: pop.kCapture,
     cumulativeCuts: 0,
+    spending: M.generalFund,
     restRevenue: total + M.startGap - revenue,
     restCost: total - cost,
     cards: {
@@ -91,6 +93,7 @@ export function previewBudget(state: GameState, policy: Policy): Budget {
     schools: state.schools,
     policy: normalizePolicy(policy),
     reserves: state.budget.reserves,
+    priorSpending: sim.spending,
     cumulativeCuts: sim.cumulativeCuts,
     restRevenue: sim.restRevenue,
     restCost: sim.restCost,

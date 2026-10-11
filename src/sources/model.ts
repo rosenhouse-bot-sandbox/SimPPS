@@ -204,7 +204,7 @@ export const MODEL_SOURCES: Source[] = [
     key: 'model.midYearCuts',
     label: 'Mid-year cuts',
     tag: 'M',
-    explain: `When reserves end the year below ${pct(M.midYearFloor)} of the general fund, positions go mid-year. Each saves half a year of pay.`,
+    explain: `When reserves after the draw fall below ${pct(M.midYearFloor)} of the year's spending, positions go mid-year until reserves reach it again. Each saves half a year of pay.`,
     links: [DESIGN],
   },
   {
@@ -244,6 +244,6 @@ export const DIAL_SOURCES: Source[] = [
   { key: dialSourceKey('kindergartenCapture'), label: 'Kindergarten capture', tag: 'M', explain: 'Simulated PPS kindergartners over resident kindergartners. It was about 74% in 2025.', links: [PSU] },
   { key: dialSourceKey('gap'), label: 'Gap', tag: 'M', explain: 'Revenue minus costs in the coming year\'s plan, before automatic cuts. It starts at the reported -$65.2M.', links: [DESIGN] },
   { key: dialSourceKey('positionsCut'), label: 'Positions cut', tag: 'M', explain: 'Positions removed by automatic and mid-year cuts in the year just played.', links: [DESIGN] },
-  { key: dialSourceKey('reservePct'), label: 'Reserves', tag: 'M', explain: 'Reserves over the general fund. They start at $41.1M, 4.8%. Below 5% breaches policy; below 3% forces mid-year cuts.', links: [PPS_DATA] },
+  { key: dialSourceKey('reservePct'), label: 'Reserves', tag: 'M', explain: 'Reserves over last year\'s spending. They start at $41.1M, 4.8% of the $862.1M 2026-27 general fund. Below 5% breaches policy; below 3% forces mid-year cuts.', links: [PPS_DATA] },
   { key: dialSourceKey('kidsInUrm'), label: 'Kids in URM buildings', tag: 'M', explain: 'Simulated kids in the 18 unreinforced-masonry buildings (Holmes 2024).', links: [PPS_DATA] },
 ];

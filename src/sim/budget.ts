@@ -50,6 +50,8 @@ export interface BudgetInput {
   schools: Record<string, SchoolState>;
   policy: Policy;
   reserves: number;
+  /** Last year's spending. */
+  priorSpending: number;
   cumulativeCuts: number;
   restRevenue: number;
   restCost: number;
@@ -90,12 +92,23 @@ export function computeBudget(input: BudgetInput): Budget {
       sourceKey: 'model.autoCuts',
     });
   const gap = lines.reduce((sum, l) => sum + l.amount, 0);
-  const draw = clamp(input.policy.reserveDraw, 0, input.reserves);
+  const revenue = state + levyRevenue(input.policy.levyRate) + input.restRevenue;
+  const position = M.positionCost * index;
+  const reserveDraw = clamp(input.policy.reserveDraw, 0, Math.min(input.reserves, Math.max(0, -gap)));
+  const autoCutPositions = Math.ceil(Math.max(0, -gap - reserveDraw) / position);
+  const spending = revenue - gap - autoCutPositions * position;
+  const reservesAfter = input.reserves - reserveDraw + Math.max(0, gap);
+  const floor = M.midYearFloor * spending;
   return {
     lines,
     gap,
-    autoCutPositions: Math.ceil(Math.max(0, -gap - draw) / (M.positionCost * index)),
+    reserveDraw,
+    autoCutPositions,
+    spending,
     reserves: input.reserves,
-    reservePct: input.reserves / generalFund(input.year - 1),
+    reservePct: input.reserves / input.priorSpending,
+    reservesAfter,
+    reservePctAfterDraw: reservesAfter / spending,
+    midYearCuts: reservesAfter < floor ? Math.ceil((floor - reservesAfter) / (position / 2)) : 0,
   };
 }

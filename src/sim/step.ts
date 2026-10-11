@@ -1,5 +1,5 @@
 import { ZONES } from '../data';
-import { classesFor, computeBudget, costIndex, generalFund } from './budget';
+import { classesFor, computeBudget, costIndex } from './budget';
 import { samplePoint, ZoneIndex } from './geo';
 import { gradeOf, M, MAX_GRADE, oneKid } from './model';
 import {
@@ -184,13 +184,12 @@ export function stepYear(state: GameState, policy: Policy): { next: GameState; f
     schools: state.schools,
     policy,
     reserves: state.budget.reserves,
+    priorSpending: mem.spending,
     cumulativeCuts: mem.cumulativeCuts,
     restRevenue: mem.restRevenue,
     restCost: mem.restCost,
   });
-  const reserveDraw = clamp(policy.reserveDraw, 0, plan.reserves);
   const autoCuts = plan.autoCutPositions;
-  let reserves = plan.reserves - reserveDraw + Math.max(0, plan.gap + reserveDraw);
 
   const { households, nextId, kResidents, kEnrolled, graduates, flows, leaversByRegion } = familiesDecide(
     mem,
@@ -212,22 +211,20 @@ export function stepYear(state: GameState, policy: Policy): { next: GameState; f
   }
 
   // Winter: below 3% reserves, mid-year cuts save half a year's pay.
-  let midYearCuts = 0;
-  const floor = M.midYearFloor * generalFund(year);
-  if (reserves < floor) {
-    const halfYear = (M.positionCost * index) / 2;
-    midYearCuts = Math.ceil((floor - reserves) / halfYear);
-    reserves += midYearCuts * halfYear;
-  }
+  const midYearCuts = plan.midYearCuts;
+  const midYearSavings = (midYearCuts * M.positionCost * index) / 2;
+  const reserves = plan.reservesAfter + midYearSavings;
 
   const nextPolicy: Policy = { ...policy, reserveDraw: 0 };
   const cumulativeCuts = mem.cumulativeCuts + autoCuts + midYearCuts;
-  const sim = { ...mem, nextId, cumulativeCuts, ghost: undefined };
+  const spending = plan.spending - midYearSavings;
+  const sim = { ...mem, nextId, cumulativeCuts, spending, ghost: undefined };
   const budget = computeBudget({
     year: year + 1,
     schools,
     policy: nextPolicy,
     reserves,
+    priorSpending: spending,
     cumulativeCuts,
     restRevenue: mem.restRevenue,
     restCost: mem.restCost,
@@ -246,7 +243,7 @@ export function stepYear(state: GameState, policy: Policy): { next: GameState; f
     next: nextState,
     facts: {
       plan,
-      reserveDraw: Math.min(reserveDraw, Math.max(0, -plan.gap)),
+      reserveDraw: plan.reserveDraw,
       autoCuts,
       midYearCuts,
       kResidents,
