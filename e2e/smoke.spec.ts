@@ -172,3 +172,77 @@ test('slices 30% of Peninsula into Rosa Parks and reports the re-zoned kids', as
   await where.scrollIntoViewIfNeeded();
   await shot(page, 'm3-report');
 });
+
+async function playYear(page: Page, year: number) {
+  await hold(page, page.getByRole('button', { name: 'End year (press and hold)' }));
+  await hold(page, page.getByRole('button', { name: 'Play the year (press and hold)' }));
+  await page.getByTestId('playback').getByRole('button', { name: 'Skip' }).tap();
+  await expect(page.getByRole('region', { name: new RegExp(`DEC ${year}`) })).toBeVisible();
+}
+
+test('puts a new levy rate to voters and reports the vote', async ({ page }) => {
+  test.setTimeout(90_000);
+  await page.goto('?seed=smoke&start=status-quo');
+  await expect(page.locator('.topbar')).toContainText(/Trust \d+/);
+
+  await page.getByRole('button', { name: 'Budget' }).tap();
+  await expect(page.getByText('Levy runs through June 2030')).toBeVisible();
+  await page.getByRole('button', { name: 'Less Levy rate' }).tap();
+  const ballot = page.getByRole('group', { name: 'Levy ballot' });
+  await expect(ballot).toContainText(/May 2027: levy at \$1\.89 per \$1,000 · poll \d+–\d+%~/);
+  await ballot.scrollIntoViewIfNeeded();
+  await shot(page, 'm4-ballot');
+
+  await hold(page, page.getByRole('button', { name: 'End year (press and hold)' }));
+  const preflight = page.getByRole('region', { name: 'Play 2027-28?' });
+  await expect(preflight).toContainText(/May 2027: levy at \$1\.89 per \$1,000 · poll/);
+  await expect(preflight).toContainText('The plan books it as passing.');
+  await shot(page, 'm4-preflight');
+  await hold(page, page.getByRole('button', { name: 'Play the year (press and hold)' }));
+
+  const playback = page.getByTestId('playback');
+  await expect(playback).toContainText(/Voters approve a \$1\.89 levy: \d+% yes|Levy fails: \d+% yes/);
+  await page.getByRole('button', { name: 'Pause' }).tap();
+  await shot(page, 'm4-playback-vote');
+  await playback.getByRole('button', { name: 'Skip' }).tap();
+
+  const vote = page.getByRole('region', { name: 'Levy vote' });
+  await expect(vote).toContainText(/You: \$1\.89, \d+%~ yes (PASSED|FAILED)/);
+  await expect(page.getByRole('region', { name: 'The Bulletin' })).toContainText(/levy/i);
+  await vote.scrollIntoViewIfNeeded();
+  await shot(page, 'm4-report-vote');
+});
+
+test('reveals the hidden cards after three years', async ({ page }) => {
+  test.setTimeout(120_000);
+  await page.goto('?seed=p52&start=scenario-a');
+  await page.getByRole('button', { name: 'Plan' }).tap();
+  const calendar = page.getByRole('list', { name: 'Calendar' });
+  await expect(calendar).toContainText('Teacher bargaining opens');
+  await expect(calendar).toContainText('Legislature sets the 2027-29 budget');
+  await expect(calendar).toContainText('Levy expires');
+  await calendar.getByRole('button', { name: 'Teacher bargaining opens' }).tap();
+  await expect(page.getByRole('dialog', { name: 'Teacher bargaining' })).toContainText('[F] public source');
+  await page.getByRole('dialog', { name: 'Teacher bargaining' }).getByRole('button', { name: 'Close' }).tap();
+  await shot(page, 'm4-calendar');
+  await page.getByRole('button', { name: 'Map', exact: true }).tap();
+
+  await playYear(page, 2027);
+  await page.locator('.flow [data-source="model.followRate"]').first().tap();
+  await expect(page.getByRole('dialog', { name: 'Follow a closed school' })).toContainText('Hidden until the December 2029 report.');
+  await shot(page, 'm4-hidden');
+  await page.getByRole('dialog', { name: 'Follow a closed school' }).getByRole('button', { name: 'Close' }).tap();
+  await page.getByRole('button', { name: 'Plan 2028' }).tap();
+  await playYear(page, 2028);
+  await page.getByRole('button', { name: 'Plan 2029' }).tap();
+  await playYear(page, 2029);
+
+  const reveal = page.getByRole('region', { name: 'Revealed: Follow a closed school' });
+  const chart = reveal.getByRole('img');
+  await expect(chart).toHaveAttribute('aria-label', /Possible values: 95%, 88%, 80% and 65%.*This game drew \d+%\./);
+  await expect(reveal.locator('[data-drawn]')).toHaveCount(1);
+  await expect(reveal).toContainText('>93% stayed');
+  await reveal.scrollIntoViewIfNeeded();
+  await shot(page, 'm4-reveal');
+  await expect(page.getByRole('region', { name: "Revealed: Closed zone's kindergarten capture" })).toBeVisible();
+});
