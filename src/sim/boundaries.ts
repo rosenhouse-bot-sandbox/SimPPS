@@ -108,7 +108,7 @@ export function boundaryChip(state: GameState, edit: BoundaryEdit, plan: Policy)
       delta.set(next.zone, (delta.get(next.zone) ?? 0) + 1);
     }
     if (levelOf(g) !== level || h.school !== h.zoneSchool) continue;
-    const nu = mappedZone(after.zones, h, level, after.zones.elementary[h.cell]);
+    const nu = mappedZone(after.zones, h, level);
     mature += +ridesNewBus(h, g, nu, nu) - +ridesNewBus(h, g, h.school, h.school);
     if (level === 'elementary') walk += +(milesTo(h, nu) <= M.walkDialMiles) - +(milesTo(h, h.school) <= M.walkDialMiles);
   }

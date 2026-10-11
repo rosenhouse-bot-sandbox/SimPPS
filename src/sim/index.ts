@@ -1,5 +1,5 @@
 import { computeBudget, FIRST_YEAR, generalFund, stateFundingLevel } from './budget';
-import { CLOSED_ZONE_CAPTURE_DROPS, FOLLOW_RATES, M } from './model';
+import { CLOSED_ZONE_CAPTURE_DROPS, FOLLOW_RATES, gradeOf, M } from './model';
 import { clamp } from '../clamp';
 import { generatePopulation } from './population';
 import { headlines, rezoneOutcome, seasonEvents, versusGhost } from './report';
@@ -39,9 +39,11 @@ export const DEFAULT_POLICY: Policy = { k5ClassSize: 24, levyRate: 1.99, reserve
 export function newGame(opts: { seed: string; start?: Start }): GameState {
   const seedHash = hashString(opts.seed);
   const pop = generatePopulation(seedHash);
+  const middle = defaultZones().middle;
+  const zoned = pop.households.map((h) => (gradeOf(h) >= 6 ? { ...h, zoneSchool: middle[h.cell] } : h));
   const fall2026 = familiesDecide(
     { ...pop, seedHash, nextId: pop.households.length },
-    pop.households,
+    zoned,
     FIRST_YEAR - 1,
     DEFAULT_POLICY.k5ClassSize,
     0,

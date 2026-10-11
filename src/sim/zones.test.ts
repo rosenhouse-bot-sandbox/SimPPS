@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { ZONES, type Point, type Ring } from '../data';
-import { newGame } from '.';
+import { DEFAULT_POLICY, endYear, newGame } from '.';
+import { gradeOf } from './model';
 import { schoolPos } from './closures';
 import { inZone } from './geo';
 import { middleZoneSchool } from './population';
@@ -47,6 +48,13 @@ describe('the zone grid', () => {
     expect(new Set(defaultZones().middle)).toEqual(new Set(ZONES.middle.map((z) => z.school)));
     const c = grid.cells.find((x) => x.area === CELL_METERS ** 2 && x.ix * CELL_METERS > 2000)!;
     expect(defaultZones().middle[c.id]).toBe(middleZoneSchool(c.center, ZONES.elementary[c.elemZone].school));
+  });
+
+  it("zones every home to its block's middle school, so the map shows each home's zone", () => {
+    const off = start.households.filter((h) => gradeOf(h) >= 6 && h.zoneSchool !== defaultZones().middle[h.cell]);
+    expect(off).toEqual([]);
+    const later = endYear(start, DEFAULT_POLICY).next;
+    expect(later.households.filter((h) => gradeOf(h) >= 6 && h.zoneSchool !== defaultZones().middle[h.cell])).toEqual([]);
   });
 
   it('maps every household to the block holding it', () => {

@@ -87,20 +87,14 @@ export function defaultZones(): ZoneMap {
   return defaults;
 }
 
-/**
- * A home's zone school at a level. A middle cell still on today's zone uses the home's own middle
- * zone, since a middle boundary can cross a cell.
- */
-export function mappedZone(zones: ZoneMap, h: Pick<Household, 'cell' | 'pos'>, level: ZoneLevel, elem: SchoolId): SchoolId {
-  if (level === 'elementary') return zones.elementary[h.cell];
-  const m = zones.middle[h.cell];
-  return m !== defaultZones().middle[h.cell] ? m : middleZoneSchool(h.pos, elem);
+/** A home's zone school at a level: its block's. */
+export function mappedZone(zones: ZoneMap, h: Pick<Household, 'cell'>, level: ZoneLevel): SchoolId {
+  return zones[level][h.cell];
 }
 
 /** A home's zone school at a grade before any change. */
-export function defaultZone(h: Pick<Household, 'cell' | 'pos'>, grade: number): SchoolId {
-  const elem = defaultZones().elementary[h.cell];
-  return grade <= 5 ? elem : middleZoneSchool(h.pos, elem);
+export function defaultZone(h: Pick<Household, 'cell'>, grade: number): SchoolId {
+  return mappedZone(defaultZones(), h, levelOf(grade));
 }
 
 const dist = (a: Point, b: Point) => Math.hypot(a[0] - b[0], a[1] - b[1]);
@@ -207,11 +201,11 @@ export function nextZone(
   shut: { has(school: SchoolId): boolean },
 ): { zone: SchoolId; forced: boolean } {
   const level = levelOf(ng);
-  if (ng === ENTRY_GRADE.middle) return { zone: mappedZone(z.zones, h, level, h.zoneSchool), forced: false };
+  if (ng === ENTRY_GRADE.middle) return { zone: mappedZone(z.zones, h, level), forced: false };
   const grandfather = z.changed[level].get(h.cell);
   const moves = grandfather === false || (grandfather === true && h.school === null);
   if (!moves && !shut.has(h.zoneSchool)) return { zone: h.zoneSchool, forced: false };
-  const zone = mappedZone(z.zones, h, level, h.zoneSchool);
+  const zone = mappedZone(z.zones, h, level);
   return { zone, forced: moves && h.school !== null && h.school === h.zoneSchool && zone !== h.zoneSchool };
 }
 
