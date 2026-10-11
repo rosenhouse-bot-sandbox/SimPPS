@@ -17,8 +17,6 @@ import type { Ballot, Budget, Closure, GameState, Household, Policy, Range, Reve
 export * from './types';
 export { modeledRange } from './range';
 export { FIRST_YEAR, legislatureVotes, levyRevenue } from './budget';
-export { REGIONS } from './regions';
-export { REVEAL_AFTER_YEARS } from './model';
 export { canClose, receiverCandidates, type ClosureChip } from './closures';
 export { boundaryChip, sliceEdit, type BoundaryChip } from './boundaries';
 export {
