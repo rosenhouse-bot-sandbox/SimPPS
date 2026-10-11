@@ -44,9 +44,9 @@ export function BoundaryChipView({ chip, blocks }: { chip: BoundaryChip; blocks:
           </dd>
         </div>
         <div>
-          <dt>Riders</dt>
+          <dt>Riders now/later</dt>
           <dd class="num">
-            <Sourced k={K.walkLimit}>{signed(chip.riders.now)}</Sourced> now, <Sourced k={K.walkLimit}>{signed(chip.riders.atMaturity)}</Sourced> later
+            <Sourced k={K.walkLimit}>{signed(chip.riders.now)}</Sourced>/<Sourced k={K.walkLimit}>{signed(chip.riders.atMaturity)}</Sourced>
           </dd>
         </div>
       </dl>

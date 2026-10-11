@@ -96,7 +96,7 @@ describe('ZoneSheet', () => {
     const text = chip().textContent!;
     expect(text).toContain('Now−$250K to −$140K~');
     expect(text).toContain('At maturity−$60K to −$20K~');
-    expect(text).toContain('Riders+100~ now, +30~ later');
+    expect(text).toContain('Riders now/later+100~/+30~');
   });
 
   it('warns, without blocking, when the blocks do not touch the zone', () => {
