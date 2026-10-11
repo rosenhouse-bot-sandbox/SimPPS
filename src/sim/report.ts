@@ -1,8 +1,9 @@
 import { fmtMoney } from '../format';
 import { M } from './model';
+import { SCHOOL_INFO } from './population';
 import { dialSourceKey } from '../sources/model';
 import type { YearFacts } from './step';
-import type { Dials, Headline, SeasonEvent, YearReport } from './types';
+import type { BuildingFate, Dials, Headline, SeasonEvent, YearReport } from './types';
 
 function count(n: number): string {
   return Math.round(n).toLocaleString('en-US');
@@ -10,6 +11,39 @@ function count(n: number): string {
 
 function pct(x: number): string {
   return `${Math.round(x * 100)}%`;
+}
+
+function list(items: string[]): string {
+  return items.length < 2 ? items.join('') : `${items.slice(0, -1).join(', ')} and ${items[items.length - 1]}`;
+}
+
+const FATE: Record<BuildingFate, string> = { mothball: 'mothballed', lease: 'leased', sell: 'sold' };
+
+function closureEvents(f: YearFacts): SeasonEvent[] {
+  if (f.closing.length === 0) return [];
+  const name = (id: string) => SCHOOL_INFO.get(id)!.data.name;
+  const fates = new Set(f.closing.map((c) => c.building));
+  const buildings =
+    fates.size === 1
+      ? `${f.closing.length === 1 ? 'Its building is' : 'Their buildings are'} ${FATE[f.closing[0].building]}.`
+      : `${list(f.closing.map((c) => `${name(c.school)} is ${FATE[c.building]}`))}.`;
+  const sum = (pick: (t: YearFacts['closures'][number]) => number) => f.closures.reduce((a, t) => a + pick(t), 0);
+  const followed = sum((t) => Object.values(t.receivers).reduce((a, n) => a + n, 0));
+  const n = f.closing.length;
+  return [
+    {
+      season: 'summer',
+      title: `${n} school${n === 1 ? ' closes' : 's close'}`,
+      detail: `${list(f.closing.map((c) => name(c.school)))} close. ${buildings}`,
+      sourceKey: 'model.buildingFate',
+    },
+    {
+      season: 'fall',
+      title: "Closed schools' families decide",
+      detail: `~${count(followed)} of ~${count(sum((t) => t.kids))} kids follow to receiving schools, ~${count(sum((t) => t.otherPps))} go to other PPS schools and ~${count(sum((t) => t.left))} leave PPS.`,
+      sourceKey: 'model.followRate',
+    },
+  ];
 }
 
 export function seasonEvents(f: YearFacts): SeasonEvent[] {
@@ -38,6 +72,7 @@ export function seasonEvents(f: YearFacts): SeasonEvent[] {
       detail: `The gap is ${fmtMoney(f.plan.gap)}.${draw}${cuts}`,
       sourceKey: 'model.autoCuts',
     },
+    ...closureEvents(f).filter((e) => e.season === 'summer'),
     {
       season: 'summer',
       title: 'Eighth graders move on',
@@ -50,6 +85,7 @@ export function seasonEvents(f: YearFacts): SeasonEvent[] {
       detail: `~${count(f.flows.leftPps)} kids left PPS, ~${count(f.flows.cameBack)} came back and ~${count(f.flows.movedWithinPps)} changed schools.`,
       sourceKey: 'model.movingRoll',
     },
+    ...closureEvents(f).filter((e) => e.season === 'fall'),
     {
       season: 'october',
       title: 'Classes form',

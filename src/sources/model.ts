@@ -1,6 +1,7 @@
 import { MEDIAN_SQFT, STATE_PER_STUDENT } from '../sim/budget';
 import { CLOSED_ZONE_CAPTURE_DROPS, FOLLOW_RATES, M } from '../sim/model';
 import { CITYWIDE_INTAKE } from '../sim/population';
+import rightsizing from '../data/rightsizing.json';
 import type { Dials } from '../sim/types';
 import type { Source, SourceLink } from './types';
 
@@ -17,12 +18,14 @@ const WW_GAP: SourceLink = {
   title: 'Willamette Week, Apr 28 2026',
   url: 'https://www.wweek.com/news/schools/2026/04/28/portland-public-schools-faces-56-million-budget-deficit-as-superintendent-proposes-336-layoffs/',
 };
+const RIGHTSIZING: SourceLink = { title: `PPS, ${rightsizing.source.title}`, url: rightsizing.source.url };
 const DESIGN: SourceLink = { title: 'SimPPS design (issue #1)', url: 'https://github.com/rosenhouse-bot-sandbox/SimPPS/issues/1' };
 
 const $ = (n: number) => `$${(n / 1e6).toFixed(1)}M`;
 const $b = (n: number) => `$${(n / 1e9).toFixed(2)}B`;
 const $k = (n: number) => `$${(n / 1e3).toFixed(1)}K`;
 const pct = (x: number) => `${+(x * 100).toFixed(2)}%`;
+const pts = (x: number) => `${+(x * 100).toFixed(2)}`;
 
 const ACCESS_INTAKE = CITYWIDE_INTAKE.find((p) => p.school === 'access-academy')!.kids;
 
@@ -255,6 +258,62 @@ export const MODEL_SOURCES: Source[] = [
       outcomes: CLOSED_ZONE_CAPTURE_DROPS.map((value) => ({ value, label: `-${Math.round(value * 100)} points`, weight: 1 })),
       revealAfterYears: 3,
     },
+  },
+  {
+    key: 'model.closureSavings',
+    label: 'Closure savings',
+    tag: 'I',
+    explain: `A closed building's plant cost and its principal's office (${M.principalOffice} positions) go. Its other staff follow the kids. Receivers add the homerooms and staff steps the kids need. The project's closure analysis estimates $0.3-1.5M a school, and this arithmetic lands each Scenario A closure in that range. The chip shows the saving if every kid follows, ±${pct(M.closureSavingsSpread)}, net of building upkeep.`,
+    links: [DESIGN],
+  },
+  {
+    key: 'model.closurePhasing',
+    label: 'Closure phasing',
+    tag: 'I',
+    explain: `A closure saves ${M.closurePhasing.map(pct).join(', then ')} of its yearly saving in its first three years. Staff and costs take time to move.`,
+    links: [DESIGN],
+  },
+  {
+    key: 'model.closureOneTime',
+    label: 'Closure, once',
+    tag: 'M',
+    explain: `Moving a school costs ${$(M.closureOneTime.lo)}-${$(M.closureOneTime.hi)} once, in the year played. The budget books the middle.`,
+    links: [DESIGN],
+  },
+  {
+    key: 'model.buildingFate',
+    label: 'Closed building',
+    tag: 'F',
+    explain: `An empty, mothballed building costs about ${$k(M.mothball)} a year, as Smith does. A leased building's tenant pays its upkeep [M]. A sold building costs nothing and can't reopen; sale money goes to capital, not the general fund [I].`,
+    links: [DESIGN],
+  },
+  {
+    key: 'model.followAdjustments',
+    label: 'Who follows a closed school',
+    tag: 'M',
+    explain: `Each kid's chance to follow starts at the hidden follow rate. It falls ${pts(M.followPerMilePastOne)} points a mile past the first, ${pts(M.followBarrier)} across the Willamette, ${pts(M.followRiskier)} into an unretrofitted URM building, ${pts(M.followMovedTwice)} for a kid moved before, up to ${pts(M.followLoyal)} for loyalty and up to ${pts(M.followExit)} for exit capacity. It rises ${pts(M.followWholeClasses)} when one receiver takes whole classes. Freeways and arterials are not modeled yet.`,
+    links: [DESIGN],
+  },
+  {
+    key: 'model.nonFollowers',
+    label: "Kids who don't follow",
+    tag: 'M',
+    explain: `${pct(M.nonFollowerOtherPps)} go to the nearest other PPS school with room, ${pct(M.nonFollowerCharter)} to a charter and the rest leave PPS. Their closed zone sends future kindergartners to the receivers. A mover who stays counts as "stayed without a choice" at the school's direct-certification share.`,
+    links: [DESIGN],
+  },
+  {
+    key: 'model.crowding',
+    label: 'Crowded receivers',
+    tag: 'M',
+    explain: `A receiver past ${pct(M.crowdingLine)} of its seats sends the newest arrivals beyond that line to decide again, as kids who don't follow.`,
+    links: [DESIGN],
+  },
+  {
+    key: 'model.scenarios',
+    label: 'PPS scenarios',
+    tag: 'F',
+    explain: "Scenario A closes 14 schools and Scenario B 11, with PPS's receivers and shares. Sellwood MS's split is unpublished, so the game splits it evenly [I]. Each building is mothballed until you change it [M]. Program moves, grade-span changes and boundary changes are not modeled yet.",
+    links: [RIGHTSIZING],
   },
 ];
 

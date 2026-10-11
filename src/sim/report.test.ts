@@ -35,6 +35,8 @@ const facts: YearFacts = {
   blended: 137,
   crowded: 3,
   stateFundingGrowth: null,
+  closing: [],
+  closures: [],
 };
 
 const dials: Dials = {
@@ -74,6 +76,36 @@ describe('seasonEvents', () => {
     expect(detail(facts, 'Classes form')).toBe(
       '~137 of ~690 K-5 homerooms are blended. Cuts have taken ~85 homerooms, so classes run larger. 3 schools are over capacity.',
     );
+  });
+
+  it('closes schools in summer and tallies their kids in fall', () => {
+    const closing = (school: string) => ({
+      school,
+      receivers: [{ school: 'rosa-parks', share: 1 }],
+      building: 'mothball' as const,
+      year: 2027,
+      saving: 0,
+      staffKept: 0,
+    });
+    const tally = (school: string, receiver: number, otherPps: number, left: number) => ({
+      school,
+      kids: receiver + otherPps + left,
+      receivers: { 'rosa-parks': receiver },
+      otherPps,
+      left,
+    });
+    const f = {
+      ...facts,
+      closing: [closing('peninsula'), closing('woodmere')],
+      closures: [tally('peninsula', 180, 12, 20), tally('woodmere', 150, 10, 30)],
+    };
+    expect(detail(f, '2 schools close')).toBe(
+      'Peninsula Elementary School and Woodmere Elementary School close. Their buildings are mothballed.',
+    );
+    expect(detail(f, 'Closed schools\' families decide')).toBe(
+      '~330 of ~402 kids follow to receiving schools, ~22 go to other PPS schools and ~50 leave PPS.',
+    );
+    expect(seasonEvents(f).length - seasonEvents(facts).length).toBe(2);
   });
 
   it('adds mid-year cuts only when they happen', () => {

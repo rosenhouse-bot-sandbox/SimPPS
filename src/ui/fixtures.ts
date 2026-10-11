@@ -55,4 +55,5 @@ export const FIXTURE_REPORT: YearReport = {
     { text: 'A fourth headline', sourceKey: 'model.movingRoll' },
   ],
   budget: FIXTURE_GAME.budget,
+  closures: [],
 };
