@@ -1,6 +1,7 @@
 import type { Range } from '../sim/types';
 import { fmtMoney, fmtRange, fmtSignedMoney } from '../format';
 import type { Chip as ChipData } from './levers';
+import { Sourced } from './Sourced';
 
 function money(r: Range): string {
   if (r.lo === r.hi) return fmtSignedMoney(r.lo);
@@ -8,7 +9,7 @@ function money(r: Range): string {
 }
 
 /** Four cells of arithmetic for one edit. It never predicts family choices. */
-export function Chip({ chip }: { chip: ChipData }) {
+export function Chip({ chip, sourceKey }: { chip: ChipData; sourceKey: string }) {
   const cells: [string, string][] = [
     ['Seats', chip.seats],
     ['Walk', chip.walk],
@@ -20,7 +21,7 @@ export function Chip({ chip }: { chip: ChipData }) {
       {cells.map(([k, v]) => (
         <div key={k}>
           <dt>{k}</dt>
-          <dd class="num">{v}</dd>
+          <dd class="num">{v === '—' ? v : <Sourced k={sourceKey}>{v}</Sourced>}</dd>
         </div>
       ))}
     </dl>

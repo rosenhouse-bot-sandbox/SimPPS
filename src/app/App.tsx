@@ -47,7 +47,7 @@ export function App({ sim, seed, playbackMs }: AppProps) {
 
   return (
     <div class="app">
-      <TopBar when={when} dials={shown.dials} />
+      <TopBar when={when} dials={planning ? { ...shown.dials, gap: plan.gap } : shown.dials} />
       <main class="stage">
         <MapSlot
           schools={map.schools}
@@ -59,7 +59,7 @@ export function App({ sim, seed, playbackMs }: AppProps) {
           focus={focus}
         />
         {planning && tool === 'budget' && (
-          <BudgetPanel game={s.game} draft={s.draft} onEdit={(policy) => dispatch({ type: 'edit', policy })} onClose={close} />
+          <BudgetPanel game={s.game} draft={s.draft} plan={plan} onEdit={(policy) => dispatch({ type: 'edit', policy })} onClose={close} />
         )}
         {planning && tool === 'plan' && (
           <PlanPanel

@@ -9,6 +9,7 @@ import type { Budget, GameState, Household, Policy, SimMemory, YearReport } from
 
 export * from './types';
 export { modeledRange } from './range';
+export { levyRevenue } from './budget';
 
 export const DEFAULT_POLICY: Policy = { k5ClassSize: 24, levyRate: 1.99, reserveDraw: 0, closures: [] };
 

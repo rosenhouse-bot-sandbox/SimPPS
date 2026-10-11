@@ -10,8 +10,8 @@ describe('lever arithmetic', () => {
     expect(classSizeChip(24, 24).seats).toBe('—');
   });
 
-  it('scales the levy from $1.99 = $103.9M', () => {
-    expect(levyChip(0, 1.99).now).toEqual({ lo: -103_900_000, hi: -103_900_000 });
+  it('loses the whole $103.9M when the levy lapses', () => {
+    expect(levyChip(0, 1.99).now.lo).toBeCloseTo(-103_900_000, -3);
   });
 
   it('counts a reserve draw once', () => {
@@ -38,11 +38,10 @@ describe('lever chips against the sim', () => {
     expect(sim).toBeLessThanOrEqual(chip.hi);
   });
 
-  it.each([0, 1, 1.89, 2])('agrees in sign and rough size for a levy of $%d', (rate) => {
-    const chip = levyChip(rate, 1.99).now.lo;
-    const ratio = delta({ levyRate: rate }) / chip;
-    expect(ratio).toBeGreaterThan(0.5);
-    expect(ratio).toBeLessThan(2);
+  it.each([0, 0.5, 1, 1.89, 2])('matches the sim for a levy of $%d', (rate) => {
+    const chip = levyChip(rate, 1.99).now;
+    expect(chip.lo).toBe(chip.hi);
+    expect(chip.lo).toBeCloseTo(delta({ levyRate: rate }), 0);
   });
 
   it('agrees on the positions a reserve draw saves', () => {

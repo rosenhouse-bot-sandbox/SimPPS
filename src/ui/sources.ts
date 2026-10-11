@@ -11,6 +11,7 @@ export const K = {
   levy: 'model.levy',
   reserveDraw: 'ui.reserveDraw',
   autoCuts: 'model.autoCuts',
+  midYearCuts: 'model.midYearCuts',
   enrollment: 'model.schoolRange',
   homerooms: 'model.homerooms',
   blended: 'model.homerooms',

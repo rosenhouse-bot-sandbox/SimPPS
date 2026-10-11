@@ -498,3 +498,8 @@ legend {
     transform: scaleX(0.5);
   }
 }
+
+.note.warn,
+.note.warn .sourced {
+  color: var(--warn);
+}

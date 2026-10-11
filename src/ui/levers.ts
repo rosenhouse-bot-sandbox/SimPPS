@@ -1,3 +1,4 @@
+import { levyRevenue } from '../sim';
 import type { Range } from '../sim/types';
 
 export const CLASS_SIZE = { min: 22, max: 28, step: 1 } as const;
@@ -7,8 +8,6 @@ export const RESERVE_STEP = 1_000_000;
 
 /** Each student of class size moves $3–5M a year [I]. */
 const CLASS_SIZE_SAVING: Range = { lo: 3_000_000, hi: 5_000_000 };
-/** $1.99 per $1,000 projects $103.9M [F]. */
-const LEVY_PER_DOLLAR_RATE = 103_900_000 / 1.99;
 
 /** Arithmetic for one edit. Dollars per year; positive helps the gap. */
 export interface Chip {
@@ -38,7 +37,7 @@ export function classSizeChip(size: number, base: number): Chip {
 }
 
 export function levyChip(rate: number, base: number): Chip {
-  const delta = point(Math.round((rate - base) * LEVY_PER_DOLLAR_RATE));
+  const delta = point(levyRevenue(rate) - levyRevenue(base));
   return { seats: '—', walk: '—', now: delta, atMaturity: delta };
 }
 

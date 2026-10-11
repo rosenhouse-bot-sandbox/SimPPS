@@ -37,7 +37,28 @@ describe('Stepper', () => {
     const onChange = vi.fn();
     render(<Stepper label="Levy" value={1.99} min={0} max={2} step={0.1} format={String} onChange={onChange} />);
     fireEvent.click(screen.getByRole('button', { name: 'More Levy' }));
-    fireEvent.click(screen.getByRole('button', { name: 'Less Levy' }));
-    expect(onChange.mock.calls).toEqual([[2], [1.89]]);
+    expect(onChange.mock.calls).toEqual([[2]]);
+  });
+
+  it('steps on a grid through the anchor, so the anchor is always reachable', () => {
+    const steps = (value: number, dir: 'More' | 'Less') => {
+      const onChange = vi.fn();
+      render(
+        <Stepper label="Levy" value={value} min={0} max={2} step={0.1} anchor={1.99} format={String} onChange={onChange} />,
+      );
+      fireEvent.click(screen.getByRole('button', { name: `${dir} Levy` }));
+      cleanup();
+      return onChange.mock.calls[0][0];
+    };
+    expect(steps(1.99, 'More')).toBe(2);
+    expect(steps(2, 'Less')).toBe(1.99);
+    expect(steps(1.99, 'Less')).toBe(1.89);
+    expect(steps(0.09, 'Less')).toBe(0);
+    expect(steps(0, 'More')).toBe(0.09);
+  });
+
+  it('sources its value when given a key', () => {
+    render(<Stepper label="Class size" sourceKey="ui.k5ClassSize" value={24} min={22} max={28} step={1} format={String} onChange={() => {}} />);
+    expect(document.querySelector('.stepper-value [data-source="ui.k5ClassSize"]')!.textContent).toBe('24');
   });
 });

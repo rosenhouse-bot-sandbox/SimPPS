@@ -4,7 +4,7 @@ import { ZONES } from '../data';
 import { FALLBACK_SIZE } from '../map/MapView';
 import * as realSim from '../sim';
 import { getSource } from '../sources/registry';
-import { fmtCount, fmtMoney } from '../format';
+import { fmtCount, fmtMoney, fmtPct } from '../format';
 import { App } from './App';
 import type { Sim } from './machine';
 
@@ -167,12 +167,48 @@ describe('App', () => {
     click('Budget');
     click('Less Levy rate');
     for (let i = 0; i < 4; i++) click('More Reserve draw');
-    expect(screen.getByText(/Reserves after/).textContent).toBe('Reserves after: 4.3%');
+    const start = realSim.newGame({ seed: 't' });
+    const plan = realSim.previewBudget(start, { ...start.policy, levyRate: 1.89, reserveDraw: 4e6 });
+    expect(screen.getByText(/Reserves after/).closest('.note')!.textContent).toBe(
+      `Reserves after: $37.1M, ${fmtPct(plan.reservePctAfterDraw)}`,
+    );
     hold('End year');
     const pre = screen.getByRole('region', { name: 'Play 2027-28?' });
-    expect(pre.textContent).toContain('May: levy at $1.89 per $1,000');
+    expect(pre.textContent).toContain('May: levy at $1.89 per $1,000, assumed to pass');
     expect(pre.textContent).toContain('Draw $4M from reserves');
     expect(pre.textContent).toContain('Reserves cover $4M');
+  });
+
+  it('warns in pre-flight of the mid-year cuts a deep draw forces', () => {
+    setup();
+    click('Budget');
+    for (let i = 0; i < 42; i++) click('More Reserve draw');
+    const start = realSim.newGame({ seed: 't' });
+    const plan = realSim.previewBudget(start, { ...start.policy, reserveDraw: start.budget.reserves });
+    expect(plan.midYearCuts).toBeGreaterThan(0);
+    expect(gapBar()).toContain(`Cuts ${fmtCount(plan.autoCutPositions + plan.midYearCuts)}`);
+    hold('End year');
+    expect(screen.getByRole('region', { name: 'Play 2027-28?' }).textContent).toContain(
+      `${fmtCount(plan.midYearCuts)} more mid-year`,
+    );
+  });
+
+  it('shows the draft gap in the top bar while planning', () => {
+    setup();
+    const start = realSim.newGame({ seed: 't' });
+    const plan = realSim.previewBudget(start, { ...start.policy, k5ClassSize: 25 });
+    click('Budget');
+    click('More K-5 class size');
+    expect(topBar()).toContain(`Gap ${fmtMoney(plan.gap)}`);
+  });
+
+  it('can restore the levy to its current rate after stepping past it', () => {
+    setup();
+    click('Budget');
+    click('More Levy rate');
+    click('Less Levy rate');
+    expect(screen.getByRole('group', { name: 'Levy rate' }).textContent).toContain('$1.99');
+    expect(document.querySelectorAll('.chip')).toHaveLength(0);
   });
 
   it('goes back from the pre-flight sheet without playing', () => {
