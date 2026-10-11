@@ -17,7 +17,7 @@ describe('Sourced', () => {
 
   it('marks modeled values with "~"', () => {
     render(
-      <Sourced k="sim.enrollment" modeled>
+      <Sourced k="model.schoolRange" modeled>
         190–225
       </Sourced>,
     );

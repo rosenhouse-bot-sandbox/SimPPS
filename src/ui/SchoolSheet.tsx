@@ -1,13 +1,11 @@
 import type { ComponentChildren } from 'preact';
 import { SCHOOLS, type SchoolData } from '../data';
+import { modeledRange } from '../sim';
 import type { SchoolState } from '../sim/types';
 import { fmtCount, fmtMoney, fmtPct, fmtRange } from './format';
 import { Sourced } from './Sourced';
 import { K } from './sources';
 import { Window } from './Window';
-
-/** Simulated enrollment shows as ±5% around the run [M]. */
-const ENROLLMENT_SPREAD = 0.05;
 
 function Row({ label, children }: { label: string; children: ComponentChildren }) {
   return (
@@ -54,7 +52,6 @@ interface SchoolSheetProps {
 export function SchoolSheet({ id, state, onClose }: SchoolSheetProps) {
   const school = SCHOOLS.find((s) => s.id === id);
   if (!school) return null;
-  const e = state?.enrollment;
   return (
     <Window title={school.name} onClose={onClose} class="panel sheet">
       <dl>
@@ -62,27 +59,18 @@ export function SchoolSheet({ id, state, onClose }: SchoolSheetProps) {
           <Fact key={f.column} {...f} />
         ))}
       </dl>
-      {state && e !== undefined && (
+      {state && (
         <>
           <h3>Simulated</h3>
           <dl>
             <Row label="Enrollment">
-              <Sourced k={K.enrollment}>
-                {fmtRange({
-                  lo: Math.round(e * (1 - ENROLLMENT_SPREAD)),
-                  hi: Math.round(e * (1 + ENROLLMENT_SPREAD)),
-                })}
-              </Sourced>
+              <Sourced k={K.enrollment}>{fmtRange(modeledRange(state.enrollment))}</Sourced>
             </Row>
             <Row label="Homerooms">
-              <Sourced k={K.homerooms} modeled>
-                {state.homerooms}
-              </Sourced>
+              <Sourced k={K.homerooms}>{fmtRange(modeledRange(state.homerooms))}</Sourced>
             </Row>
             <Row label="Blended">
-              <Sourced k={K.blended} modeled>
-                {state.blendedHomerooms}
-              </Sourced>
+              <Sourced k={K.blended}>{fmtRange(modeledRange(state.blendedHomerooms))}</Sourced>
             </Row>
           </dl>
         </>

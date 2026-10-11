@@ -26,6 +26,13 @@ export const MODEL_SOURCES: Source[] = [
     links: [PPS_DATA, DESIGN],
   },
   {
+    key: 'model.schoolRange',
+    label: 'Simulated school counts',
+    tag: 'M',
+    explain: "A school's simulated counts add up simulated households' choices. One run is one roll of the dice, so the game shows the run's count plus or minus 5% and 2 more.",
+    links: [DESIGN],
+  },
+  {
     key: 'model.exitCapacity',
     label: 'Exit capacity',
     tag: 'M',
