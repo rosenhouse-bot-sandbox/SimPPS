@@ -1,4 +1,4 @@
-import { act, cleanup, fireEvent, render, screen } from '@testing-library/preact';
+import { act, cleanup, fireEvent, render, screen, within } from '@testing-library/preact';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { SCHOOLS, ZONES } from '../data';
 import { FALLBACK_SIZE } from '../map/MapView';
@@ -47,6 +47,13 @@ function badgeAt(id: string): [number, number] {
 /** Sheets cover the lower map, so the focus sits at 30% of its height. */
 function isFocused([x, y]: [number, number], at = 0.3): boolean {
   return Math.abs(x - FALLBACK_SIZE.w / 2) < 0.5 && Math.abs(y - FALLBACK_SIZE.h * at) < 0.5;
+}
+
+function tapBadge(id: string) {
+  const [x, y] = badgeAt(id);
+  const map = document.querySelector('.pps-map')!;
+  fireEvent.pointerDown(map, { pointerId: 1, clientX: x, clientY: y });
+  fireEvent.pointerUp(map, { pointerId: 1, clientX: x, clientY: y });
 }
 
 function setup(sim: Sim = realSim) {
@@ -142,6 +149,16 @@ describe('App', () => {
     click('Rosa Parks Elementary School');
     expect(screen.getByRole('region', { name: 'Rosa Parks Elementary School' })).toBeTruthy();
     expect(isFocused(badgeAt('rosa-parks'))).toBe(true);
+  });
+
+  it.each(['Plan', 'Budget', 'Layers', 'News'])('opens a school tapped on the map while %s is open', (tool) => {
+    setup();
+    click(tool);
+    tapBadge('rosa-parks');
+    const picker = screen.queryByRole('dialog', { name: 'Choose a school' });
+    if (picker) fireEvent.click(within(picker).getByRole('button', { name: 'Rosa Parks' }));
+    expect(screen.getByRole('region', { name: 'Rosa Parks Elementary School' })).toBeTruthy();
+    expect(screen.queryByRole('region', { name: tool })).toBeNull();
   });
 
   it('plays a full year: hold End, review, hold to play, report, next January', () => {
@@ -273,13 +290,6 @@ describe('App', () => {
       click('Plan');
       click('Peninsula Elementary School');
       click('Close & send');
-    }
-
-    function tapBadge(id: string) {
-      const [x, y] = badgeAt(id);
-      const map = document.querySelector('.pps-map')!;
-      fireEvent.pointerDown(map, { pointerId: 1, clientX: x, clientY: y });
-      fireEvent.pointerUp(map, { pointerId: 1, clientX: x, clientY: y });
     }
 
     const marked = (mark: string) => [...document.querySelectorAll(`[data-mark="${mark}"]`)].map((e) => e.getAttribute('data-school'));

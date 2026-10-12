@@ -1,7 +1,7 @@
 import { computeBudget, FIRST_YEAR, generalFund, stateFundingLevel } from './budget';
 import { CLOSED_ZONE_CAPTURE_DROPS, FOLLOW_RATES, gradeOf, HIDDEN_CARDS, M, REVEAL_AFTER_YEARS } from './model';
 import { expectedYes, levyBallot, levyRateFor, pollRange } from './election';
-import { meanTrust, startTrust, trustAfterYear } from './trust';
+import { meanTrust, startTrust, strainFor, trustAfterYear } from './trust';
 import { clamp } from '../clamp';
 import { generatePopulation } from './population';
 import { headlines, rezoneOutcome, seasonEvents, versusGhost } from './report';
@@ -86,6 +86,7 @@ export function newGame(opts: { seed: string; start?: Start }): GameState {
     zoneKeep: pop.zoneKeep,
     kCohort: pop.kCohort,
     kCapture: pop.kCapture,
+    k5ClassSize: DEFAULT_POLICY.k5ClassSize,
     cumulativeCuts: 0,
     spending: M.generalFund,
     homeroomsCut: 0,
@@ -178,17 +179,18 @@ export function ballotPreview(state: GameState, policy: Policy): BallotPreview |
   const plan = normalizePolicy(policy);
   const ballot = levyBallot(sim.levy, state.year, plan);
   if (!ballot) return null;
-  const trust = ballot.when === 'november' ? trustAfterClosures(state, plan) : state.dials.trust;
+  const trust = ballot.when === 'november' ? novemberTrust(state, plan) : state.dials.trust;
   return { ...ballot, poll: pollRange(expectedYes(ballot, sim.levy.failures, trust)) };
 }
 
-/** November counts after summer's closures: their current kids stand in for the kids they move. */
-function trustAfterClosures(state: GameState, plan: Policy): number {
+/** November counts after summer's closures and planned June cuts. Closing schools' current kids stand in for the kids they move. */
+function novemberTrust(state: GameState, plan: Policy): number {
   const closing = new Set(effectiveClosures(state.schools, plan.closures).map((c) => c.school));
   const moved = state.households.map(({ movedFrom: _, ...h }) =>
     h.school !== null && closing.has(h.school) ? { ...h, movedFrom: h.school } : h,
   );
-  return meanTrust(trustAfterYear(state.sim!.trust, moved, [...closing]), state.households);
+  const strain = strainFor(plan.k5ClassSize, state.sim!.k5ClassSize, previewBudget(state, plan).autoCutPositions);
+  return meanTrust(trustAfterYear(state.sim!.trust, moved, [...closing], strain), state.households);
 }
 
 /** The fall year of the levy's last funded school year. */
