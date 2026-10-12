@@ -4,6 +4,7 @@ import { money } from './Chip';
 import { nameOf } from './closeSend';
 import { Sourced } from './Sourced';
 import { K } from './sources';
+import { Term } from './Term';
 
 function signed(n: number): string {
   return `${n > 0 ? '+' : ''}${fmtCount(n)}~`;
@@ -20,7 +21,9 @@ type Seat = BoundaryChip['seats'][number];
 function Seats({ title, chip, kids }: { title: string; chip: BoundaryChip; kids: (s: Seat) => Range }) {
   return (
     <div class="span">
-      <dt>{title}</dt>
+      <dt>
+        <Term t="Seats">{title}</Term>
+      </dt>
       {chip.seats.map((s) => (
         <dd key={s.school} class="num seat-row">
           <span>{nameOf(s.school)}</span>
@@ -43,32 +46,40 @@ export function BoundaryChipView({ chip, blocks }: { chip: BoundaryChip; blocks:
           <Seats title="Seats at maturity" chip={chip} kids={(s) => s.mature} />
         )}
         <div>
-          <dt>K-5 walkers at maturity</dt>
+          <dt>
+            <Term t="K-5 walkers" /> at maturity
+          </dt>
           <dd class="num">
-            <Sourced k={K.walkK5}>{signed(chip.walk)}</Sourced>
+            <Sourced k={K.walkK5} term="K-5 walkers">{signed(chip.walk)}</Sourced>
           </dd>
         </div>
         <div>
-          <dt>Now</dt>
+          <dt>
+            <Term t="Now" />
+          </dt>
           <dd class="num">
-            <Sourced k={K.busing}>{modeled(chip.now)}</Sourced>
+            <Sourced k={K.busing} term="Now">{modeled(chip.now)}</Sourced>
           </dd>
         </div>
         <div>
-          <dt>At maturity</dt>
+          <dt>
+            <Term t="At maturity" />
+          </dt>
           <dd class="num">
-            <Sourced k={K.busing}>{modeled(chip.atMaturity)}</Sourced>
+            <Sourced k={K.busing} term="At maturity">{modeled(chip.atMaturity)}</Sourced>
           </dd>
         </div>
         <div>
-          <dt>Riders now/later</dt>
+          <dt>
+            <Term t="New bus riders">Riders</Term> now/later
+          </dt>
           <dd class="num">
             <Sourced k={K.newBusRiders}>{signed(chip.riders.now)}</Sourced>/<Sourced k={K.newBusRiders}>{signed(chip.riders.atMaturity)}</Sourced>
           </dd>
         </div>
       </dl>
       <p class="pays">
-        <Sourced k={K.zoneGrid}>{fmtCount(blocks)}</Sourced> blocks of 250 m,{' '}
+        <Sourced k={K.zoneGrid}>{fmtCount(blocks)}</Sourced> <Term t="Blocks">blocks</Term> of 250 m,{' '}
         <Sourced k={K.households}>{`${fmtCount(chip.residents)}~`}</Sourced> resident kids.{' '}
         <Sourced k={K.sliceStay}>{chip.kidsMoving ? fmtRange(modeledRange(chip.kidsMoving)) : '0'}</Sourced> kids must move.
       </p>

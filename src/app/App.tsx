@@ -217,9 +217,9 @@ export function App({ sim, seed, start = 'status-quo', onStart, saved, onSave, o
     <Revealed.Provider value={revealed}>
       <div class="app">
         {s.phase === 'report' ? (
-          <TopBar when={when} dials={shown.dials} gapLabel={`${shown.year}-${String(shown.year + 1).slice(2)} gap`} />
+          <TopBar when={when} wide={wide} dials={shown.dials} gapLabel={`${shown.year}-${String(shown.year + 1).slice(2)} gap`} />
         ) : (
-          <TopBar when={when} dials={{ ...shown.dials, gap: s.phase === 'playing' && turn ? turn.report.budget.gap : plan.gap }} />
+          <TopBar when={when} wide={wide} dials={{ ...shown.dials, gap: s.phase === 'playing' && turn ? turn.report.budget.gap : plan.gap }} />
         )}
         <main class="stage">
           <MapSlot

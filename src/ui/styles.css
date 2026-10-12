@@ -266,6 +266,71 @@ dl {
   vertical-align: top;
 }
 
+/* Positioned so a later button's hit area stacks above an earlier one's. */
+.sourced,
+.term {
+  position: relative;
+}
+
+/* A glossary label: the term with a small "?" that opens its definition. */
+.term {
+  padding: 0;
+  border: 0;
+  background: none;
+  font: inherit;
+  color: inherit;
+  text-align: left;
+  cursor: help;
+}
+
+/* Inline, so it never wraps away from the word before it. */
+.term::after {
+  content: '?';
+  margin-left: 3px;
+  padding: 0 4px;
+  border: 1px solid currentColor;
+  border-radius: 8px;
+  font: 600 10px/1 var(--body);
+  vertical-align: 2px;
+  opacity: 0.6;
+}
+
+.term:hover::after {
+  opacity: 1;
+}
+
+/* At least 44px wide, reaching right, where a later control stacks above it. */
+.term::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: max(100%, 44px);
+  height: 100%;
+}
+
+/* 44px tall only in rows at least that tall. */
+.fact .term,
+.stepper .term,
+.choice .term,
+h3 .term,
+legend .term {
+  min-height: 44px;
+}
+
+.nowrap {
+  white-space: nowrap;
+}
+
+.definition {
+  font-size: 17px;
+}
+
+.definition:not(:only-child) {
+  padding-bottom: 12px;
+  border-bottom: 1px solid var(--line);
+}
+
 /* The pixel font's "~" reads like an "N". */
 .tilde {
   font-family: var(--body);

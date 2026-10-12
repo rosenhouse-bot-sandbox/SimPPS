@@ -9,6 +9,7 @@ import { CLASS_SIZE, classSizeChip, LEVY, levyChip, RESERVE_STEP, reserveChip } 
 import { Sourced } from './Sourced';
 import { K } from './sources';
 import { Stepper } from './Stepper';
+import { Term } from './Term';
 import { Window } from './Window';
 
 interface BudgetPanelProps {
@@ -45,8 +46,9 @@ export function BudgetPanel({ game, draft, plan, ballot, levyThrough, onEdit, on
     <Window title="Budget" onClose={onClose} class="panel">
       <Stepper
         label="K-5 class size"
-        labelNode={<Sourced k={K.classSize}>K-5 class size</Sourced>}
+        labelNode={<Term t="K-5 class size" />}
         sourceKey={K.classSize}
+        term="K-5 class size"
         value={draft.k5ClassSize}
         {...CLASS_SIZE}
         format={String}
@@ -57,8 +59,9 @@ export function BudgetPanel({ game, draft, plan, ballot, levyThrough, onEdit, on
       )}
       <Stepper
         label="Levy rate"
-        labelNode={<Sourced k={K.levy}>Levy per $1K</Sourced>}
+        labelNode={<Term t="Levy">Levy per $1K</Term>}
         sourceKey={K.levy}
+        term="Levy"
         value={draft.levyRate}
         {...LEVY}
         anchor={base.levyRate || M.levyRate}
@@ -68,7 +71,7 @@ export function BudgetPanel({ game, draft, plan, ballot, levyThrough, onEdit, on
       {draft.levyRate !== base.levyRate && <Chip chip={levyChip(draft.levyRate, base.levyRate, bill, ballot?.when)} sourceKey={K.levyRate} />}
       {bill > 0 && (
         <p class="note">
-          Election bill: <Sourced k={K.electionBill}>{fmtMoney(-bill)}</Sourced>
+          <Term t="Election bill" />: <Sourced k={K.electionBill} term="Election bill">{fmtMoney(-bill)}</Sourced>
         </p>
       )}
       <p class="note">
@@ -78,7 +81,9 @@ export function BudgetPanel({ game, draft, plan, ballot, levyThrough, onEdit, on
       </p>
       {(ballot || renewable) && (
         <fieldset class="levy-ballot">
-          <legend>Levy ballot</legend>
+          <legend>
+            <Term t="Levy ballot" />
+          </legend>
           {MONTHS.map((m) => (
             <label key={m.id} class="row choice">
               <input
@@ -95,8 +100,9 @@ export function BudgetPanel({ game, draft, plan, ballot, levyThrough, onEdit, on
       )}
       <Stepper
         label="Reserve draw"
-        labelNode={<Sourced k={K.reserveDraw}>Reserve draw</Sourced>}
+        labelNode={<Term t="Reserve draw" />}
         sourceKey={K.reserveDraw}
+        term="Reserve draw"
         value={plan.reserveDraw}
         min={0}
         max={drawMax}
@@ -108,13 +114,13 @@ export function BudgetPanel({ game, draft, plan, ballot, levyThrough, onEdit, on
         <>
           <Chip chip={reserveChip(plan.reserveDraw)} sourceKey={K.reserveDraw} />
           <p class="note">
-            Reserves after:{' '}
-            <Sourced k={K.reservePct}>{`${fmtMoney(plan.reservesAfter)}, ${fmtPct(plan.reservePctAfterDraw)}`}</Sourced>
+            <Term t="Reserves">Reserves after</Term>:{' '}
+            <Sourced k={K.reservePct} term="Reserves">{`${fmtMoney(plan.reservesAfter)}, ${fmtPct(plan.reservePctAfterDraw)}`}</Sourced>
           </p>
-          {plan.reservePctAfterDraw < 0.05 && (
+          {plan.reservePctAfterDraw < M.reservePolicy && (
             <p class="note warn">
               <Sourced k={K.reservePct} text>
-                Below 5% breaches policy.
+                {`Below ${fmtPct(M.reservePolicy)} breaches policy.`}
               </Sourced>
             </p>
           )}

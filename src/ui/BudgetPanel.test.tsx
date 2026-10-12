@@ -4,6 +4,7 @@ import { fmtSignedMoney } from '../format';
 import { DEFAULT_POLICY, levyRevenue, type BallotPreview, type Policy } from '../sim';
 import { BudgetPanel } from './BudgetPanel';
 import { FIXTURE_GAME } from './fixtures';
+import { termsIn } from './terms.testing';
 
 afterEach(cleanup);
 
@@ -129,5 +130,22 @@ describe('BudgetPanel', () => {
     expect(note).toBe('Reserves after: $23.6M, 2.9%');
     expect(screen.getByText(/Below 5%/).textContent).toBe('Below 5% breaches policy.');
     expect(screen.getByText(/mid-year/).textContent).toBe('Below 3%: 12 positions cut mid-year.');
+  });
+});
+
+describe('BudgetPanel glossary', () => {
+  it('defines each control and chip cell, but not a chip cell with no value', () => {
+    setup({ draft: { k5ClassSize: 25 } });
+    expect(termsIn()).toEqual(['K-5 class size', 'Now', 'At maturity', 'Levy', 'Reserve draw', 'Now', 'At maturity', 'Reserves']);
+    const seats = [...document.querySelectorAll('.chip dt')].find((dt) => dt.textContent === 'Seats')!;
+    expect(termsIn(seats)).toEqual([]);
+  });
+
+  it('defines the election bill and the levy ballot', () => {
+    const plan = { ...shortfall, lines: [{ key: 'election', label: 'Election bill', amount: -500_000, sourceKey: 'model.electionBill' }] };
+    render(
+      <BudgetPanel game={FIXTURE_GAME} draft={{ ...DEFAULT_POLICY, levyRate: 1.8 }} plan={plan} ballot={ballot} levyThrough={2029} onEdit={() => {}} onClose={() => {}} />,
+    );
+    expect(termsIn()).toEqual(expect.arrayContaining(['Election bill', 'Levy ballot']));
   });
 });

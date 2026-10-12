@@ -7,6 +7,7 @@ import { listEdits, type EditLine } from './edits';
 import { HoldButton } from './HoldButton';
 import { Sourced } from './Sourced';
 import { K } from './sources';
+import { Term } from './Term';
 import { Window } from './Window';
 
 interface PreflightProps {
@@ -44,12 +45,14 @@ export function PreflightSheet({ year, draft, base, budget, ballot, onBack, onCo
       <Window title={`Play ${year}-${String(year + 1).slice(2)}?`} class="panel sheet" onClose={onBack} dialog>
         <h3>Edits</h3>
         <List items={listEdits(applied, base)} empty="None. The year plays as it stands." />
-        <h3>Gap</h3>
+        <h3>
+          <Term t="Gap" />
+        </h3>
         <p>
-          <Sourced k={K.gap}>{fmtMoney(budget.gap)}</Sourced>
+          <Sourced k={K.gap} term="Gap">{fmtMoney(budget.gap)}</Sourced>
           {budget.reserveDraw > 0 && (
             <>
-              . Reserves cover <Sourced k={K.reserveDraw}>{fmtMoney(budget.reserveDraw)}</Sourced>.
+              . Reserves cover <Sourced k={K.reserveDraw} term="Reserve draw">{fmtMoney(budget.reserveDraw)}</Sourced>.
             </>
           )}
         </p>
@@ -60,7 +63,9 @@ export function PreflightSheet({ year, draft, base, budget, ballot, onBack, onCo
             </Sourced>
           </p>
         )}
-        <h3>Automatic cuts</h3>
+        <h3>
+          <Term t="Automatic cuts" />
+        </h3>
         {june + winter > 0 ? (
           <ul>
             {june > 0 && (

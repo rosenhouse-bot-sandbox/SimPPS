@@ -3,6 +3,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import { DEFAULT_POLICY, type BallotPreview } from '../sim';
 import { FIXTURE_GAME } from './fixtures';
 import { PreflightSheet } from './PreflightSheet';
+import { termsIn } from './terms.testing';
 
 afterEach(cleanup);
 
@@ -46,5 +47,12 @@ describe('PreflightSheet', () => {
     expect(sheet(2029)).toContain('At flat state funding.');
     cleanup();
     expect(sheet(2028)).not.toContain('flat state funding');
+  });
+});
+
+describe('PreflightSheet glossary', () => {
+  it('defines the gap and automatic cuts', () => {
+    sheet(2027);
+    expect(termsIn()).toEqual(['Gap', 'Automatic cuts']);
   });
 });

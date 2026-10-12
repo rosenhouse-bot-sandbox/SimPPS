@@ -6,6 +6,7 @@ import { boundaryChip, newGame, sliceCells, type BoundaryChip } from '../sim';
 import type { BoundaryEdit } from '../sim/types';
 import { addStroke, draftCells, sliceSources, startZoneDraft, targets, toEdit, type ZoneDraft } from './zoneEdit';
 import { ZoneSheet } from './ZoneSheet';
+import { termsIn } from './terms.testing';
 
 afterEach(cleanup);
 
@@ -86,7 +87,7 @@ describe('ZoneSheet', () => {
     expect(sources(chip())).toEqual(
       expect.arrayContaining(['model.schoolRange', 'dial.walkK5', 'model.busing', 'model.zoneGrid', 'model.households', 'model.sliceStay', 'dial.newBusRiders']),
     );
-    expect(chip().querySelectorAll('button:not([data-source])')).toHaveLength(0);
+    expect(chip().querySelectorAll('button:not([data-source], .term)')).toHaveLength(0);
     expect(screen.queryByRole('alert')).toBeNull();
   });
 
@@ -104,7 +105,7 @@ describe('ZoneSheet', () => {
     const d = addStroke(startZoneDraft('elementary', 'rosa-parks'), peninsula);
     setup(d, { now: { lo: 0, hi: 0 }, atMaturity: { lo: -60_000, hi: -20_000 } });
     expect(chip().textContent).toContain('Now$0~');
-    const later = screen.getByText('At maturity').nextElementSibling!;
+    const later = screen.getByText('At maturity').closest('dt')!.nextElementSibling!;
     expect(sources(later)).toEqual(['model.busing']);
   });
 
@@ -163,5 +164,21 @@ describe('ZoneSheet', () => {
     expect(draftCells(d, game.zones)).toEqual(peninsula);
     setup(d);
     expect(chip().textContent).toContain(`${peninsula.length} blocks of 250 m`);
+  });
+});
+
+describe('ZoneSheet glossary', () => {
+  it('defines the zone, grandfathering and each chip cell', () => {
+    setup();
+    expect(termsIn()).toEqual(['Zone', 'Grandfather']);
+    cleanup();
+    setup(addStroke(startZoneDraft('elementary', 'rosa-parks'), peninsula));
+    expect(termsIn()).toEqual(['Zone', 'Seats', 'Seats', 'K-5 walkers', 'Now', 'At maturity', 'New bus riders', 'Blocks', 'Grandfather']);
+  });
+
+  it('defines a slice', () => {
+    setup();
+    click('Slice…');
+    expect(termsIn()[0]).toBe('Slice');
   });
 });

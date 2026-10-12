@@ -2,6 +2,7 @@ import { cleanup, fireEvent, render, screen, within } from '@testing-library/pre
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { FIXTURE_REPORT } from './fixtures';
 import { ReportView } from './ReportView';
+import { termsIn } from './terms.testing';
 
 afterEach(cleanup);
 
@@ -18,7 +19,7 @@ describe('ReportView', () => {
       ['To high school', '3,100~'],
     ]) {
       const row = screen.getByText(label).closest('.flow') as HTMLElement;
-      expect(within(row).getByRole('button').textContent).toBe(n);
+      expect(row.querySelector('[data-source]')!.textContent).toBe(n);
     }
   });
 
@@ -98,8 +99,8 @@ describe('ReportView', () => {
     const where = screen.getByRole('region', { name: 'Where re-zoned kids went' });
     expect(where.textContent).toContain('Re-zoned, 45–55~ kids:');
     const row = (label: string) => screen.getByText(label).closest('.flow') as HTMLElement;
-    expect(within(row('New zone school')).getByRole('button').textContent).toBe('40–48~');
-    expect(within(row('Other PPS school')).getByRole('button').textContent).toBe('1–5~');
+    expect(row('New zone school').querySelector('[data-source]')!.textContent).toBe('40–48~');
+    expect(row('Other PPS school').querySelector('[data-source]')!.textContent).toBe('1–5~');
     expect(within(where).getAllByText('Left PPS')).toHaveLength(1);
     const sources = [...where.querySelectorAll('[data-source]')].map((e) => e.getAttribute('data-source'));
     expect(sources).toEqual(['model.sliceStay', 'model.sliceStay', 'model.nonFollowers', 'model.nonFollowers']);
@@ -207,5 +208,39 @@ describe('ReportView', () => {
     expect(key('New kindergartners')).toBe('model.kCapture');
     expect(key('To high school')).toBe('model.graduates');
     expect(key('Left PPS')).toBe('model.movingRoll');
+  });
+});
+
+describe('ReportView glossary', () => {
+  it('defines the headings, the flows that need it and the ghost dials', () => {
+    render(<ReportView report={FIXTURE_REPORT} turn={1} onNext={() => {}} />);
+    expect(termsIn()).toEqual([
+      'Where kids went',
+      'Moved in PPS',
+      'Came back',
+      'Left PPS',
+      'To high school',
+      'Do-nothing ghost',
+      'Positions cut',
+      'Kids',
+      'Gap',
+      'The Bulletin',
+    ]);
+  });
+
+  it('defines the closure, re-zoning, walk and levy rows', () => {
+    const range = { lo: 1, hi: 2 };
+    const report = {
+      ...FIXTURE_REPORT,
+      closures: [{ school: 'peninsula', kids: range, receivers: [{ school: 'rosa-parks', kids: range }], otherPps: range, leftPps: range }],
+      rezoned: { kids: range, zoneSchool: range, otherPps: range, leftPps: range },
+      election: { rate: 1.8, when: 'may' as const, renewal: false, yes: 0.6, passed: true },
+      vsGhost: [{ dial: 'kindergartenCapture' as const, you: 0.7, ghost: 0.71, better: false }],
+    };
+    render(<ReportView report={report} turn={1} onNext={() => {}} walk={{ before: 1, after: 2 }} />);
+    expect(termsIn()).toEqual(
+      expect.arrayContaining(['Other PPS', 'Left PPS', 'New zone school', 'K-5 walkers', 'Levy vote', 'Kindergarten capture']),
+    );
+    expect(screen.getByRole('button', { name: 'K capture, what is Kindergarten capture?' })).toBeTruthy();
   });
 });
