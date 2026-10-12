@@ -43,7 +43,7 @@ test('plays a status-quo year on a phone', async ({ page }) => {
   await shot(page, 'm1-budget');
 
   await hold(page, page.getByRole('button', { name: 'End year (press and hold)' }));
-  const preflight = page.getByRole('region', { name: 'Play 2027-28?' });
+  const preflight = page.getByRole('dialog', { name: 'Play 2027-28?' });
   await expect(preflight).toContainText('K-5 class size 24 → 25');
   await hold(page, page.getByRole('button', { name: 'Play the year (press and hold)' }));
 
@@ -65,6 +65,31 @@ test('plays a status-quo year on a phone', async ({ page }) => {
 
   await page.getByRole('button', { name: 'Plan 2028' }).tap();
   await expect(page.locator('.topbar')).toContainText('JAN 2028');
+  await page.reload();
+  await expect(page.locator('.topbar')).toContainText('JAN 2028');
+});
+
+test('fits a small phone: one-line dials, a pausable playback and pop-overs on screen', async ({ page }) => {
+  test.setTimeout(90_000);
+  await page.setViewportSize({ width: 360, height: 640 });
+  await page.goto('?seed=p52&start=scenario-a');
+  const rows = page.locator('.topbar-row');
+  for (const row of await rows.all()) expect((await row.boundingBox())!.height).toBeLessThan(40);
+
+  await hold(page, page.getByRole('button', { name: 'End year (press and hold)' }));
+  await hold(page, page.getByRole('button', { name: 'Play the year (press and hold)' }));
+  const playback = page.getByTestId('playback');
+  await expect(playback.getByRole('button', { name: 'Pause' })).toBeInViewport();
+  await page.waitForTimeout(6500);
+  await expect(playback).toContainText('school');
+  await expect(playback.getByRole('button', { name: 'Pause' })).toBeInViewport();
+  await shot(page, 'm5-playback-360');
+  await playback.getByRole('button', { name: 'Skip' }).tap();
+
+  await page.locator('.flow [data-source="model.movingRoll"]').first().tap();
+  const popover = page.getByRole('dialog', { name: 'Yearly moving roll' });
+  await expect(popover.getByRole('link').last()).toBeInViewport();
+  await shot(page, 'm5-popover-360');
 });
 
 /** The design's first ten minutes. Seed p52 starts Peninsula and Rosa Parks at 399 kids. */
@@ -106,7 +131,7 @@ test('closes Peninsula into Rosa Parks and reports where the kids went', async (
   await sheet.getByRole('button', { name: 'Call it' }).tap();
 
   await hold(page, page.getByRole('button', { name: 'End year (press and hold)' }));
-  await expect(page.getByRole('region', { name: 'Play 2027-28?' })).toContainText('Close Peninsula → Rosa Parks');
+  await expect(page.getByRole('dialog', { name: 'Play 2027-28?' })).toContainText('Close Peninsula → Rosa Parks');
   await hold(page, page.getByRole('button', { name: 'Play the year (press and hold)' }));
 
   const playback = page.getByTestId('playback');
@@ -161,7 +186,7 @@ test('slices 30% of Peninsula into Rosa Parks and reports the re-zoned kids', as
   await sheet.getByRole('button', { name: 'Add to plan' }).tap();
 
   await hold(page, page.getByRole('button', { name: 'End year (press and hold)' }));
-  await expect(page.getByRole('region', { name: 'Play 2027-28?' })).toContainText(/Rezone \d+ blocks → Rosa Parks/);
+  await expect(page.getByRole('dialog', { name: 'Play 2027-28?' })).toContainText(/Rezone \d+ blocks → Rosa Parks/);
   await hold(page, page.getByRole('button', { name: 'Play the year (press and hold)' }));
   await page.getByTestId('playback').getByRole('button', { name: 'Skip' }).tap();
 
@@ -189,13 +214,13 @@ test('puts a new levy rate to voters and reports the vote', async ({ page }) => 
   await expect(page.getByText('Levy runs through June 2030')).toBeVisible();
   await page.getByRole('button', { name: 'Less Levy rate' }).tap();
   const ballot = page.getByRole('group', { name: 'Levy ballot' });
-  await expect(ballot).toContainText(/May 2027: levy at \$1\.89 per \$1,000 · poll \d+–\d+%~/);
+  await expect(ballot).toContainText(/May 2027 levy vote\$1\.89 per \$1K · poll \d+–\d+%~/);
   await ballot.scrollIntoViewIfNeeded();
   await shot(page, 'm4-ballot');
 
   await hold(page, page.getByRole('button', { name: 'End year (press and hold)' }));
-  const preflight = page.getByRole('region', { name: 'Play 2027-28?' });
-  await expect(preflight).toContainText(/May 2027: levy at \$1\.89 per \$1,000 · poll/);
+  const preflight = page.getByRole('dialog', { name: 'Play 2027-28?' });
+  await expect(preflight).toContainText(/May 2027 levy vote\$1\.89 per \$1K · poll/);
   await expect(preflight).toContainText('The plan books it as passing.');
   await shot(page, 'm4-preflight');
   await hold(page, page.getByRole('button', { name: 'Play the year (press and hold)' }));
@@ -222,7 +247,7 @@ test('reveals the hidden cards after three years', async ({ page }) => {
   await expect(calendar).toContainText('Legislature sets the 2027-29 budget');
   await expect(calendar).toContainText('Levy expires');
   await calendar.getByRole('button', { name: 'Teacher bargaining opens' }).tap();
-  await expect(page.getByRole('dialog', { name: 'Teacher bargaining' })).toContainText('[F] public source');
+  await expect(page.getByRole('dialog', { name: 'Teacher bargaining' })).toContainText('[N] news');
   await page.getByRole('dialog', { name: 'Teacher bargaining' }).getByRole('button', { name: 'Close' }).tap();
   await shot(page, 'm4-calendar');
   await page.getByRole('button', { name: 'Map', exact: true }).tap();

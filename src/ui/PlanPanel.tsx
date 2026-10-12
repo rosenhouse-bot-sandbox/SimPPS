@@ -21,11 +21,12 @@ interface PlanProps {
   calendar: CalendarItem[];
   ballot: BallotPreview | null;
   year: number;
+  onNewGame?: () => void;
   onClose: () => void;
 }
 
 /** What's coming, this year's edits with Undo, the ballot and the A–Z menu path to every school. */
-export function PlanPanel({ draft, base, start, onEdit, onSelectSchool, onEditBoundary, calendar, ballot, year, onClose }: PlanProps) {
+export function PlanPanel({ draft, base, start, onEdit, onSelectSchool, onEditBoundary, calendar, ballot, year, onNewGame, onClose }: PlanProps) {
   const edits = listEdits(draft, base);
   const notModeled = SCENARIOS[start].notModeled;
   return (
@@ -72,6 +73,11 @@ export function PlanPanel({ draft, base, start, onEdit, onSelectSchool, onEditBo
         </p>
       ) : (
         <p class="note">None</p>
+      )}
+      {onNewGame && (
+        <button type="button" class="btn wide" onClick={onNewGame}>
+          New game
+        </button>
       )}
       <h3>Schools A–Z</h3>
       <ul class="az">

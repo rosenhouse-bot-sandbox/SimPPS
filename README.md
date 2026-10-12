@@ -6,7 +6,13 @@ A mobile-web sandbox game about Portland Public Schools' closures and budget. Th
 npm install
 npm run dev     # play locally
 npm test
+npm run build   # typecheck and build to dist/
+npm run e2e     # phone-size Playwright run; SCREENSHOT_DIR=… saves screenshots
 ```
+
+`?seed=abc&start=status-quo|scenario-a|scenario-b` picks a game. Without `start` the game asks. Played years are saved in the browser by seed and start.
+
+Pushes to `main` deploy to GitHub Pages once the repo is public and Pages uses GitHub Actions.
 
 ## Data
 

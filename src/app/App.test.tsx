@@ -66,6 +66,29 @@ describe('App', () => {
     expect(document.querySelector('.topbar [data-source="dial.trust"]')).toBeTruthy();
   });
 
+  it('saves the plans played so a reload can replay them, and offers a new game', () => {
+    const onSave = vi.fn();
+    const onNewGame = vi.fn();
+    render(<App sim={realSim} seed="t" playbackMs={5000} onSave={onSave} onNewGame={onNewGame} />);
+    click('Budget');
+    click('More K-5 class size');
+    hold('End year');
+    hold('Play the year');
+    expect(onSave).toHaveBeenLastCalledWith([expect.objectContaining({ k5ClassSize: 25 })]);
+    act(() => {
+      vi.advanceTimersByTime(5000);
+    });
+    click('Plan 2028');
+    click('Plan');
+    click('New game');
+    expect(onNewGame).toHaveBeenCalledOnce();
+  });
+
+  it('opens on the saved plans', () => {
+    render(<App sim={realSim} seed="t" playbackMs={5000} saved={[{ ...realSim.DEFAULT_POLICY, k5ClassSize: 25 }]} />);
+    expect(topBar()).toContain('JAN 2028');
+  });
+
   it('sources the top bar numbers', () => {
     setup();
     fireEvent.click(document.querySelector('.topbar [data-source="dial.capture"]')!);
@@ -87,7 +110,7 @@ describe('App', () => {
     expect(document.querySelector('.chip')!.textContent).toContain('Now+$3M–$5M~');
 
     hold('End year');
-    const preflight = screen.getByRole('region', { name: 'Play 2027-28?' }).textContent;
+    const preflight = screen.getByRole('dialog', { name: 'Play 2027-28?' }).textContent;
     expect(preflight).toContain(`${fmtCount(plan.autoCutPositions)} positions in June`);
     expect(preflight).toContain('At flat state funding. The Legislature votes this spring.');
     hold('Play the year');
@@ -127,7 +150,7 @@ describe('App', () => {
     click('More K-5 class size');
 
     hold('End year');
-    const pre = screen.getByRole('region', { name: 'Play 2027-28?' });
+    const pre = screen.getByRole('dialog', { name: 'Play 2027-28?' });
     expect(pre.textContent).toContain('K-5 class size 24 → 25');
 
     hold('Play the year');
@@ -161,9 +184,9 @@ describe('App', () => {
       `Reserves after: $37.1M, ${fmtPct(plan.reservePctAfterDraw)}`,
     );
     hold('End year');
-    const pre = screen.getByRole('region', { name: 'Play 2027-28?' });
+    const pre = screen.getByRole('dialog', { name: 'Play 2027-28?' });
     const poll = realSim.ballotPreview(start, { ...start.policy, levyRate: 1.89 })!.poll;
-    expect(pre.textContent).toContain(`May 2027: levy at $1.89 per $1,000 · poll ${Math.round(poll.lo * 100)}–${Math.round(poll.hi * 100)}%~`);
+    expect(pre.textContent).toContain(`May 2027 levy vote$1.89 per $1K · poll ${Math.round(poll.lo * 100)}–${Math.round(poll.hi * 100)}%~`);
     expect(pre.textContent).toContain('Draw $4M from reserves');
     expect(pre.textContent).toContain('Reserves cover $4M');
   });
@@ -177,7 +200,7 @@ describe('App', () => {
     expect(plan.midYearCuts).toBeGreaterThan(0);
     expect(gapBar()).toContain(`Cuts ${fmtCount(plan.autoCutPositions + plan.midYearCuts)}`);
     hold('End year');
-    expect(screen.getByRole('region', { name: 'Play 2027-28?' }).textContent).toContain(
+    expect(screen.getByRole('dialog', { name: 'Play 2027-28?' }).textContent).toContain(
       `${fmtCount(plan.midYearCuts)} more mid-year`,
     );
   });
@@ -204,7 +227,7 @@ describe('App', () => {
     setup();
     hold('End year');
     click('Back');
-    expect(screen.queryByRole('region', { name: 'Play 2027-28?' })).toBeNull();
+    expect(screen.queryByRole('dialog', { name: 'Play 2027-28?' })).toBeNull();
     expect(screen.queryByTestId('playback')).toBeNull();
   });
 
@@ -303,7 +326,7 @@ describe('App', () => {
       expect(isFocused(badgeAt('sitton'))).toBe(true);
 
       hold('End year');
-      expect(screen.getByRole('region', { name: 'Play 2027-28?' }).textContent).toContain('Close Peninsula → Rosa Parks');
+      expect(screen.getByRole('dialog', { name: 'Play 2027-28?' }).textContent).toContain('Close Peninsula → Rosa Parks');
       hold('Play the year');
       expect(document.querySelector('[data-link="peninsula>rosa-parks"]')).toBeTruthy();
       act(() => {
@@ -527,7 +550,7 @@ describe('App', () => {
       expect(screen.getByRole('button', { name: `Undo ${line}` })).toBeTruthy();
 
       hold('End year');
-      expect(screen.getByRole('region', { name: 'Play 2027-28?' }).textContent).toContain(line);
+      expect(screen.getByRole('dialog', { name: 'Play 2027-28?' }).textContent).toContain(line);
       hold('Play the year');
       act(() => {
         vi.advanceTimersByTime(6000);
@@ -555,7 +578,7 @@ describe('App', () => {
       openRosaParks();
       tapAt(badgeAt('peninsula'));
       hold('End year');
-      expect(screen.getByRole('region', { name: 'Play 2027-28?' }).textContent).not.toContain('Rezone');
+      expect(screen.getByRole('dialog', { name: 'Play 2027-28?' }).textContent).not.toContain('Rezone');
       click('Back');
       expect(zoneSheet()).toBeNull();
     });

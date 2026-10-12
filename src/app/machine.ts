@@ -59,9 +59,16 @@ function draftFor(game: GameState): Policy {
   return { ...game.policy, reserveDraw: 0 };
 }
 
-export function initApp(sim: Sim, seed: string, start: Start = 'status-quo'): AppState {
-  const game = sim.newGame({ seed, start });
-  return { phase: 'plan', start, game, draft: draftFor(game), history: [] };
+/** A new game, or one replayed through the `saved` plans to the January after them. */
+export function initApp(sim: Sim, seed: string, start: Start = 'status-quo', saved: Policy[] = []): AppState {
+  let game = sim.newGame({ seed, start });
+  const history: Turn[] = [];
+  for (const policy of saved) {
+    const { next, report } = sim.endYear(game, policy);
+    history.push({ start: game, policy, report, end: next });
+    game = next;
+  }
+  return { phase: 'plan', start, game, draft: draftFor(game), history };
 }
 
 export function lastTurn(s: AppState): Turn | undefined {

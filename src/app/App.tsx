@@ -1,8 +1,8 @@
-import { useMemo, useReducer, useState } from 'preact/hooks';
+import { useEffect, useMemo, useReducer, useState } from 'preact/hooks';
 import { ZONES } from '../data';
 import type { Mark } from '../map/MapView';
 import type { Start } from '../sim';
-import type { BoundaryEdit, Closure, SchoolId, Season, ZoneLevel } from '../sim/types';
+import type { BoundaryEdit, Closure, Policy, SchoolId, Season, ZoneLevel } from '../sim/types';
 import { NEARBY, startDraft, toggleReceiver, withNames, type CloseDraft } from '../ui/closeSend';
 import { CloseSendSheet } from '../ui/CloseSendSheet';
 import { StartPicker } from '../ui/StartPicker';
@@ -30,6 +30,11 @@ interface AppProps {
   /** Null asks the player to pick one. */
   start?: Start | null;
   onStart?: (start: Start) => void;
+  /** Plans already played, to replay on open. */
+  saved?: Policy[];
+  /** Called with every plan played so far, after each year. */
+  onSave?: (played: Policy[]) => void;
+  onNewGame?: () => void;
   playbackMs?: number;
 }
 
@@ -54,9 +59,10 @@ function closureMarks(plan: Sent[], draft: CloseDraft | null, candidates: School
   return { marks, links };
 }
 
-export function App({ sim, seed, start = 'status-quo', onStart, playbackMs }: AppProps) {
+export function App({ sim, seed, start = 'status-quo', onStart, saved, onSave, onNewGame, playbackMs }: AppProps) {
   const reduce = useMemo(() => makeReducer(sim), [sim]);
-  const [s, dispatch] = useReducer(reduce, undefined, () => initApp(sim, seed, start ?? 'status-quo'));
+  const [s, dispatch] = useReducer(reduce, undefined, () => initApp(sim, seed, start ?? 'status-quo', saved));
+  useEffect(() => onSave?.(s.history.map((t) => t.policy)), [s.history]);
   const [picking, setPicking] = useState(start === null);
   const [closeDraft, setCloseDraft] = useState<CloseDraft | null>(null);
   const [tool, setTool] = useState<Tool>('map');
@@ -198,6 +204,7 @@ export function App({ sim, seed, start = 'status-quo', onStart, playbackMs }: Ap
               calendar={calendarItems(s.game.year, levyThrough)}
               ballot={ballot}
               year={s.game.year}
+              onNewGame={onNewGame}
               onClose={close}
             />
           )}
