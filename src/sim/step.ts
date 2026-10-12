@@ -150,9 +150,10 @@ export function familiesDecide(
   const convertingNow = new Map(converting.map((c) => [c.school, c]));
   const shut = shutTo(closed, k5);
   const programMoves = closures.programMoves ?? [];
+  const offeredBefore = programsAt(programMoves.filter((m) => m.year < year));
   const programTallies: ProgramTally[] = programMoves
     .filter((m) => m.year === year)
-    .map((m) => ({ ...m, arrived: 0, stayers: [] }));
+    .map((m) => ({ ...m, joins: !!offeredBefore.get(m.to)?.has(m.program), arrived: 0, stayers: [] }));
   const programMoving = new Map<SchoolId, Map<Program, ProgramTally>>();
   for (const t of programTallies) for (const f of t.from) programMoving.set(f, (programMoving.get(f) ?? new Map()).set(t.program, t));
   const offered = programsAt(programMoves);
@@ -200,8 +201,8 @@ export function familiesDecide(
         voice: voiceFor(exitCapacity, rand()),
         status: joins ? 'stayed' : 'left',
       };
-      // Households keep one shape for speed: no spread here, and no delete of `program` below.
-      if (program) entrant.program = program;
+      // Every household has a `program` slot, set last and never deleted, so households share one fast shape.
+      entrant.program = program;
       households.push(entrant);
     }
   });
@@ -214,6 +215,7 @@ export function familiesDecide(
   const movers: Mover[] = [];
   const rezoneMovers: RezoneMover[] = [];
   const spanMovers: RezoneMover[] = [];
+  const closureFollowers: { from: SchoolId; to: SchoolId }[] = [];
   let graduates = 0;
   for (const h of before) {
     if (h.movedAway) continue;
@@ -240,6 +242,7 @@ export function familiesDecide(
           Object.assign(next, { school: move.to, status: 'moved', movedFrom: h.school, forcedMoves: (h.forcedMoves ?? 0) + 1 });
           flows.movedWithinPps++;
           move.arrived++;
+          if (closingNow.has(h.school)) closureFollowers.push({ from: h.school, to: move.to });
           households.push(next);
           continue;
         }
@@ -343,6 +346,13 @@ export function familiesDecide(
     flows,
     shut,
   });
+  // A closing school's program followers stay in PPS, at the program's host.
+  for (const { from, to } of closureFollowers) {
+    const t = closureTallies.find((c) => c.school === from)!;
+    t.kids++;
+    if (closed.get(from)!.receivers.some((r) => r.school === to)) t.receivers[to] = (t.receivers[to] ?? 0) + 1;
+    else t.otherPps++;
+  }
   const rezoned = decideRezoned({ seed, year, shut, movers: rezoneMovers, households, flows });
   for (const h of households) if (h.program && !(h.school && offered.get(h.school)?.has(h.program))) h.program = undefined;
   return {

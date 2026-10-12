@@ -78,7 +78,7 @@ export const GLOSSARY = {
   'To high school': '8th graders who moved on to high school, which the game does not simulate.',
   'Other PPS': 'Kids who went to a PPS school other than the one planned for them.',
   'New zone school': 'Re-zoned kids who went to the school their home is now zoned for.',
-  'Left DLI': 'Kids in a moved Dual Language Immersion program who stayed at their school without it. Kids whose school closed count with the closure.',
+  'Left DLI': "Kids in a moved Dual Language Immersion program who didn't follow it but stayed in PPS. Kids whose school closed count with the closure too.",
   'Levy vote': 'The election on the levy. It passes when yes votes outnumber no votes.',
   'Do-nothing ghost': 'A copy of the district that changes nothing, played with the same luck as yours. It shows what your choices did.',
   'The Bulletin': 'Headlines written from the game’s totals. They never describe real families.',

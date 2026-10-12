@@ -1,9 +1,9 @@
 import { describe, expect, it } from 'vitest';
 import { SCHOOLS } from '../data';
-import { ballotPreview, closureChip, DEFAULT_POLICY, endYear, modeledRange, newGame, normalizePolicy, type GameState, type Policy, type ProgramMove } from '.';
+import { ballotPreview, closureChip, closureProgramMoves, DEFAULT_POLICY, endYear, modeledRange, newGame, normalizePolicy, type GameState, type Policy, type ProgramMove } from '.';
 import type { Point } from '../data';
 import { miles, schoolPos } from './closures';
-import { shutTo } from './gradeSpan';
+import { shutTo, topGrade } from './gradeSpan';
 import { SCHOOL_INFO } from './population';
 import { buildSchools } from './schools';
 import { gradeOf, M, METERS_PER_MILE } from './model';
@@ -147,6 +147,10 @@ describe('a program move over the years', () => {
       },
     ]);
     expect(report.events.map((e) => e.title)).toContain('Mandarin DLI moves to Woodstock Elementary School');
+    const detail = (title: string) => report.events.find((e) => e.title === title)!.detail;
+    expect(DLI_PROGRAMS.get('woodstock')).toContain('Mandarin');
+    expect(detail('Mandarin DLI moves to Woodstock Elementary School')).toBe("Clark Elementary School's Mandarin DLI joins Woodstock Elementary School's.");
+    expect(detail('DLI families decide')).toContain('stay without them');
   });
 
   it('enrolls new Mandarin kindergartners from Clark’s pickers at Woodstock from then on', () => {
@@ -274,6 +278,23 @@ describe('closing a DLI school', () => {
     expect(moves([chavez])).toEqual([`Spanish cesar-chavez>${nearest.data.id}`]);
   });
 
+  it("joins a host's own program, and offers no staying behind", () => {
+    expect(DLI_PROGRAMS.get('scott')).toContain('Spanish');
+    const { report } = endYear(start, { ...DEFAULT_POLICY, closures: [close('beach', [['scott', 1]])] });
+    const detail = (title: string) => report.events.find((e) => e.title === title)!.detail;
+    expect(detail('Spanish DLI moves to Scott Elementary School')).toBe("Beach Elementary School's Spanish DLI joins Scott Elementary School's.");
+    expect(detail('DLI families decide')).not.toContain('stay without');
+  });
+
+  it('offers staying behind only at open schools when moves mix', () => {
+    const { report } = endYear(start, {
+      ...DEFAULT_POLICY,
+      closures: [close('beach', [['scott', 1]])],
+      programMoves: [{ program: 'Mandarin', from: ['clark'], to: 'woodstock' }],
+    });
+    expect(report.events.find((e) => e.title === 'DLI families decide')!.detail).toContain('stay without them where their school stays open');
+  });
+
   it('lets the plan move the program elsewhere', () => {
     expect(moves([close('beach', [['chief-joseph', 1]])], [{ program: 'Spanish', from: ['beach'], to: 'cesar-chavez' }])).toEqual([
       'Spanish beach>cesar-chavez',
@@ -320,13 +341,100 @@ describe('closing a DLI school', () => {
   });
 });
 
+describe('a closure that carries a DLI program, in the report', () => {
+  const start = newGame({ seed: 'rich' });
+  const close = (school: string, receivers: [string, number][]): Closure => ({
+    school,
+    receivers: receivers.map(([s, share]) => ({ school: s, share })),
+    building: 'mothball',
+    guess: 0,
+  });
+  const staying = (school: string, program?: Program) =>
+    start.households.filter((h) => h.school === school && gradeOf(h) < topGrade(school, new Set()) && (!program || h.program === program)).length;
+
+  it("counts the program's followers at the host when it is a receiver", () => {
+    const { report } = endYear(start, { ...DEFAULT_POLICY, closures: [close('richmond', [['atkinson', 0.7], ['glencoe', 0.3]])] });
+    const [closure] = report.closures;
+    const [japanese] = report.programMoves;
+    expect(japanese.to).toBe('atkinson');
+    expect(closure.kids).toEqual(modeledRange(staying('richmond')));
+    expect(closure.receivers[0].kids.lo).toBeGreaterThanOrEqual(japanese.receiver.lo);
+    expect(closure.guess!.actual.lo).toBeGreaterThanOrEqual(japanese.receiver.lo);
+    expect(report.events.find((e) => e.title === 'Japanese DLI moves to Atkinson Elementary School')!.detail).toBe(
+      'Japanese leaves Richmond Elementary School for Atkinson Elementary School.',
+    );
+  });
+
+  it('counts them as other PPS when the host is not a receiver', () => {
+    const { report } = endYear(start, { ...DEFAULT_POLICY, closures: [close('cesar-chavez', [['george', 0.6], ['sitton', 0.4]])] });
+    const [closure] = report.closures;
+    expect(closure.kids).toEqual(modeledRange(staying('cesar-chavez')));
+    expect(closure.otherPps.lo).toBeGreaterThanOrEqual(report.programMoves[0].receiver.lo);
+  });
+
+  it("counts every kid in the program's grades, and non-followers as leaving it", () => {
+    const { report } = endYear(start, { ...DEFAULT_POLICY, closures: [close('richmond', [['atkinson', 0.7], ['glencoe', 0.3]])] });
+    const [japanese] = report.programMoves;
+    expect(japanese.kids).toEqual(modeledRange(staying('richmond', 'Japanese')));
+    expect(japanese.leftDli.lo).toBeGreaterThan(10);
+  });
+});
+
+describe('the host a closure carries a program to', () => {
+  const start = newGame({ seed: 'ent' });
+  const into = (school: string, to: string): Closure => ({ school, receivers: [{ school: to, share: 1 }], building: 'mothball' });
+  const hosts = (policy: Policy) => {
+    const [chavez] = policy.closures;
+    const chip = closureChip(start, chavez, policy.closures, 24, policy.gradeChanges, policy.programMoves);
+    const report = endYear(start, policy).report;
+    return [chip.programs, closureProgramMoves(start, policy), report.programMoves.filter((m) => m.from.includes('cesar-chavez'))].map((ms) =>
+      ms.map((m) => m.to),
+    );
+  };
+
+  it('skips a school the plan closes', () => {
+    const [chip, preflight, report] = hosts({ ...DEFAULT_POLICY, closures: [into('cesar-chavez', 'george'), into('astor', 'george')] });
+    expect(report).toHaveLength(1);
+    expect(report).not.toEqual(['astor']);
+    expect(chip).toEqual(report);
+    expect(preflight).toEqual(report);
+  });
+
+  it('skips a school the plan makes K-5', () => {
+    const [chip, preflight, report] = hosts({
+      ...DEFAULT_POLICY,
+      closures: [into('cesar-chavez', 'george')],
+      gradeChanges: [{ school: 'astor', to: 'george' }],
+    });
+    expect(report).toHaveLength(1);
+    expect(report).not.toEqual(['astor']);
+    expect(chip).toEqual(report);
+    expect(preflight).toEqual(report);
+  });
+
+  it('skips a school made K-5 in an earlier year', () => {
+    const later = endYear(start, { ...DEFAULT_POLICY, gradeChanges: [{ school: 'astor', to: 'george' }] }).next;
+    const policy = { ...DEFAULT_POLICY, closures: [into('cesar-chavez', 'george')] };
+    const [chavez] = policy.closures;
+    expect(closureChip(later, chavez, policy.closures, 24).programs.map((m) => m.to)).not.toEqual(['astor']);
+    expect(closureProgramMoves(later, policy).map((m) => m.to)).not.toEqual(['astor']);
+  });
+
+  it("counts the program's kids at the host, not split among the receivers", () => {
+    const chavez: Closure = { school: 'cesar-chavez', receivers: [{ school: 'george', share: 0.6 }, { school: 'sitton', share: 0.4 }], building: 'mothball' };
+    const [carried] = closureChip(start, chavez, [chavez], 24).programs;
+    const seats = (programMoves: ProgramMove[]) => closureChip(start, chavez, [chavez], 24, [], programMoves).seats.kids;
+    expect(seats([])).toBe(seats([carried]));
+  });
+});
+
 describe('program move report math', () => {
   const kid = (school: string | null, movedFrom?: string) => ({ school, ...(movedFrom ? { movedFrom } : {}) }) as Household;
+  const tally = (stayers: Household[]) => ({ program: 'Spanish' as const, from: ['beach'], to: 'cesar-chavez', year: 2027, joins: false, arrived: 10, stayers });
 
   it('counts only non-followers who stayed at their school or left PPS, not those a closure moved', () => {
     const stayers = [kid('beach'), kid(null), kid('scott', 'beach')];
-    const tally = { program: 'Spanish' as const, from: ['beach'], to: 'cesar-chavez', year: 2027, arrived: 10, stayers };
-    expect(programMoveOutcomes([tally])).toEqual([
+    expect(programMoveOutcomes([tally(stayers)], new Set())).toEqual([
       {
         program: 'Spanish',
         from: ['beach'],
@@ -337,6 +445,12 @@ describe('program move report math', () => {
         leftPps: modeledRange(1),
       },
     ]);
+  });
+
+  it("counts non-followers that the program's own closing school moved", () => {
+    const [outcome] = programMoveOutcomes([tally([kid('scott', 'beach'), kid('scott', 'kelly')])], new Set(['beach']));
+    expect(outcome.kids).toEqual(modeledRange(11));
+    expect(outcome.leftDli).toEqual(modeledRange(1));
   });
 
   it('counts DLI kids only at open schools', () => {

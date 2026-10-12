@@ -262,8 +262,8 @@ test("moves Scenario A's DLI programs and reports where the kids went", async ({
   await shot(page, 'program-playback');
   await playback.getByRole('button', { name: 'Skip' }).tap();
 
-  const where = page.getByRole('region', { name: "Where Beach, James John and Sitton's Spanish DLI kids went" });
-  for (const row of ['Spanish DLI from Beach, James John and Sitton', 'César Chávez', 'Left DLI', 'Left PPS']) await expect(where).toContainText(row);
+  const where = page.getByRole('region', { name: "Who kept Beach, James John and Sitton's Spanish DLI" });
+  for (const row of ['Who kept Spanish DLI from Beach, James John and Sitton', 'César Chávez', 'Left DLI', 'Left PPS']) await expect(where).toContainText(row);
   await where.scrollIntoViewIfNeeded();
   await shot(page, 'program-report');
 

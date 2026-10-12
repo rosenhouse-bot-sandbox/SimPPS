@@ -127,7 +127,7 @@ describe('ReportView', () => {
     ]);
   });
 
-  it("shows where a moved program's kids went, as sourced ranges", () => {
+  it("shows how many of a moved program's kids kept it, as sourced ranges", () => {
     const programMoves = [
       {
         program: 'Spanish' as const,
@@ -140,8 +140,8 @@ describe('ReportView', () => {
       },
     ];
     render(<ReportView report={{ ...FIXTURE_REPORT, programMoves }} turn={1} onNext={() => {}} />);
-    const section = screen.getByRole('region', { name: "Where Beach, James John and Sitton's Spanish DLI kids went" });
-    expect(section.textContent).toContain('Spanish DLI from Beach, James John and Sitton, 330–370~ kids:');
+    const section = screen.getByRole('region', { name: "Who kept Beach, James John and Sitton's Spanish DLI" });
+    expect(section.textContent).toContain('Who kept Spanish DLI from Beach, James John and Sitton, of 330–370~ kids:');
     const rows = [...section.querySelectorAll('.flow')].map((r) => [r.querySelector('dt')!.textContent, r.querySelector('dd')!.textContent]);
     expect(rows).toEqual([
       ['César Chávez', '280–320~'],

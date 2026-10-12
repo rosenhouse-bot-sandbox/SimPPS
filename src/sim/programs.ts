@@ -68,7 +68,7 @@ export function assignDli(households: Household[], seed: number): Household[] {
     let k = 0;
     for (const [p, m] of dliSplit(school, n)) for (let j = 0; j < m; j++) program.set(kids[k++].h.id, p);
   }
-  return households.map((h) => (program.has(h.id) || h.program ? { ...h, program: program.get(h.id) } : h));
+  return households.map((h) => ({ ...h, program: program.get(h.id) }));
 }
 
 /** Lists the programs each school offers after `moves`. */
@@ -142,8 +142,8 @@ export function closurePrograms(
     if (largest && servesAll(largest.school, c.school, k5)) return largest.school;
     let best: SchoolId | null = null;
     let bestMiles = Infinity;
-    for (const [id, info] of SCHOOL_INFO) {
-      if (!schools[id]?.open || closing.has(id) || info.k8 === 0 || !servesAll(id, c.school, k5)) continue;
+    for (const id of SCHOOL_INFO.keys()) {
+      if (!schools[id]?.open || closing.has(id) || !servesAll(id, c.school, k5)) continue;
       const d = miles(schoolPos(c.school), schoolPos(id));
       if (d < bestMiles) [best, bestMiles] = [id, d];
     }
@@ -162,7 +162,7 @@ export function withProgramArrivals(schools: Record<SchoolId, SchoolState>, move
   const out = { ...schools };
   for (const m of moves)
     for (const f of m.from) {
-      const n = Math.min(out[f].dli?.[m.program] ?? 0, out[f].enrollment);
+      const n = out[f].dli?.[m.program] ?? 0;
       const byGrade = apportion(n, out[f].byGrade);
       const shift = (s: SchoolState, sign: number): SchoolState => ({
         ...s,
@@ -206,18 +206,20 @@ export function programMoveDraw(seed: number, year: number, id: number): number 
 }
 
 export interface ProgramTally extends MovedProgram {
+  /** The receiver already taught the program. */
+  joins: boolean;
   arrived: number;
   /** Kids who didn't follow, as they are this fall. */
   stayers: Household[];
 }
 
 /**
- * Builds the report's "where kids went" for this year's program moves, as ranges. Non-followers that a
- * closure, grade-span change or boundary change moved count in those sections instead.
+ * Builds the report's program retention for this year's program moves, as ranges. Non-followers that a
+ * grade-span change, boundary change or another school's closure moved count in those sections instead.
  */
-export function programMoveOutcomes(tallies: readonly ProgramTally[]): ProgramMoveOutcome[] {
+export function programMoveOutcomes(tallies: readonly ProgramTally[], closing: ReadonlySet<SchoolId>): ProgramMoveOutcome[] {
   return tallies.map(({ program, from, to, arrived, stayers }) => {
-    const own = stayers.filter((h) => h.movedFrom === undefined);
+    const own = stayers.filter((h) => h.movedFrom === undefined || closing.has(h.movedFrom));
     const left = own.filter((h) => h.school === null).length;
     const kids = arrived + own.length;
     return {

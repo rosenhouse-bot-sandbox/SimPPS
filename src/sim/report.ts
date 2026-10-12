@@ -81,7 +81,13 @@ function programEvents(f: YearFacts): SeasonEvent[] {
   const n = f.programMoves.length;
   if (n === 0) return [];
   const name = (id: string) => SCHOOL_INFO.get(id)!.data.name;
-  const moves = f.programMoves.map((m) => `${m.program} leaves ${list(m.from.map(name))} for ${name(m.to)}.`);
+  const moves = f.programMoves.map((m) =>
+    m.joins ? `${list(m.from.map(name))}'s ${m.program} DLI joins ${name(m.to)}'s.` : `${m.program} leaves ${list(m.from.map(name))} for ${name(m.to)}.`,
+  );
+  const closing = new Set(f.closing.map((c) => c.school));
+  const fromClosing = f.programMoves.filter((m) => m.from.every((s) => closing.has(s))).length;
+  const choices =
+    fromClosing === n ? 'or move with their closing school' : fromClosing === 0 ? 'or stay without them' : 'or stay without them where their school stays open';
   const [first] = f.programMoves;
   return [
     {
@@ -93,7 +99,7 @@ function programEvents(f: YearFacts): SeasonEvent[] {
     {
       season: 'fall',
       title: 'DLI families decide',
-      detail: 'Kids in moved programs follow them or stay without them. The report shows where they went.',
+      detail: `Kids in moved programs follow them ${choices}. The report shows where they went.`,
       sourceKey: 'model.programMove',
     },
   ];

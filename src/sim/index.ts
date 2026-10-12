@@ -65,11 +65,22 @@ export function closureChip(
   converting: GradeSpanChange[] = [],
   programMoves: ProgramMove[] = [],
 ): ClosureChip {
+  const others = plan.filter((c) => c.school !== closure.school);
+  const programs = carriedPrograms(state, [...others, closure], converting, programMoves).filter((m) => m.from.includes(closure.school));
   const moved = withPlannedPrograms(state, programMoves);
   return {
-    ...chipFor(moved, closure, plan, classSize, closureRiders(state, closure, plan), converting),
-    programs: closurePrograms(state.schools, effectiveClosures(state.schools, [closure]), effectiveProgramMoves(state.schools, programMoves)),
+    ...chipFor(moved, closure, plan, classSize, closureRiders(state, closure, plan), converting, (schools) => withProgramArrivals(schools, programs)),
+    programs,
   };
+}
+
+/** The DLI programs the plan's closures carry, after its grade-span changes. */
+function carriedPrograms(state: GameState, closures: Closure[], gradeChanges: GradeSpanChange[], programMoves: ProgramMove[]): ProgramMove[] {
+  const k5 = new Set([
+    ...Object.values(state.schools).flatMap((s) => (s.converted ? [s.id] : [])),
+    ...effectiveGradeChanges(state.schools, gradeChanges).map((g) => g.school),
+  ]);
+  return closurePrograms(state.schools, effectiveClosures(state.schools, closures), effectiveProgramMoves(state.schools, programMoves), k5);
 }
 
 /** A grade-span change's chip, the plan's program moves included. */
@@ -80,7 +91,7 @@ export function conversionChip(state: GameState, change: GradeSpanChange, plan: 
 /** The DLI programs the plan's closures carry to new schools. */
 export function closureProgramMoves(state: GameState, policy: Policy): ProgramMove[] {
   const plan = normalizePolicy(policy);
-  return closurePrograms(state.schools, effectiveClosures(state.schools, plan.closures), effectiveProgramMoves(state.schools, plan.programMoves));
+  return carriedPrograms(state, plan.closures, plan.gradeChanges, plan.programMoves);
 }
 
 export const DEFAULT_POLICY: Policy = { k5ClassSize: 24, levyRate: 1.99, levyElection: 'may', reserveDraw: 0, closures: [], boundaryEdits: [], gradeChanges: [], programMoves: [] };
@@ -278,7 +289,7 @@ export function endYear(state: GameState, policy: Policy): { next: GameState; re
       budget: mine.facts.plan,
       closures: closureOutcomes(mine.facts.closures, mine.facts.closing),
       conversions: conversionOutcomes(mine.facts.conversions),
-      programMoves: programMoveOutcomes(mine.facts.programMoves),
+      programMoves: programMoveOutcomes(mine.facts.programMoves, new Set(mine.facts.closing.map((c) => c.school))),
       ...(mine.facts.rezoned.kids > 0 ? { rezoned: rezoneOutcome(mine.facts.rezoned) } : {}),
       ...(mine.facts.election ? { election: mine.facts.election } : {}),
       ...(ghostYear.facts.election ? { ghostElection: ghostYear.facts.election } : {}),
