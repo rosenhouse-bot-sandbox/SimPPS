@@ -1,5 +1,5 @@
-import type { BallotPreview, BoundaryChip, ClosureChip, Start } from '../sim';
-import type { BoundaryEdit, Budget, Closure, GameState, Household, Policy, SchoolId, SchoolState, Season, YearReport, ZoneLevel, ZoneMap } from '../sim/types';
+import type { BallotPreview, BoundaryChip, ClosureChip, ConversionChip, Start } from '../sim';
+import type { BoundaryEdit, Budget, Closure, GameState, GradeSpanChange, Household, Policy, SchoolId, SchoolState, Season, YearReport, ZoneLevel, ZoneMap } from '../sim/types';
 
 export type Phase = 'plan' | 'preflight' | 'playing' | 'report';
 
@@ -13,8 +13,17 @@ export interface Sim {
     schools: Record<SchoolId, SchoolState>,
     closing: SchoolId,
     plan: Closure[],
+    converting: GradeSpanChange[],
   ): { id: SchoolId; miles: number; kids: number; capacity: number }[];
-  closureChip(state: GameState, closure: Closure, plan: Closure[], classSize: number): ClosureChip;
+  closureChip(state: GameState, closure: Closure, plan: Closure[], classSize: number, converting: GradeSpanChange[]): ClosureChip;
+  canConvert(schools: Record<SchoolId, SchoolState>, school: SchoolId, closures: Closure[]): boolean;
+  middleZoneOf(state: GameState, school: SchoolId): SchoolId;
+  middleSchoolCandidates(
+    schools: Record<SchoolId, SchoolState>,
+    school: SchoolId,
+    closures: Closure[],
+  ): { id: SchoolId; miles: number; kids: number; capacity: number }[];
+  conversionChip(state: GameState, change: GradeSpanChange, plan: Policy): ConversionChip;
   plannedZones(state: GameState, policy: Policy): ZoneMap;
   sliceCells(
     state: { households: Household[]; zones: ZoneMap },

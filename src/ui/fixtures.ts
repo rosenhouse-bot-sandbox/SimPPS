@@ -61,5 +61,6 @@ export const FIXTURE_REPORT: YearReport = {
   ],
   budget: FIXTURE_GAME.budget,
   closures: [],
+  conversions: [],
   reveals: [],
 };

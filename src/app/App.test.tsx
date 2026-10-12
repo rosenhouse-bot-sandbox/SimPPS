@@ -479,13 +479,131 @@ describe('App', () => {
     expect(onStart).toHaveBeenCalledWith('scenario-a');
     expect(screen.queryByRole('button', { name: 'PPS Scenario B' })).toBeNull();
     click('Plan');
-    expect(document.querySelectorAll('.edits li')).toHaveLength(14);
+    expect(document.querySelectorAll('.edits li')).toHaveLength(21);
     expect(screen.getByText(realSim.SCENARIOS['scenario-a'].notModeled!)).toBeTruthy();
     expect(document.querySelectorAll('[data-mark="closing"]')).toHaveLength(14);
+    expect(document.querySelectorAll('[data-mark="converting"]')).toHaveLength(7);
     click('Rosa Parks Elementary School');
     expect(screen.getByText(/takes kids/).textContent).toBe(
       'In the plan: takes kids from Peninsula. Change that closure to close this school.',
     );
+  });
+
+  describe('Send 6–8', { timeout: 30_000 }, () => {
+    const marked = (mark: string) => [...document.querySelectorAll(`[data-mark="${mark}"]`)].map((e) => e.getAttribute('data-school'));
+    function tapBadge(id: string) {
+      const [x, y] = badgeAt(id);
+      const map = document.querySelector('.pps-map')!;
+      fireEvent.pointerDown(map, { pointerId: 1, clientX: x, clientY: y });
+      fireEvent.pointerUp(map, { pointerId: 1, clientX: x, clientY: y });
+    }
+
+    it('marks only the drafted change and paints 6-8 into the receiver of a converting K-8', () => {
+      render(<App sim={realSim} seed="t" start="scenario-a" playbackMs={5000} />);
+      click('Plan');
+      click('Beverly Cleary School');
+      click('Send 6–8 to…');
+      expect(marked('closing')).toEqual([]);
+      expect(marked('converting')).toEqual(['beverly-cleary']);
+      click('Cancel');
+      click('Edit boundary');
+      click('6-8');
+      expect(screen.getByRole('region', { name: 'Zone: Beaumont' })).toBeTruthy();
+      expect([...document.querySelectorAll('option')].map((o) => o.value)).not.toContain('beverly-cleary');
+    });
+
+    function closeAndSend(to: RegExp) {
+      click('Close & send');
+      click(to);
+      click('Next >');
+      click('Next >');
+      click('Close it');
+      click('Call it');
+    }
+
+    it("won't send 6–8 from a K-8 taking a closing school's grades 6–8, nor offer a converting K-8 to one", () => {
+      setup();
+      click('Plan');
+      click('Mt Tabor Middle School');
+      closeAndSend(/Laurelhurst/);
+      click('Plan');
+      click('Laurelhurst Elementary School');
+      expect(screen.queryByRole('button', { name: 'Send 6–8 to…' })).toBeNull();
+
+      click('Plan');
+      click('Beverly Cleary School');
+      click('Send 6–8 to…');
+      tapBadge('beaumont');
+      click('Send 6–8');
+      click('Plan');
+      click('Beaumont Middle School');
+      expect(screen.queryByRole('button', { name: 'Close & send' })).toBeNull();
+      click('Plan');
+      click('Harriet Tubman Middle School');
+      click('Close & send');
+      expect(marked('candidate')).not.toContain('beverly-cleary');
+    });
+
+    it("names a converted school's current middle zone school after its receiver closes", () => {
+      setup();
+      click('Plan');
+      click('Beverly Cleary School');
+      click('Send 6–8 to…');
+      tapBadge('beaumont');
+      click('Send 6–8');
+      const playYear = () => {
+        hold('End year');
+        hold('Play the year');
+        act(() => {
+          vi.advanceTimersByTime(6000);
+        });
+      };
+      playYear();
+      click(/^Plan 20/);
+      click('Plan');
+      click('Beaumont Middle School');
+      closeAndSend(/Mt Tabor/);
+      playYear();
+      click(/^Plan 20/);
+      click('Plan');
+      click('Beverly Cleary School');
+      expect(screen.getByText(/K-5 since 2027/).textContent).toBe('K-5 since 2027. Grades 6–8 go to Mt Tabor.');
+      click('Edit boundary');
+      click('6-8');
+      expect(screen.getByRole('region', { name: 'Zone: Mt Tabor' })).toBeTruthy();
+    });
+
+    it("sends a K-8's grades 6-8 through the plan, pre-flight and report", () => {
+      setup();
+      click('Plan');
+      click('Beverly Cleary School');
+      click('Send 6–8 to…');
+      expect(marked('converting')).toEqual(['beverly-cleary']);
+      expect(marked('candidate')).toContain('beaumont');
+      tapBadge('beaumont');
+      expect(marked('receiver')).toEqual(['beaumont']);
+      expect(document.querySelector('[data-link="beverly-cleary>beaumont"]')).toBeTruthy();
+      click('Send 6–8');
+      expect(screen.getByText(/In the plan/).textContent).toBe('In the plan: Send Beverly Cleary 6–8 → Beaumont');
+      expect(screen.queryByRole('button', { name: 'Close & send' })).toBeNull();
+      click('Plan');
+      click('Beaumont Middle School');
+      expect(screen.getByText(/takes grades/)).toBeTruthy();
+      expect(screen.queryByRole('button', { name: 'Close & send' })).toBeNull();
+
+      hold('End year');
+      expect(screen.getByRole('dialog', { name: 'Play 2027-28?' }).textContent).toContain('Send Beverly Cleary 6–8 → Beaumont');
+      hold('Play the year');
+      act(() => {
+        vi.advanceTimersByTime(6000);
+      });
+      expect(screen.getByRole('region', { name: 'Where Beverly Cleary 6–8 went' }).textContent).toContain('Beaumont');
+      click('Plan 2028');
+      click('Plan');
+      click('Beverly Cleary School');
+      expect(screen.getByText(/K-5 since 2027/)).toBeTruthy();
+      expect(screen.queryByRole('button', { name: 'Send 6–8 to…' })).toBeNull();
+    });
   });
 
   describe('Zone mode', { timeout: 30_000 }, () => {
@@ -581,6 +699,21 @@ describe('App', () => {
       click('Rosa Parks Elementary School');
       expect(screen.getByText(/blocks re-zone into this school/)).toBeTruthy();
       expect(screen.queryByRole('button', { name: 'Close & send' })).toBeNull();
+    });
+
+    it('offers no Send 6–8 for a K-8 that 6-8 blocks re-zone into in the plan', () => {
+      setup();
+      click('Plan');
+      click('Beverly Cleary School');
+      click('Edit boundary');
+      click('6-8');
+      expect(zoneSheet()!.getAttribute('aria-label')).toBe('Zone: Beverly Cleary');
+      click('Slice…');
+      choose('Zone', 'beaumont');
+      click('Add to plan');
+      click('Plan');
+      click('Beverly Cleary School');
+      expect(screen.queryByRole('button', { name: 'Send 6–8 to…' })).toBeNull();
     });
 
     it('drops an unfinished boundary at End year', () => {

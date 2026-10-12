@@ -24,17 +24,20 @@ interface ZoneSheetProps {
   targetsFor: (level: ZoneLevel) => { id: SchoolId; name: string }[];
   /** Zones a slice can come from, nearest the target first. */
   sources: SchoolId[];
+  /** Where a K-5 school's 6-8 blocks go, for a switch to 6-8. */
+  middleOf?: Record<SchoolId, SchoolId>;
   onChange: (d: ZoneDraft) => void;
   onCommit: (e: BoundaryEdit) => void;
   onClose: () => void;
 }
 
 /** Zone mode: paint blocks on the map, or slice a share of a neighboring zone. */
-export function ZoneSheet({ draft, edit, chip, targetsFor, sources, onChange, onCommit, onClose }: ZoneSheetProps) {
+export function ZoneSheet({ draft, edit, chip, targetsFor, sources, middleOf = {}, onChange, onCommit, onClose }: ZoneSheetProps) {
   const pickLevel = (level: ZoneLevel) => {
     if (level === draft.level) return;
     const next = targetsFor(level);
-    onChange(startZoneDraft(level, next.some((t) => t.id === draft.to) ? draft.to : next[0].id));
+    const to = [draft.to, level === 'middle' ? middleOf[draft.to] : undefined].find((id) => next.some((t) => t.id === id));
+    onChange(startZoneDraft(level, to ?? next[0].id));
   };
   const { slice } = draft;
   const grandfather = (

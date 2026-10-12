@@ -1,9 +1,9 @@
 import type { ComponentChildren } from 'preact';
 import { SCHOOLS, type SchoolData } from '../data';
 import { FATE_DONE, modeledRange } from '../sim';
-import type { Closure, SchoolState } from '../sim/types';
+import type { Closure, GradeSpanChange, SchoolId, SchoolState } from '../sim/types';
 import { nameOf } from './closeSend';
-import { closureText } from './edits';
+import { closureText, gradeSpanText } from './edits';
 import { fmtCount, fmtMoney, fmtPct, fmtRange } from '../format';
 import { Sourced } from './Sourced';
 import { K } from './sources';
@@ -28,10 +28,11 @@ function orNull<T>(v: T | null, f: (v: T) => string): string | null {
   return v === null ? null : f(v);
 }
 
-export function schoolFacts(s: SchoolData) {
+/** A converted school's capacity fact is its K-8 one; the simulated K-5 seats show apart. */
+export function schoolFacts(s: SchoolData, converted = false) {
   return [
     { label: 'Enrolled 25-26', column: 'enrollment_2025_26', value: orNull(s.enrollment, fmtCount) },
-    { label: 'Capacity', column: 'functional_capacity_model', value: orNull(s.capacity, fmtCount) },
+    { label: converted ? 'Capacity as K-8' : 'Capacity', column: 'functional_capacity_model', value: orNull(s.capacity, fmtCount) },
     {
       label: 'Utilization',
       column: 'utilization_model_2526',
@@ -59,9 +60,30 @@ interface SchoolSheetProps {
   rezonedInto?: boolean;
   /** Offered while planning, for an open school with a zone. */
   onEditBoundary?: () => void;
+  /** Offered while planning, for a K-8 that can become K-5. */
+  onSendGrades?: () => void;
+  /** This school's grade-span change in the plan. */
+  converting?: GradeSpanChange;
+  /** K-8s the plan sends grades 6-8 into this school. */
+  gradesFrom?: string[];
+  /** Where a converted school's grades 6-8 go. */
+  middleSchool?: SchoolId;
 }
 
-export function SchoolSheet({ id, state, onClose, onCloseSend, closing, receivesFrom = [], rezonedInto = false, onEditBoundary }: SchoolSheetProps) {
+export function SchoolSheet({
+  id,
+  state,
+  onClose,
+  onCloseSend,
+  closing,
+  receivesFrom = [],
+  rezonedInto = false,
+  onEditBoundary,
+  onSendGrades,
+  converting,
+  gradesFrom = [],
+  middleSchool,
+}: SchoolSheetProps) {
   const school = SCHOOLS.find((s) => s.id === id);
   if (!school) return null;
   return (
@@ -70,6 +92,24 @@ export function SchoolSheet({ id, state, onClose, onCloseSend, closing, receives
         <p class="note">
           <Sourced k={K.buildingFate} text>{`Closed in ${state.closed.year}, ${FATE_DONE[state.closed.building]}.`}</Sourced>
         </p>
+      )}
+      {state?.open && state.converted && (
+        <p class="note">
+          <Sourced k={K.gradeSpan} text>
+            {`K-5 since ${state.converted.year}.${middleSchool ? ` Grades 6–8 go to ${nameOf(middleSchool)}.` : ''}`}
+          </Sourced>
+        </p>
+      )}
+      {converting && (
+        <p class="note">
+          In the plan:{' '}
+          <Sourced k={K.gradeSpan} text>
+            {gradeSpanText(converting)}
+          </Sourced>
+        </p>
+      )}
+      {gradesFrom.length > 0 && (
+        <p class="note">In the plan: takes grades 6–8 from {gradesFrom.map(nameOf).join(' and ')}. Undo that to close this school.</p>
       )}
       {closing && (
         <p class="note">
@@ -90,13 +130,18 @@ export function SchoolSheet({ id, state, onClose, onCloseSend, closing, receives
           {closing ? 'Change closure' : 'Close & send'}
         </button>
       )}
+      {onSendGrades && (
+        <button type="button" class="btn wide" onClick={onSendGrades}>
+          Send 6–8 to…
+        </button>
+      )}
       {onEditBoundary && (
         <button type="button" class="btn wide" onClick={onEditBoundary}>
           Edit boundary
         </button>
       )}
       <dl>
-        {schoolFacts(school).map((f) => (
+        {schoolFacts(school, !!state?.converted).map((f) => (
           <Fact key={f.column} {...f} />
         ))}
       </dl>
@@ -107,6 +152,11 @@ export function SchoolSheet({ id, state, onClose, onCloseSend, closing, receives
             <Row label="Enrollment">
               <Sourced k={K.enrollment}>{fmtRange(modeledRange(state.enrollment))}</Sourced>
             </Row>
+            {state.converted && (
+              <Row label="K-5 seats">
+                <Sourced k={K.gradeSpan}>{fmtCount(state.capacity)}</Sourced>
+              </Row>
+            )}
             <Row label="Homerooms">
               <Sourced k={K.homerooms}>{fmtRange(modeledRange(state.homerooms))}</Sourced>
             </Row>

@@ -41,6 +41,16 @@ describe('edits', () => {
     ]);
   });
 
+  it('lists each grade-span change with an undo that drops only it', () => {
+    const cleary = { school: 'beverly-cleary', to: 'beaumont' };
+    const vernon = { school: 'vernon', to: 'harriet-tubman' };
+    const draft = { ...DEFAULT_POLICY, gradeChanges: [cleary, vernon] };
+    expect(listEdits(draft, draft)).toEqual([
+      { text: 'Send Beverly Cleary 6–8 → Beaumont', sourceKey: 'model.gradeSpan', undo: { gradeChanges: [vernon] } },
+      { text: 'Send Vernon 6–8 → Harriet Tubman', sourceKey: 'model.gradeSpan', undo: { gradeChanges: [cleary] } },
+    ]);
+  });
+
   it('shows a zero levy as a lapse', () => {
     expect(fmtLevy(0)).toBe('lapse');
   });

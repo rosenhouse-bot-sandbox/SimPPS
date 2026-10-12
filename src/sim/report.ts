@@ -54,6 +54,28 @@ function closureEvents(f: YearFacts): SeasonEvent[] {
   ];
 }
 
+/** Summer names the converted schools and their receivers. */
+function conversionEvents(f: YearFacts): SeasonEvent[] {
+  const n = f.converting.length;
+  if (n === 0) return [];
+  const name = (id: string) => SCHOOL_INFO.get(id)!.data.name;
+  const sends = f.converting.map((c) => `${name(c.school)} sends grades 6–8 to ${name(c.to)}`);
+  return [
+    {
+      season: 'summer',
+      title: n === 1 ? `${name(f.converting[0].school)} becomes K-5` : `${n} K-8s become K-5`,
+      detail: `${list(n > SHOWN ? [...sends.slice(0, SHOWN), `${n - SHOWN} more change`] : sends)}.`,
+      sourceKey: 'model.gradeSpan',
+    },
+    {
+      season: 'fall',
+      title: 'Middle graders decide',
+      detail: 'Kids whose K-8 became K-5 choose schools. The report shows where they went.',
+      sourceKey: 'model.gradeSpan',
+    },
+  ];
+}
+
 /** Boundary events name no school and give no counts of a school's families. */
 function boundaryEvents(f: YearFacts): SeasonEvent[] {
   const { elementary, middle } = f.rezonedCells;
@@ -132,6 +154,7 @@ export function seasonEvents(f: YearFacts): SeasonEvent[] {
   const draw = f.reserveDraw > 0 ? ` Reserves cover ${fmtMoney(f.reserveDraw)}.` : '';
   const [closes, decide] = closureEvents(f);
   const [rezone, rezonedDecide] = boundaryEvents(f);
+  const [convert, convertedDecide] = conversionEvents(f);
   const vote = f.election ? electionEvent(f.election) : null;
   const events: SeasonEvent[] = [
     {
@@ -158,6 +181,7 @@ export function seasonEvents(f: YearFacts): SeasonEvent[] {
       sourceKey: 'model.autoCuts',
     },
     ...(closes ? [closes] : []),
+    ...(convert ? [convert] : []),
     ...(rezone ? [rezone] : []),
     {
       season: 'summer',
@@ -172,6 +196,7 @@ export function seasonEvents(f: YearFacts): SeasonEvent[] {
       sourceKey: 'model.movingRoll',
     },
     ...(decide ? [decide] : []),
+    ...(convertedDecide ? [convertedDecide] : []),
     ...(rezonedDecide ? [rezonedDecide] : []),
     {
       season: 'october',
@@ -237,7 +262,7 @@ export function headlines(f: YearFacts, before: Dials, after: Dials): Headline[]
 export function rezoneOutcome(t: RezoneTally): RezoneOutcome {
   return {
     kids: modeledRange(t.kids),
-    zoneSchool: modeledRange(t.zoneSchool),
+    zoneSchool: modeledRange(t.arrived),
     otherPps: modeledRange(t.otherPps),
     leftPps: modeledRange(t.left),
   };

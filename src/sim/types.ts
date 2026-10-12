@@ -31,6 +31,17 @@ export interface ClosedSchool extends Closure {
   staffKept: number;
 }
 
+/** A K-8 school sends grades 6-8 to a middle school and serves K-5. It takes effect in summer. */
+export interface GradeSpanChange {
+  school: SchoolId;
+  to: SchoolId;
+}
+
+/** A grade-span change in force since fall `year`. */
+export interface ConvertedSchool extends GradeSpanChange {
+  year: number;
+}
+
 export type ZoneLevel = 'elementary' | 'middle';
 
 /** Blocks moved into `to`'s zone at one level. It takes effect in summer. */
@@ -78,6 +89,7 @@ export interface Policy {
   reserveDraw: number;
   closures: Closure[];
   boundaryEdits: BoundaryEdit[];
+  gradeChanges: GradeSpanChange[];
 }
 
 export type HouseholdStatus = 'stayed' | 'moved' | 'left' | 'returned';
@@ -123,6 +135,8 @@ export interface SchoolState {
   blendedHomerooms: number;
   /** Set when a closure has emptied the building. */
   closed?: { year: number; building: BuildingFate };
+  /** Set when a grade-span change sent grades 6-8 to `to`. */
+  converted?: { year: number; to: SchoolId };
 }
 
 export interface BudgetLine {
@@ -212,6 +226,16 @@ export interface RezoneOutcome {
   leftPps: Range;
 }
 
+/** Where a converted K-8's moved middle graders went. */
+export interface ConversionOutcome {
+  school: SchoolId;
+  to: SchoolId;
+  kids: Range;
+  receiver: Range;
+  otherPps: Range;
+  leftPps: Range;
+}
+
 /** A levy vote. Yes is a share of votes. */
 export interface ElectionOutcome extends Ballot {
   yes: number;
@@ -235,6 +259,7 @@ export interface YearReport {
   /** The June budget that applied. */
   budget: Budget;
   closures: ClosureOutcome[];
+  conversions: ConversionOutcome[];
   /** Present when boundary edits moved kids off their zone school. */
   rezoned?: RezoneOutcome;
   /** Present when a levy measure went to voters. */
@@ -291,6 +316,8 @@ export interface SimMemory {
   restCost: number;
   /** Closures in force, oldest first. */
   closed: ClosedSchool[];
+  /** Grade-span changes in force, oldest first. */
+  converted: ConvertedSchool[];
   /** Busing dollars booked this year, which the state repays next year. */
   busing: number;
   levy: Levy;

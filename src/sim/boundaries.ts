@@ -10,11 +10,12 @@ import {
   normalizeClosures,
   type FollowFactors,
 } from './closures';
+import { effectiveGradeChanges, type Shut } from './gradeSpan';
 import { gradeOf, M, MAX_GRADE } from './model';
 import { SCHOOL_INFO } from './population';
 import { modeledRange } from './range';
 import { draw } from './rng';
-import type { BoundaryEdit, ClosedSchool, Closure, Flows, GameState, Household, Policy, Range, SchoolId, ZoneLevel } from './types';
+import type { BoundaryEdit, ClosedSchool, Closure, Flows, GameState, GradeSpanChange, Household, Policy, Range, SchoolId, ZoneLevel } from './types';
 import { milesTo, ridesNewBus } from './walk';
 import { defaultZones, ENTRY_GRADE, homesByCell, isContiguous, levelOf, mappedZone, nextZone, normalizeBoundaryEdits, sliceCells, zoningYear, type ZoningYear } from './zones';
 
@@ -30,14 +31,16 @@ export function sliceEdit(
   return { level, to, cells: sliceCells(state, level, from, to, percent), grandfather };
 }
 
-/** Next fall's zones: closures in force re-zone first, then `edits` apply. */
+/** Next fall's zones: closures and grade-span changes in force re-zone first, then `edits` apply. */
 export function planZoning<C extends Closure>(
   state: Pick<GameState, 'households' | 'zones' | 'sim'>,
   closing: readonly C[],
   edits: readonly BoundaryEdit[],
+  converting: readonly GradeSpanChange[] = [],
 ): { closed: (ClosedSchool | C)[]; closingNow: Set<SchoolId>; zoning: ZoningYear } {
   const closed: (ClosedSchool | C)[] = [...state.sim!.closed, ...closing];
-  const zoning = zoningYear(state.zones, closed, edits, homesByCell(state.households));
+  const converted = [...state.sim!.converted, ...converting];
+  const zoning = zoningYear(state.zones, closed, edits, homesByCell(state.households), converted);
   return { closed, closingNow: new Set(closing.map((c) => c.school)), zoning };
 }
 
@@ -119,8 +122,9 @@ const span = (a: number, b: number): Range => ({ lo: Math.min(a, b), hi: Math.ma
 export function boundaryChip(state: GameState, edit: BoundaryEdit, plan: Policy): BoundaryChip {
   const closing = effectiveClosures(state.schools, normalizeClosures(plan.closures));
   const others = normalizeBoundaryEdits(plan.boundaryEdits);
-  const before = planZoning(state, closing, others);
-  const later = planZoning(state, closing, normalizeBoundaryEdits([...others, edit]));
+  const converting = effectiveGradeChanges(state.schools, plan.gradeChanges ?? []);
+  const before = planZoning(state, closing, others, converting);
+  const later = planZoning(state, closing, normalizeBoundaryEdits([...others, edit]), converting);
   const { closingNow, closed } = before;
   const shut = new Set(closed.map((c) => c.school));
   const [base, after] = [before.zoning, later.zoning];
@@ -182,18 +186,25 @@ export function boundaryChip(state: GameState, edit: BoundaryEdit, plan: Policy)
 /** Draw purposes for re-zoned kids, apart from step.ts's and closures.ts's. */
 const D = { Stay: 40, NonStayer: 41, Away: 42, Crowd: 43 };
 
+/** A mover's dice for going where it is sent. */
+export function stayDraw(seed: number, year: number, id: number): number {
+  return draw(seed, year, id, D.Stay);
+}
+
 export interface RezoneMover {
   before: Household;
   /** A grade older, with its new zone school and no school yet. */
   next: Household;
   region: { kids: number; leavers: number } | null;
+  /** Where the kid is sent, when not its new zone school. */
+  target?: SchoolId;
 }
 
 /** Where kids who lost their zone school went. */
 export interface RezoneTally {
   kids: number;
-  /** Kids at the new zone school. */
-  zoneSchool: number;
+  /** Kids at the school they were sent to. */
+  arrived: number;
   otherPps: number;
   left: number;
 }
@@ -203,26 +214,30 @@ export function rezoneFactors(h: Household, target: SchoolId): FollowFactors {
 }
 
 /**
- * Fall after a boundary change moves kids off their zone school: each goes to the new zone school
- * at model.sliceStay with the follow adjustments, or chooses like a closed school's non-follower.
- * A new zone school past the crowding line sends its newest arrivals on.
+ * Fall after a boundary change or grade-span change moves kids off their school: each goes where it
+ * is sent at `stay` (model.sliceStay by default) with the follow adjustments, or chooses like a
+ * closed school's non-follower. A school past the crowding line sends its newest arrivals on.
  */
 export function decideRezoned(args: {
   seed: number;
   year: number;
-  closed: { has(school: SchoolId): boolean };
+  shut: Shut;
   movers: RezoneMover[];
   households: Household[];
   flows: Flows;
+  /** The base chance a mover goes where it is sent. */
+  stay?: number;
 }): RezoneTally {
   const { seed, year, movers, flows } = args;
-  const tally: RezoneTally = { kids: movers.length, zoneSchool: 0, otherPps: 0, left: 0 };
+  const tally: RezoneTally = { kids: movers.length, arrived: 0, otherPps: 0, left: 0 };
   if (movers.length === 0) return tally;
   const counts = new Map<SchoolId, number>();
   for (const h of args.households) if (h.school !== null) counts.set(h.school, (counts.get(h.school) ?? 0) + 1);
   const add = (id: SchoolId, n: number) => counts.set(id, (counts.get(id) ?? 0) + n);
-  const otherPps = ({ before, next }: RezoneMover) => {
-    next.school = nearestOpen(next.pos, gradeOf(next), args.closed, new Set([before.school!, next.zoneSchool]), counts);
+  const targetOf = (m: RezoneMover) => m.target ?? m.next.zoneSchool;
+  const otherPps = (m: RezoneMover) => {
+    const { before, next } = m;
+    next.school = nearestOpen(next.pos, gradeOf(next), args.shut, new Set([before.school!, targetOf(m)]), counts);
     add(next.school, 1);
     tally.otherPps++;
   };
@@ -232,11 +247,12 @@ export function decideRezoned(args: {
     next.movedFrom = before.school!;
     next.forcedMoves = (before.forcedMoves ?? 0) + 1;
     next.status = 'moved';
-    if (draw(seed, year, before.id, D.Stay) < followChance(M.sliceStay, rezoneFactors(before, next.zoneSchool))) {
-      next.school = next.zoneSchool;
+    const target = targetOf(m);
+    if (stayDraw(seed, year, before.id) < followChance(args.stay ?? M.sliceStay, rezoneFactors(before, target))) {
+      next.school = target;
       add(next.school, 1);
       arrivals.set(next.school, [...(arrivals.get(next.school) ?? []), m]);
-      tally.zoneSchool++;
+      tally.arrived++;
     } else {
       const choice = nonFollowerChoice(draw(seed, year, before.id, D.NonStayer));
       if (choice !== 'otherPps') {
@@ -250,7 +266,7 @@ export function decideRezoned(args: {
   }
   for (const [school, m] of crowdedOut(arrivals, counts, (m) => draw(seed, year, m.before.id, D.Crowd))) {
     add(school, -1);
-    tally.zoneSchool--;
+    tally.arrived--;
     otherPps(m);
   }
   return tally;
