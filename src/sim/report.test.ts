@@ -41,7 +41,7 @@ const facts: YearFacts = {
   grandfathered: 'none',
   rezoned: { kids: 0, zoneSchool: 0, otherPps: 0, left: 0 },
   election: null,
-  trust: { before: 35, after: 37, fell: [] },
+  trust: { before: 35, after: 37, fell: [], strain: 0 },
 };
 
 const dials: Dials = {
@@ -168,13 +168,20 @@ describe('trust', () => {
   const event = (trust: YearFacts['trust']) => seasonEvents({ ...facts, trust }).find((e) => e.sourceKey === 'model.trust')!;
 
   it('says in winter where trust fell, by region only', () => {
-    expect(event({ before: 35, after: 18.4, fell: ['Southwest', 'North'] })).toEqual({
+    expect(event({ before: 35, after: 18.4, fell: ['Southwest', 'North'], strain: 0 })).toEqual({
       season: 'winter',
       title: 'Family trust falls to 18',
       detail: 'Closures and second moves cost trust in Southwest and North.',
       sourceKey: 'model.trust',
     });
-    expect(event({ before: 35, after: 37, fell: [] })).toMatchObject({ title: 'Family trust rises to 37', detail: 'No forced moves cost trust.' });
+    expect(event({ before: 35, after: 37, fell: [], strain: 0.3 })).toMatchObject({ title: 'Family trust rises to 37', detail: 'No forced moves cost trust.' });
+  });
+
+  it('says what cuts and class sizes cost every region', () => {
+    expect(event({ before: 35, after: 33, fell: [], strain: 3.6 }).detail).toBe('Cuts and class sizes cost every region 4 points.');
+    expect(event({ before: 35, after: 20, fell: ['North'], strain: 1.2 }).detail).toBe(
+      'Cuts and class sizes cost every region 1 point. Closures and second moves cost more in North.',
+    );
   });
 
   it('comes before a November vote that it moves', () => {

@@ -124,6 +124,8 @@ export const M = {
   trustClosure: 8,
   trustMovedTwice: 5,
   trustCalmYear: 2,
+  trustPer100PositionsCut: 1,
+  trustPerKidOver24: 1,
   // model.levyTerm: the fall year of the levy's last school year
   levyThrough: 2029,
   levyYears: 5,

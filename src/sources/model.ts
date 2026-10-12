@@ -51,7 +51,7 @@ export function dialSourceKey(dial: keyof Dials): string {
   return `dial.${dial}`;
 }
 
-const TRUST = `Each high school region's families start at ${M.trustStart.lo}-${M.trustStart.hi} on a 0-100 scale. A closure costs ${M.trustClosure} points, split among regions by where its kids live. A region where a kid moves a second time loses ${M.trustMovedTwice}. A region with no forced moves gains ${M.trustCalmYear} a year. Cuts and class sizes don't move family trust yet. The Trust dial averages regions over simulated households. Trust moves levy votes.`;
+const TRUST = `Each high school region's families start at ${M.trustStart.lo}-${M.trustStart.hi} on a 0-100 scale. A closure costs ${M.trustClosure} points, split among regions by where its kids live. A region where a kid moves a second time loses ${M.trustMovedTwice}. A region with no forced moves gains ${M.trustCalmYear} a year. Every region loses ${M.trustPer100PositionsCut} a year per 100 positions cut and ${M.trustPerKidOver24} per K-5 kid of class size above 24. The Trust dial averages regions over simulated households. Trust moves levy votes.`;
 
 export const MODEL_SOURCES: Source[] = [
   {
@@ -226,7 +226,7 @@ export const MODEL_SOURCES: Source[] = [
     key: 'model.election',
     label: 'Levy election',
     tag: 'V',
-    explain: `The yes share starts at ${pct(M.yesBase)}, the election-night count for PPS's May 2024 renewal; the certified share is unverified. The Nov 2019 renewal drew 77% [F]. Each point of family trust above or below 35 moves it ${pts(M.yesPerTrustPoint)} points, each $0.10 above $${M.levyRate} costs ${pts(M.yesPerDime)} and each failure since the last pass costs ${pts(M.yesPerFailure)} [M]. The vote lands within ${pts(M.yesNoise)} points of that, with the same luck for the ghost. The poll shows ±${pts(M.pollSpread)} points; a November poll counts trust after this year's closures. A measure passes at 50%, so a raise after closures that cost trust can fail. Abandoned upgrades are not modeled yet.`,
+    explain: `The yes share starts at ${pct(M.yesBase)}, the election-night count for PPS's May 2024 renewal; the certified share is unverified. The Nov 2019 renewal drew 77% [F]. Each point of family trust above or below 35 moves it ${pts(M.yesPerTrustPoint)} points, each $0.10 above $${M.levyRate} costs ${pts(M.yesPerDime)} and each failure since the last pass costs ${pts(M.yesPerFailure)} [M]. The vote lands within ${pts(M.yesNoise)} points of that, with the same luck for the ghost. The poll shows ±${pts(M.pollSpread)} points; a November poll counts trust after this year's closures and planned June cuts. A measure passes at 50%, so a raise after closures that cost trust can fail. Abandoned upgrades are not modeled yet.`,
     links: [LEVY_2019, LEVY_2024_COUNTY, DESIGN],
   },
   {

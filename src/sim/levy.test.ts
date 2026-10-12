@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { ballotPreview, DEFAULT_POLICY, endYear, levyRevenue, newGame, previewBudget, SCENARIOS, type GameState, type Policy } from '.';
 import { M } from './model';
 import { stepYear } from './step';
+import { strainCost } from './trust';
 
 const start = newGame({ seed: 'levy' });
 const play = (s: GameState, years: number, policy: Policy = DEFAULT_POLICY) => {
@@ -69,6 +70,12 @@ describe('the renewal', () => {
     expect(ballotPreview(next, next.policy)).toMatchObject({ renewal: true, when: 'may' });
   });
 
+  it("drives more families out when a failed levy's cuts land", () => {
+    const doubted = { ...jan2030, sim: { ...jan2030.sim!, levy: { ...jan2030.sim!.levy, failures: 20 } } };
+    const left = (s: GameState) => stepYear(s, jan2030.policy).facts.flows.leftPps;
+    expect(left(doubted)).toBeGreaterThan(left(jan2030) * 1.05);
+  });
+
   it('can renew in November 2029, ahead of expiry', () => {
     const jan2029 = play(start, 2);
     const { next, report } = endYear(jan2029, { ...jan2029.policy, levyElection: 'november' });
@@ -90,19 +97,42 @@ describe('a November poll', () => {
   const scenarioA = newGame({ seed: 'levy', start: 'scenario-a' });
   const november = { ...scenarioA.policy, levyRate: 1.5, levyElection: 'november' as const };
 
-  it("counts trust after this year's closures, so the vote lands in the poll", () => {
+  it("counts trust after this year's closures, so the vote lands near the poll", () => {
     const may = ballotPreview(scenarioA, { ...november, levyElection: 'may' })!;
     const poll = ballotPreview(scenarioA, november)!.poll;
     expect(poll.hi).toBeLessThan(may.poll.hi - 0.02);
     const { yes } = endYear(scenarioA, november).report.election!;
-    expect(yes).toBeGreaterThanOrEqual(poll.lo);
-    expect(yes).toBeLessThanOrEqual(poll.hi);
+    // January's plan can't see June's state funding, so it overstates cuts.
+    expect(Math.abs(yes - (poll.lo + poll.hi) / 2)).toBeLessThan(M.yesNoise);
+  });
+
+  it("counts the trust that June's planned cuts and larger classes cost", () => {
+    const poorer = { ...scenarioA, budget: { ...scenarioA.budget, reserves: scenarioA.budget.reserves - 100e6 } };
+    const larger = { ...november, k5ClassSize: 26 };
+    const strain = (s: GameState, p: Policy) => strainCost(p.k5ClassSize, previewBudget(s, p).autoCutPositions);
+    const pollHi = (s: GameState, p: Policy) => ballotPreview(s, p)!.poll.hi;
+    for (const [s, p] of [[poorer, november], [scenarioA, larger]] as const) {
+      const extra = strain(s, p) - strain(scenarioA, november);
+      expect(extra).toBeGreaterThan(1);
+      expect(pollHi(scenarioA, november) - pollHi(s, p)).toBeCloseTo(extra * M.yesPerTrustPoint, 2);
+    }
   });
 });
 
 describe('family trust', () => {
-  it('rises in calm years and falls with closures, against the ghost', () => {
-    expect(jan2030.dials.trust).toBeCloseTo(start.dials.trust + 3 * M.trustCalmYear, 0);
+  it('rises in calm years less the strain of cuts and larger classes', () => {
+    const larger = { ...DEFAULT_POLICY, k5ClassSize: 26 };
+    const drained = { ...DEFAULT_POLICY, reserveDraw: 41.1e6 };
+    for (const policy of [DEFAULT_POLICY, larger, drained]) {
+      const { next, facts } = stepYear(start, policy);
+      const cuts = facts.autoCuts + facts.midYearCuts;
+      expect(cuts).toBeGreaterThan(0);
+      expect(next.dials.trust).toBeCloseTo(start.dials.trust + M.trustCalmYear - strainCost(policy.k5ClassSize, cuts), 0);
+      expect(facts.trust.fell).toEqual([]);
+    }
+  });
+
+  it('falls with closures, against the ghost', () => {
     const scenarioA = newGame({ seed: 'levy', start: 'scenario-a' });
     const { next } = endYear(scenarioA, scenarioA.policy);
     expect(SCENARIOS['scenario-a'].closures.length).toBeGreaterThan(10);
@@ -117,7 +147,8 @@ describe('family trust', () => {
     expect(facts.trust.fell.length).toBeGreaterThan(0);
     const drop = (r: string) => scenarioA.sim!.trust[r] - next.sim!.trust[r];
     expect(facts.trust.fell.map(drop)).toEqual([...facts.trust.fell.map(drop)].sort((a, b) => b - a));
-    expect(facts.trust.fell.every((r) => drop(r) > 0)).toBe(true);
+    expect(facts.trust.strain).toBeGreaterThan(1);
+    expect(facts.trust.fell.every((r) => drop(r) > facts.trust.strain)).toBe(true);
   });
 });
 

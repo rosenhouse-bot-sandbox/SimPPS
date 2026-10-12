@@ -17,8 +17,19 @@ export function startTrust(seedHash: number): Trust {
   return Object.fromEntries(REGIONS.map((r, i) => [r, Math.round(lo + (hi - lo) * draw(seedHash, i, 0, TRUST_DRAW))]));
 }
 
+/** Trust every region loses in a year of staff cuts and K-5 classes above 24. */
+export function strainCost(classSize: number, positionsCut: number): number {
+  return Math.max(0, classSize - 24) * M.trustPerKidOver24 + (positionsCut / 100) * M.trustPer100PositionsCut;
+}
+
 /** Trust after a year whose closures took effect this summer. `households` are this fall's. */
-export function trustAfterYear(trust: Trust, households: Household[], closing: SchoolId[], regionOf: RegionOf = byHome): Trust {
+export function trustAfterYear(
+  trust: Trust,
+  households: Household[],
+  closing: SchoolId[],
+  strain: number,
+  regionOf: RegionOf = byHome,
+): Trust {
   const closingSet = new Set(closing);
   const moved = new Map<SchoolId, Map<string, number>>();
   const stirred = new Set<string>();
@@ -36,7 +47,7 @@ export function trustAfterYear(trust: Trust, households: Household[], closing: S
   }
   const next: Trust = {};
   for (const r of REGIONS) {
-    let t = trust[r] + (stirred.has(r) ? 0 : M.trustCalmYear) - (twice.has(r) ? M.trustMovedTwice : 0);
+    let t = trust[r] - strain + (stirred.has(r) ? 0 : M.trustCalmYear) - (twice.has(r) ? M.trustMovedTwice : 0);
     for (const at of moved.values()) {
       const total = [...at.values()].reduce((a, n) => a + n, 0);
       t -= (M.trustClosure * (at.get(r) ?? 0)) / total;

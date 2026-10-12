@@ -106,12 +106,15 @@ function electionEvent(e: ElectionOutcome): SeasonEvent {
 }
 
 /** Names regions only. */
-function trustEvent({ before, after, fell }: YearFacts['trust']): SeasonEvent {
+function trustEvent({ before, after, fell, strain }: YearFacts['trust']): SeasonEvent {
   const to = Math.round(after);
+  const points = Math.round(strain);
+  const strained = points > 0 ? `Cuts and class sizes cost every region ${points} point${points === 1 ? '' : 's'}.` : '';
+  const forced = fell.length ? `Closures and second moves cost ${strained ? 'more' : 'trust'} in ${list(fell)}.` : '';
   return {
     season: 'winter',
     title: to === Math.round(before) ? `Family trust holds at ${to}` : `Family trust ${after < before ? 'falls' : 'rises'} to ${to}`,
-    detail: fell.length ? `Closures and second moves cost trust in ${list(fell)}.` : 'No forced moves cost trust.',
+    detail: [strained, forced].filter(Boolean).join(' ') || 'No forced moves cost trust.',
     sourceKey: 'model.trust',
   };
 }

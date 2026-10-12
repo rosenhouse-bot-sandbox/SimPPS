@@ -12,7 +12,7 @@ import { buildSchools, computeDials } from './schools';
 import { decideRezoned, plannedRiders, planZoning, projectRiders, type RezoneMover, type RezoneTally } from './boundaries';
 import { defaultZones, homesByCell, nextZone, zoningYear, type ZoningYear } from './zones';
 import { expectedYes, levyAfter, levyBallot, levyRateFor, voteYes } from './election';
-import { meanTrust, trustAfterYear, type Trust } from './trust';
+import { meanTrust, strainCost, trustAfterYear, type Trust } from './trust';
 import type {
   Ballot,
   Budget,
@@ -71,8 +71,8 @@ export interface YearFacts {
   grandfathered: 'all' | 'some' | 'none';
   rezoned: RezoneTally;
   election: ElectionOutcome | null;
-  /** Mean trust before and after the year, and the regions that lost trust, biggest drop first. */
-  trust: { before: number; after: number; fell: string[] };
+  /** Mean trust before and after the year, the citywide strain, and the regions that lost more than the strain, biggest drop first. */
+  trust: { before: number; after: number; fell: string[]; strain: number };
 }
 
 /** Kindergarten capture by fall year: 74% in 2025 rising to the 79% PSU assumes by 2028. */
@@ -340,8 +340,9 @@ export function stepYear(state: GameState, policy: Policy): { next: GameState; f
   const homeroomsCut = octoberCut + Math.round(midYearCuts * classroomShare);
   const reserves = plan.reservesAfter + midYearSavings;
 
-  // Winter: closures and second moves cost trust, calm years earn it, and November's ballot is counted.
-  const trust = trustAfterYear(mem.trust, households, closing.map((c) => c.school));
+  // Winter: closures, second moves, cuts and larger classes cost trust, calm years earn it, and November's ballot is counted.
+  const strain = strainCost(policy.k5ClassSize, autoCuts + midYearCuts);
+  const trust = trustAfterYear(mem.trust, households, closing.map((c) => c.school), strain);
   const november = ballot?.when === 'november' ? vote(ballot, trust, households) : null;
   const election = may ?? november;
   const levy = levyAfter(mem.levy, year, policy, election?.passed ?? null);
@@ -407,8 +408,9 @@ export function stepYear(state: GameState, policy: Policy): { next: GameState; f
         before: meanTrust(mem.trust, state.households),
         after: meanTrust(trust, households),
         fell: Object.keys(trust)
-          .filter((r) => trust[r] < mem.trust[r])
+          .filter((r) => trust[r] < mem.trust[r] - strain)
           .sort((a, b) => trust[a] - mem.trust[a] - (trust[b] - mem.trust[b])),
+        strain,
       },
     },
   };
