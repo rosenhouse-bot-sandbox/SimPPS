@@ -1,7 +1,10 @@
 import { describe, expect, it } from 'vitest';
 import { ballotPreview, DEFAULT_POLICY, endYear, levyRevenue, newGame, previewBudget, SCENARIOS, type GameState, type Policy } from '.';
+import { expectedYes, voteYes } from './election';
 import { M } from './model';
 import { stepYear } from './step';
+import { REGIONS } from './regions';
+import { strainFor } from './trust';
 
 const start = newGame({ seed: 'levy' });
 const play = (s: GameState, years: number, policy: Policy = DEFAULT_POLICY) => {
@@ -90,19 +93,67 @@ describe('a November poll', () => {
   const scenarioA = newGame({ seed: 'levy', start: 'scenario-a' });
   const november = { ...scenarioA.policy, levyRate: 1.5, levyElection: 'november' as const };
 
-  it("counts trust after this year's closures, so the vote lands in the poll", () => {
+  it("counts trust after this year's closures", () => {
     const may = ballotPreview(scenarioA, { ...november, levyElection: 'may' })!;
     const poll = ballotPreview(scenarioA, november)!.poll;
     expect(poll.hi).toBeLessThan(may.poll.hi - 0.02);
-    const { yes } = endYear(scenarioA, november).report.election!;
-    expect(yes).toBeGreaterThanOrEqual(poll.lo);
-    expect(yes).toBeLessThanOrEqual(poll.hi);
+  });
+
+  it("reads the January plan, which can't see June state funding, so it errs low", () => {
+    const poll = ballotPreview(scenarioA, november)!.poll;
+    const { report } = endYear(scenarioA, november);
+    expect(previewBudget(scenarioA, november).autoCutPositions).toBeGreaterThanOrEqual(report.budget.autoCutPositions);
+    expect(report.election!.yes).toBeGreaterThanOrEqual(poll.lo);
+  });
+
+  it("counts the trust that June's planned cuts and a class size raise cost", () => {
+    const strain = (s: GameState, p: Policy) => {
+      const { cuts, classes } = strainFor(p.k5ClassSize, s.sim!.k5ClassSize, previewBudget(s, p).autoCutPositions);
+      return cuts + classes;
+    };
+    const pollHi = (s: GameState, p: Policy) => ballotPreview(s, p)!.poll.hi;
+    const poorer = { ...scenarioA, budget: { ...scenarioA.budget, reserves: scenarioA.budget.reserves - 100e6 } };
+    const extraCuts = strain(poorer, november) - strain(scenarioA, november);
+    expect(extraCuts).toBeGreaterThan(1);
+    expect(pollHi(scenarioA, november) - pollHi(poorer, november)).toBeCloseTo(extraCuts * M.yesPerTrustPoint, 2);
+    const larger = { ...november, k5ClassSize: 26 };
+    const extraClasses = strain(scenarioA, larger) - strain(scenarioA, november);
+    expect(extraClasses).toBeGreaterThan(1);
+    expect(pollHi(scenarioA, november) - pollHi(scenarioA, larger)).toBeGreaterThan(extraClasses * M.yesPerTrustPoint - 0.001);
+  });
+
+  it('leaves out mid-year cuts, which come after the vote', () => {
+    const policy = { ...DEFAULT_POLICY, levyRate: 1.8, levyElection: 'november' as const, reserveDraw: 41.1e6 };
+    const { facts } = stepYear(start, policy);
+    expect(facts.midYearCuts).toBeGreaterThan(0);
+    const juneTrust = facts.trust.after + (facts.midYearCuts / 100) * M.trustPer100PositionsCut;
+    const expected = expectedYes(facts.election!, start.sim!.levy.failures, juneTrust);
+    expect(facts.election!.yes).toBeCloseTo(voteYes(start.sim!.seedHash, start.year, 'november', expected), 6);
   });
 });
 
 describe('family trust', () => {
-  it('rises in calm years and falls with closures, against the ghost', () => {
-    expect(jan2030.dials.trust).toBeCloseTo(start.dials.trust + 3 * M.trustCalmYear, 0);
+  it('rises in calm years less the strain of cuts and larger classes', () => {
+    const larger = { ...DEFAULT_POLICY, k5ClassSize: 26 };
+    const drained = { ...DEFAULT_POLICY, reserveDraw: 41.1e6 };
+    for (const policy of [DEFAULT_POLICY, larger, drained]) {
+      const { next, facts } = stepYear(start, policy);
+      const cuts = facts.autoCuts + facts.midYearCuts;
+      expect(cuts).toBeGreaterThan(0);
+      const s = strainFor(policy.k5ClassSize, 24, cuts);
+      expect(facts.trust.strain).toEqual(s);
+      expect(next.dials.trust).toBeCloseTo(start.dials.trust + s.calmGain - s.cuts - s.classes, 0);
+      expect(facts.trust.fell).toEqual([]);
+      expect(next.sim!.k5ClassSize).toBe(policy.k5ClassSize);
+    }
+  });
+
+  it('holds above 0 through 15 years of K-5 classes at 28', { timeout: 30_000 }, () => {
+    const later = play(start, 15, { ...DEFAULT_POLICY, k5ClassSize: 28 });
+    expect(later.dials.trust).toBeGreaterThan(10);
+  });
+
+  it('falls with closures, against the ghost', () => {
     const scenarioA = newGame({ seed: 'levy', start: 'scenario-a' });
     const { next } = endYear(scenarioA, scenarioA.policy);
     expect(SCENARIOS['scenario-a'].closures.length).toBeGreaterThan(10);
@@ -117,7 +168,14 @@ describe('family trust', () => {
     expect(facts.trust.fell.length).toBeGreaterThan(0);
     const drop = (r: string) => scenarioA.sim!.trust[r] - next.sim!.trust[r];
     expect(facts.trust.fell.map(drop)).toEqual([...facts.trust.fell.map(drop)].sort((a, b) => b - a));
-    expect(facts.trust.fell.every((r) => drop(r) > 0)).toBe(true);
+  });
+
+  it('reports regions that closures drove to 0', () => {
+    const scenarioA = newGame({ seed: 'levy', start: 'scenario-a' });
+    const low = { ...scenarioA, sim: { ...scenarioA.sim!, trust: Object.fromEntries(REGIONS.map((r) => [r, 2])) } };
+    const { facts, next } = stepYear(low, scenarioA.policy);
+    expect(facts.trust.fell.sort()).toEqual(stepYear(scenarioA, scenarioA.policy).facts.trust.fell.sort());
+    expect(facts.trust.fell.every((r) => next.sim!.trust[r] === 0)).toBe(true);
   });
 });
 

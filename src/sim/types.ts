@@ -278,6 +278,8 @@ export interface SimMemory {
   kCohort: number[];
   /** Per elementary zone: share of those kindergartners in PPS. */
   kCapture: number[];
+  /** Last year's K-5 class size target. */
+  k5ClassSize: number;
   /** Positions removed by automatic and mid-year cuts so far. */
   cumulativeCuts: number;
   /** Last year's spending, the base for the reserve share. */
