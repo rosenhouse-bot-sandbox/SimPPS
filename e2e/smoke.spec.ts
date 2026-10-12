@@ -6,6 +6,12 @@ async function shot(page: Page, name: string) {
   if (dir) await page.screenshot({ path: `${dir}/${name}.png` });
 }
 
+test('drops the loading text once the game is up', async ({ page }) => {
+  await page.goto('?seed=smoke&start=status-quo');
+  await expect(page.locator('.topbar')).toBeVisible();
+  await expect(page.getByText('Loading SimPPS')).toHaveCount(0);
+});
+
 test('plays a status-quo year on a phone', async ({ page }) => {
   await page.goto('?seed=smoke&start=status-quo');
 
