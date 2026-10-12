@@ -4,6 +4,7 @@ import { useContext, useEffect, useRef, useState } from 'preact/hooks';
 import { FIRST_YEAR } from '../sim';
 import { getSource, type HiddenCard, type Source, type SourceTag } from '../sources/registry';
 import './sources';
+import { trapTab } from './Window';
 
 export const TAG_NAMES: Record<SourceTag, string> = {
   F: 'public source',
@@ -77,8 +78,10 @@ export function SourcePopover({ k, onClose }: { k: string; onClose: () => void }
       <div
         class="window popover"
         role="dialog"
+        aria-modal="true"
         aria-label={source?.label ?? k}
         onClick={(e) => e.stopPropagation()}
+        onKeyDown={trapTab}
       >
         <div class="titlebar">
           <span>{source?.label ?? k}</span>

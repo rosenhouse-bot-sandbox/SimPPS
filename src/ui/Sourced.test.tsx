@@ -34,6 +34,17 @@ describe('Sourced', () => {
     expect(document.activeElement).toBe(screen.getByRole('button', { name: '−$65M' }));
   });
 
+  it('is modal and keeps Tab inside', () => {
+    render(<Sourced k="field.year_built">1952</Sourced>);
+    fireEvent.click(screen.getByRole('button', { name: '1952' }));
+    const dialog = screen.getByRole('dialog');
+    expect(dialog.getAttribute('aria-modal')).toBe('true');
+    const link = dialog.querySelector('a')!;
+    link.focus();
+    fireEvent.keyDown(dialog, { key: 'Tab' });
+    expect(document.activeElement).toBe(screen.getByRole('button', { name: 'Close' }));
+  });
+
   it('keeps hidden cards hidden', () => {
     registerSources([
       {

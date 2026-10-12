@@ -37,6 +37,18 @@ describe('Playback', () => {
     expect(onSeason.mock.calls.map((c) => c[0])).toEqual(['spring', 'summer', 'fall', 'october', 'winter']);
   });
 
+  it('keeps to the wall clock when ticks run late', () => {
+    render(<Playback report={FIXTURE_REPORT} onDone={() => {}} durationMs={5000} />);
+    vi.setSystemTime(Date.now() + 2500);
+    tick(100);
+    expect(screen.getByText('Fall')).toBeTruthy();
+  });
+
+  it('takes focus on Skip so a keyboard can leave the playback', () => {
+    render(<Playback report={FIXTURE_REPORT} onDone={() => {}} durationMs={5000} />);
+    expect(document.activeElement).toBe(screen.getByRole('button', { name: 'Skip' }));
+  });
+
   it('pauses on tap and resumes on a second tap', () => {
     const onDone = vi.fn();
     render(<Playback report={FIXTURE_REPORT} onDone={onDone} durationMs={5000} />);

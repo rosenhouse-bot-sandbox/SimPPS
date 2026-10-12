@@ -28,9 +28,14 @@ export function Playback({ report, onDone, onSeason, durationMs = 30_000 }: Play
   const index = Math.min(SEASONS.length - 1, Math.floor(elapsed / perSeason));
   const season = SEASONS[index];
 
+  const skip = useRef<HTMLButtonElement>(null);
+  useEffect(() => skip.current?.focus(), []);
+
+  /** Time comes from the clock, so a slow frame doesn't stretch the year. */
   useEffect(() => {
     if (paused) return;
-    const t = setInterval(() => setElapsed((e) => e + TICK_MS), TICK_MS);
+    const from = Date.now() - elapsed;
+    const t = setInterval(() => setElapsed(Date.now() - from), TICK_MS);
     return () => clearInterval(t);
   }, [paused]);
 
@@ -72,7 +77,7 @@ export function Playback({ report, onDone, onSeason, durationMs = 30_000 }: Play
           )}
         </div>
       </div>
-      <button type="button" class="btn skip" onClick={finish}>
+      <button ref={skip} type="button" class="btn skip" onClick={finish}>
         Skip
       </button>
     </div>

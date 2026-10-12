@@ -41,7 +41,7 @@ export function PreflightSheet({ year, draft, base, budget, ballot, onBack, onCo
   const { autoCutPositions: june, midYearCuts: winter } = budget;
   return (
     <div class="scrim">
-      <Window title={`Play ${year}-${String(year + 1).slice(2)}?`} class="panel sheet" onClose={onBack}>
+      <Window title={`Play ${year}-${String(year + 1).slice(2)}?`} class="panel sheet" onClose={onBack} dialog>
         <h3>Edits</h3>
         <List items={listEdits(applied, base)} empty="None. The year plays as it stands." />
         <h3>Gap</h3>
