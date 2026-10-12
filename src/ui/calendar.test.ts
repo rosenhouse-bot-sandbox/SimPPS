@@ -15,16 +15,13 @@ describe('calendarItems', () => {
     expect(calendarItems(2028, 2029).map((i) => i.when)).toEqual(['SPR 2029', 'JAN 2030', 'JUN 2030']);
   });
 
-  it('says when the levy has expired', () => {
-    expect(calendarItems(2031, 2029).find((i) => i.sourceKey === 'model.levyTerm')).toEqual({
-      when: 'JUN 2030',
-      text: 'Levy expired',
-      sourceKey: 'model.levyTerm',
-    });
+  it('says the levy expires until its June has passed, then drops it', () => {
+    expect(calendarItems(2030, 2029).find((i) => i.sourceKey === 'model.levyTerm')!.text).toBe('Levy expires');
+    expect(calendarItems(2031, 2029).find((i) => i.sourceKey === 'model.levyTerm')).toBeUndefined();
   });
 
   it('sources every item', () => {
     for (const i of calendarItems(2027, 2029)) expect(getSource(i.sourceKey), i.sourceKey).toBeDefined();
-    expect(getSource('ui.bargaining')!.tag).toBe('F');
+    expect(getSource('ui.bargaining')!.tag).toBe('N');
   });
 });

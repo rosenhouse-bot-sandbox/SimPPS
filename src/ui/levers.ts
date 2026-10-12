@@ -1,5 +1,5 @@
 import { levyRevenue } from '../sim';
-import type { Range } from '../sim/types';
+import type { ElectionMonth, Range } from '../sim/types';
 
 export const CLASS_SIZE = { min: 22, max: 28, step: 1 } as const;
 /** Oregon's local-option limit is unverified [V]. */
@@ -32,10 +32,10 @@ export function classSizeChip(size: number, base: number): Chip {
   return { seats: '—', walk: '—', now: delta, atMaturity: delta };
 }
 
-/** A new rate pays an election bill once and assumes the vote passes. */
-export function levyChip(rate: number, base: number, electionBill = 0): Chip {
+/** A new rate pays an election bill once and assumes the vote passes. A November vote funds next year. */
+export function levyChip(rate: number, base: number, electionBill = 0, when: ElectionMonth = 'may'): Chip {
   const delta = levyRevenue(rate) - levyRevenue(base);
-  return { seats: '—', walk: '—', now: point(delta - electionBill), atMaturity: point(delta) };
+  return { seats: '—', walk: '—', now: point((when === 'may' ? delta : 0) - electionBill), atMaturity: point(delta) };
 }
 
 /** A reserve draw helps once. */

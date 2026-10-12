@@ -1,4 +1,5 @@
 import { fmtMoney, fmtPct } from '../format';
+import { M } from '../sim/model';
 import type { BallotPreview } from '../sim';
 import type { Budget, ElectionMonth, GameState, Policy } from '../sim/types';
 import { BallotItem } from './Ballot';
@@ -28,6 +29,13 @@ const MONTHS: { id: ElectionMonth; label: string }[] = [
   { id: 'november', label: 'November' },
 ];
 
+/** In January of `year`: the levy's last June has passed once `through + 1 < year`. */
+function levyTermText(through: number, year: number, rate: number): string {
+  if (through + 1 < year) return `Levy expired June ${through + 1}`;
+  if (rate === 0) return `Levy lapses after June ${year}`;
+  return `Levy ${through + 1 === year ? 'expires' : 'runs through'} June ${through + 1}`;
+}
+
 export function BudgetPanel({ game, draft, plan, ballot, levyThrough, onEdit, onClose }: BudgetPanelProps) {
   const base = game.policy;
   const bill = -(plan.lines.find((l) => l.key === 'election')?.amount ?? 0);
@@ -53,14 +61,19 @@ export function BudgetPanel({ game, draft, plan, ballot, levyThrough, onEdit, on
         sourceKey={K.levy}
         value={draft.levyRate}
         {...LEVY}
-        anchor={base.levyRate}
+        anchor={base.levyRate || M.levyRate}
         format={fmtLevy}
         onChange={(levyRate) => onEdit({ levyRate })}
       />
-      {draft.levyRate !== base.levyRate && <Chip chip={levyChip(draft.levyRate, base.levyRate, bill)} sourceKey={K.levy} />}
+      {draft.levyRate !== base.levyRate && <Chip chip={levyChip(draft.levyRate, base.levyRate, bill, ballot?.when)} sourceKey={K.levyRate} />}
+      {bill > 0 && (
+        <p class="note">
+          Election bill: <Sourced k={K.electionBill}>{fmtMoney(-bill)}</Sourced>
+        </p>
+      )}
       <p class="note">
         <Sourced k={K.levyTerm} text>
-          {`Levy ${levyThrough < game.year ? 'expired' : 'runs through'} June ${levyThrough + 1}`}
+          {levyTermText(levyThrough, game.year, draft.levyRate)}
         </Sourced>
       </p>
       {(ballot || renewable) && (

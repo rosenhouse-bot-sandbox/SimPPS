@@ -43,14 +43,34 @@ describe('BudgetPanel levy', () => {
     expect(note.textContent).toBe('Levy runs through June 2030');
     expect(note.closest('[data-source]')!.getAttribute('data-source')).toBe('model.levyTerm');
     cleanup();
+    setup({ levyThrough: 2025 });
+    expect(screen.getByText(/Levy expired/).textContent).toBe('Levy expired June 2026');
+  });
+
+  it('says the levy expires, not expired, in January of its last June', () => {
     setup({ levyThrough: 2026 });
-    expect(screen.getByText(/Levy expired/).textContent).toBe('Levy expired June 2027');
+    expect(screen.getByText(/Levy expires/).textContent).toBe('Levy expires June 2027');
+  });
+
+  it('says a lapse ends the levy this June', () => {
+    setup({ draft: { levyRate: 0 } });
+    expect(screen.getByText(/Levy lapses/).textContent).toBe('Levy lapses after June 2027');
+  });
+
+  it('steps back to $1.99 after a lapse', () => {
+    const onEdit = vi.fn();
+    const lapsed = { ...FIXTURE_GAME, policy: { ...FIXTURE_GAME.policy, levyRate: 0 } };
+    render(
+      <BudgetPanel game={lapsed} draft={{ ...DEFAULT_POLICY, levyRate: 1.89 }} plan={shortfall} ballot={null} levyThrough={2026} onEdit={onEdit} onClose={() => {}} />,
+    );
+    fireEvent.click(screen.getByRole('button', { name: 'More Levy rate' }));
+    expect(onEdit).toHaveBeenLastCalledWith({ levyRate: 1.99 });
   });
 
   it('shows the ballot item with its poll and lets it move to November', () => {
     const onEdit = setup({ ballot, draft: { levyRate: 1.8 } });
     const item = screen.getByRole('group', { name: 'Levy ballot' });
-    expect(item.textContent).toContain('May 2027: levy at $1.80 per $1,000 · poll 62–72%~');
+    expect(item.textContent).toContain('May 2027 levy vote$1.80 per $1K · poll 62–72%~');
     fireEvent.click(screen.getByRole('radio', { name: 'November' }));
     expect(onEdit).toHaveBeenLastCalledWith({ levyElection: 'november' });
   });
@@ -71,6 +91,26 @@ describe('BudgetPanel levy', () => {
     );
     const chip = document.querySelector('.chip')!.textContent!;
     expect(chip).toContain(`Now${fmtSignedMoney(levyRevenue(0.99) - levyRevenue(1.99) - 500_000)}`);
+    const bill = screen.getByText(/Election bill/).closest('.note')!;
+    expect(bill.textContent).toBe('Election bill: −$500K');
+    expect(bill.querySelector('[data-source]')!.getAttribute('data-source')).toBe('model.electionBill');
+    expect(document.querySelector('.chip [data-source]')!.getAttribute('data-source')).toBe('model.levyRate');
+  });
+
+  it('books only the election bill now when the vote is in November', () => {
+    const plan = { ...shortfall, lines: [{ key: 'election', label: 'Election bill', amount: -500_000, sourceKey: 'model.electionBill' }] };
+    render(
+      <BudgetPanel
+        game={FIXTURE_GAME}
+        draft={{ ...DEFAULT_POLICY, levyRate: 0.99, levyElection: 'november' }}
+        plan={plan}
+        ballot={{ ...ballot, rate: 0.99, when: 'november' }}
+        levyThrough={2029}
+        onEdit={() => {}}
+        onClose={() => {}}
+      />,
+    );
+    expect(document.querySelector('.chip')!.textContent).toContain('Now−$500K');
   });
 });
 

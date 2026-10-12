@@ -19,6 +19,7 @@ describe('RevealSheet', () => {
 
   it('lists the outcomes as a table and links the studies', () => {
     render(<RevealSheet reveal={{ sourceKey: 'model.followRate', value: 0.65 }} />);
+    expect(document.querySelector('table')!.classList.contains('sr-only')).toBe(true);
     const rows = [...document.querySelectorAll('table tbody tr')].map((r) => r.textContent);
     expect(rows).toEqual(['95%25%', '88%25%', '80%25%', '65%25%This game']);
     expect(document.body.textContent).toContain('>93% stayed');

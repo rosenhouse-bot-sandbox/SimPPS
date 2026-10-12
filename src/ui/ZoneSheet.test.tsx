@@ -81,13 +81,23 @@ describe('ZoneSheet', () => {
     const text = chip().textContent!;
     expect(text).toContain(`Rosa Parks${fmtRange(c.seats[0].after)}/594`);
     expect(text).toContain('Peninsula');
-    expect(text).toMatch(/Walk at maturity[+−]?\d+~/);
+    expect(text).toMatch(/K-5 walkers at maturity[+−]?\d+~/);
     expect(text).toContain(`${peninsula.length} blocks of 250 m, ${c.residents}~ resident kids`);
     expect(sources(chip())).toEqual(
-      expect.arrayContaining(['model.schoolRange', 'dial.walkK5', 'model.busing', 'model.zoneGrid', 'model.households', 'model.sliceStay', 'model.walkLimit']),
+      expect.arrayContaining(['model.schoolRange', 'dial.walkK5', 'model.busing', 'model.zoneGrid', 'model.households', 'model.sliceStay', 'dial.newBusRiders']),
     );
     expect(chip().querySelectorAll('button:not([data-source])')).toHaveLength(0);
     expect(screen.queryByRole('alert')).toBeNull();
+  });
+
+  it('adds seats at maturity when they differ from next fall', () => {
+    const d = addStroke(startZoneDraft('elementary', 'rosa-parks'), peninsula);
+    const seats = [{ school: 'rosa-parks', before: { lo: 400, hi: 450 }, after: { lo: 400, hi: 450 }, mature: { lo: 430, hi: 480 }, capacity: 594 }];
+    setup(d, { seats });
+    expect(screen.getByText('Seats at maturity').closest('div')!.textContent).toBe('Seats at maturityRosa Parks430–480~/594');
+    cleanup();
+    setup(d, { seats: [{ ...seats[0], mature: seats[0].after }] });
+    expect(screen.queryByText('Seats at maturity')).toBeNull();
   });
 
   it('marks zero busing as modeled and sources the net figure to busing', () => {

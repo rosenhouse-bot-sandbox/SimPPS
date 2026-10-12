@@ -49,7 +49,7 @@ export function RevealSheet({ reveal }: { reveal: Reveal }) {
           );
         })}
       </svg>
-      <table class="reveal-table">
+      <table class="sr-only">
         <thead>
           <tr>
             <th scope="col">Value</th>

@@ -8,7 +8,7 @@ describe('edits', () => {
     const draft = { ...DEFAULT_POLICY, k5ClassSize: 25, levyRate: 0, reserveDraw: 6e6 };
     expect(listEdits(draft, DEFAULT_POLICY)).toEqual([
       { text: 'K-5 class size 24 → 25', sourceKey: 'ui.k5ClassSize', undo: { k5ClassSize: 24 } },
-      { text: 'Levy $1.99 → lapse', sourceKey: 'model.levy', undo: { levyRate: 1.99 } },
+      { text: 'Levy $1.99 → lapse', sourceKey: 'model.levyRate', undo: { levyRate: 1.99 } },
       { text: 'Draw $6M from reserves', sourceKey: 'ui.reserveDraw', undo: { reserveDraw: 0 } },
     ]);
     expect(listEdits(DEFAULT_POLICY, DEFAULT_POLICY)).toEqual([]);

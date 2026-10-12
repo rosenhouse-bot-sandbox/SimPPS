@@ -6,20 +6,20 @@ import { Sourced } from './Sourced';
 import { K } from './sources';
 import { Window } from './Window';
 
-type FlowRow = { label: string; n: (f: Flows) => number; total?: boolean };
+type FlowRow = { label: string; n: (f: Flows) => number; k: string; total?: boolean };
 
 const IN_PPS: FlowRow[] = [
-  { label: 'Stayed', n: (f) => f.stayed },
-  { label: 'Moved in PPS', n: (f) => f.movedWithinPps },
-  { label: 'Came back', n: (f) => f.cameBack },
-  { label: 'New kindergartners', n: (f) => f.enteredK },
+  { label: 'Stayed', n: (f) => f.stayed, k: K.flows },
+  { label: 'Moved in PPS', n: (f) => f.movedWithinPps, k: K.flows },
+  { label: 'Came back', n: (f) => f.cameBack, k: K.flows },
+  { label: 'New kindergartners', n: (f) => f.enteredK, k: K.kCapture },
 ];
 
 const FLOW_ROWS: FlowRow[] = [
   ...IN_PPS,
-  { label: 'Kids now', n: (f) => IN_PPS.reduce((a, r) => a + r.n(f), 0), total: true },
-  { label: 'Left PPS', n: (f) => f.leftPps },
-  { label: 'To high school', n: (f) => f.graduated },
+  { label: 'Kids now', n: (f) => IN_PPS.reduce((a, r) => a + r.n(f), 0), k: K.kids, total: true },
+  { label: 'Left PPS', n: (f) => f.leftPps, k: K.flows },
+  { label: 'To high school', n: (f) => f.graduated, k: K.graduates },
 ];
 
 const DIAL_NAMES: Record<keyof Dials, string> = {
@@ -33,6 +33,7 @@ const DIAL_NAMES: Record<keyof Dials, string> = {
   walkK5: 'K-5 walkers',
   newBusRiders: 'New bus riders',
   trust: 'Trust',
+  k5Class: 'Avg K-5 class',
 };
 
 function exact(n: number): string {
@@ -41,6 +42,7 @@ function exact(n: number): string {
 
 export function fmtDial(dial: keyof Dials, v: number): string {
   if (dial === 'gap') return fmtMoney(v);
+  if (dial === 'k5Class') return v.toFixed(1);
   if (dial === 'capture' || dial === 'kindergartenCapture' || dial === 'reservePct') return fmtPct(v);
   return exact(v);
 }
@@ -54,7 +56,7 @@ function WhereKidsWent({ flows }: { flows: Flows }) {
           <dt>{r.label}</dt>
           <dd>
             <span class="bar" style={{ width: `${(100 * r.n(flows)) / max}%` }} />
-            <Sourced k={r.total ? K.kids : K.flows} modeled>
+            <Sourced k={r.k} modeled>
               {exact(r.n(flows))}
             </Sourced>
           </dd>
@@ -119,7 +121,9 @@ function RezoneReport({ r }: { r: RezoneOutcome }) {
 function VoteRow({ who, e }: { who: string; e: ElectionOutcome }) {
   return (
     <li class={e.passed ? 'call hit' : 'call'}>
-      {`${who}: $${e.rate.toFixed(2)}, `}
+      {`${who}: `}
+      <Sourced k={K.levyRate}>{`$${e.rate.toFixed(2)}`}</Sourced>
+      {', '}
       <Sourced k={K.election}>{`${Math.round(e.yes * 100)}%~`}</Sourced> yes{' '}
       <span class="stamp">{e.passed ? 'PASSED' : 'FAILED'}</span>
     </li>
@@ -132,15 +136,15 @@ function LevyVote({ you, ghost }: { you?: ElectionOutcome; ghost?: ElectionOutco
     <section class="levy-vote" aria-label="Levy vote">
       <h3>Levy vote</h3>
       <ul class="ghost">
-        {you && <VoteRow who="You" e={you} />}
+        {you ? <VoteRow who="You" e={you} /> : <li>You had no levy vote this year.</li>}
         {ghost && <VoteRow who="Ghost" e={ghost} />}
       </ul>
     </section>
   );
 }
 
-/** The ghost list shows the three largest gaps, and the Walk dials whenever they differ. */
-const ALWAYS: (keyof Dials)[] = ['walkK5', 'newBusRiders'];
+/** The ghost list shows the three largest gaps, and the Walk and class dials whenever they differ. */
+const ALWAYS: (keyof Dials)[] = ['walkK5', 'newBusRiders', 'k5Class'];
 
 interface ReportProps {
   report: YearReport;
@@ -153,9 +157,6 @@ interface ReportProps {
 export function ReportView({ report, turn, onNext, walk }: ReportProps) {
   return (
     <Window title={`DEC ${report.year} · YEAR ${turn}`} class="panel report">
-      {report.reveals.map((r) => (
-        <RevealSheet key={r.sourceKey} reveal={r} />
-      ))}
       <h3>Where kids went</h3>
       {report.closures.map((c) => (
         <ClosureReport key={c.school} c={c} />
@@ -195,6 +196,9 @@ export function ReportView({ report, turn, onNext, walk }: ReportProps) {
           ))}
         </ul>
       </section>
+      {report.reveals.map((r) => (
+        <RevealSheet key={r.sourceKey} reveal={r} />
+      ))}
       <button type="button" class="btn primary wide" onClick={onNext}>
         Plan {report.year + 1}
       </button>

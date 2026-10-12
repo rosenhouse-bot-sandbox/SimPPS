@@ -24,10 +24,8 @@ export function calendarItems(year: number, levyThrough: number): CalendarItem[]
         sourceKey: K.stateFunding,
       },
     ],
-    [
-      (levyThrough + 1) * 12 + 6,
-      { when: `JUN ${levyThrough + 1}`, text: levyThrough < year ? 'Levy expired' : 'Levy expires', sourceKey: K.levyTerm },
-    ],
   ];
+  if (levyThrough + 1 >= year)
+    items.push([(levyThrough + 1) * 12 + 6, { when: `JUN ${levyThrough + 1}`, text: 'Levy expires', sourceKey: K.levyTerm }]);
   return items.sort((a, b) => a[0] - b[0]).map(([, i]) => i);
 }

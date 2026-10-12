@@ -41,7 +41,7 @@ export function listEdits(draft: Policy, base: Policy): EditLine[] {
       undo: { k5ClassSize: base.k5ClassSize },
     });
   if (draft.levyRate !== base.levyRate)
-    out.push({ text: `Levy ${fmtLevy(base.levyRate)} → ${fmtLevy(draft.levyRate)}`, sourceKey: K.levy, undo: { levyRate: base.levyRate } });
+    out.push({ text: `Levy ${fmtLevy(base.levyRate)} → ${fmtLevy(draft.levyRate)}`, sourceKey: K.levyRate, undo: { levyRate: base.levyRate } });
   if (draft.reserveDraw > 0)
     out.push({ text: `Draw ${fmtMoney(draft.reserveDraw)} from reserves`, sourceKey: K.reserveDraw, undo: { reserveDraw: 0 } });
   return out;

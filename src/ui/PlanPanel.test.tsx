@@ -48,7 +48,7 @@ describe('PlanPanel', () => {
 
   it('shows the ballot item with its poll', () => {
     setup();
-    expect(document.querySelector('.ballot')!.textContent).toBe('May 2027: levy at $1.80 per $1,000 · poll 62–72%~');
+    expect(document.querySelector('.ballot')!.textContent).toBe('May 2027 levy vote$1.80 per $1K · poll 62–72%~');
   });
 
   it('lists each edit as sourced text with an Undo', () => {
