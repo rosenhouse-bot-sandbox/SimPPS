@@ -6,14 +6,6 @@ async function shot(page: Page, name: string) {
   if (dir) await page.screenshot({ path: `${dir}/${name}.png` });
 }
 
-async function hold(page: Page, button: Locator) {
-  const box = (await button.boundingBox())!;
-  await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
-  await page.mouse.down();
-  await page.waitForTimeout(1200);
-  await page.mouse.up();
-}
-
 test('plays a status-quo year on a phone', async ({ page }) => {
   await page.goto('?seed=smoke&start=status-quo');
 
@@ -42,10 +34,10 @@ test('plays a status-quo year on a phone', async ({ page }) => {
   await expect(gap).not.toHaveText(before!);
   await shot(page, 'm1-budget');
 
-  await hold(page, page.getByRole('button', { name: 'End year (press and hold)' }));
+  await page.getByRole('button', { name: 'Play the year' }).click();
   const preflight = page.getByRole('dialog', { name: 'Play 2027-28?' });
   await expect(preflight).toContainText('K-5 class size 24 → 25');
-  await hold(page, page.getByRole('button', { name: 'Play the year (press and hold)' }));
+  await page.getByRole('button', { name: 'Play', exact: true }).click();
 
   const playback = page.getByTestId('playback');
   await expect(playback).toBeVisible();
@@ -76,8 +68,8 @@ test('fits a small phone: one-line dials, a pausable playback and pop-overs on s
   const rows = page.locator('.topbar-row');
   for (const row of await rows.all()) expect((await row.boundingBox())!.height).toBeLessThan(40);
 
-  await hold(page, page.getByRole('button', { name: 'End year (press and hold)' }));
-  await hold(page, page.getByRole('button', { name: 'Play the year (press and hold)' }));
+  await page.getByRole('button', { name: 'Play the year' }).click();
+  await page.getByRole('button', { name: 'Play', exact: true }).click();
   const playback = page.getByTestId('playback');
   await expect(playback.getByRole('button', { name: 'Pause' })).toBeInViewport();
   await page.waitForTimeout(6500);
@@ -131,9 +123,9 @@ test('closes Peninsula into Rosa Parks and reports where the kids went', async (
   await sheet.getByRole('button', { name: 'Call it', exact: true }).tap();
   await expect(sheet).toBeHidden();
 
-  await hold(page, page.getByRole('button', { name: 'End year (press and hold)' }));
+  await page.getByRole('button', { name: 'Play the year' }).click();
   await expect(page.getByRole('dialog', { name: 'Play 2027-28?' })).toContainText('Close Peninsula → Rosa Parks');
-  await hold(page, page.getByRole('button', { name: 'Play the year (press and hold)' }));
+  await page.getByRole('button', { name: 'Play', exact: true }).click();
 
   const playback = page.getByTestId('playback');
   await expect(playback.locator('.season')).toHaveText('Fall', { timeout: 20_000 });
@@ -186,9 +178,9 @@ test('slices 30% of Peninsula into Rosa Parks and reports the re-zoned kids', as
   await shot(page, 'm3-slice');
   await sheet.getByRole('button', { name: 'Add to plan' }).tap();
 
-  await hold(page, page.getByRole('button', { name: 'End year (press and hold)' }));
+  await page.getByRole('button', { name: 'Play the year' }).click();
   await expect(page.getByRole('dialog', { name: 'Play 2027-28?' })).toContainText(/Rezone \d+ blocks → Rosa Parks/);
-  await hold(page, page.getByRole('button', { name: 'Play the year (press and hold)' }));
+  await page.getByRole('button', { name: 'Play', exact: true }).click();
   await page.getByTestId('playback').getByRole('button', { name: 'Skip' }).tap();
 
   const where = page.getByRole('region', { name: 'Where re-zoned kids went' });
@@ -216,9 +208,9 @@ test('sends Beverly Cleary 6–8 to Beaumont and reports where they went', async
   await expect(page.getByText('In the plan:')).toContainText('Send Beverly Cleary 6–8 → Beaumont');
   await shot(page, 'grade-span-plan');
 
-  await hold(page, page.getByRole('button', { name: 'End year (press and hold)' }));
+  await page.getByRole('button', { name: 'Play the year' }).click();
   await expect(page.getByRole('dialog', { name: 'Play 2027-28?' })).toContainText('Send Beverly Cleary 6–8 → Beaumont');
-  await hold(page, page.getByRole('button', { name: 'Play the year (press and hold)' }));
+  await page.getByRole('button', { name: 'Play', exact: true }).click();
   await page.getByTestId('playback').getByRole('button', { name: 'Skip' }).tap();
 
   const where = page.getByRole('region', { name: 'Where Beverly Cleary 6–8 went' });
@@ -252,9 +244,9 @@ test("moves Scenario A's DLI programs and reports where the kids went", async ({
   await shot(page, 'program-sheet');
   await clark.getByRole('button', { name: 'Close', exact: true }).tap();
 
-  await hold(page, page.getByRole('button', { name: 'End year (press and hold)' }));
+  await page.getByRole('button', { name: 'Play the year' }).click();
   await expect(page.getByRole('dialog', { name: 'Play 2027-28?' })).toContainText('Move Mandarin DLI: Clark → Woodstock');
-  await hold(page, page.getByRole('button', { name: 'Play the year (press and hold)' }));
+  await page.getByRole('button', { name: 'Play', exact: true }).click();
   const playback = page.getByTestId('playback');
   await expect(playback.locator('.season')).toHaveText('Summer', { timeout: 20_000 });
   await expect(playback).toContainText('8 DLI programs move');
@@ -277,8 +269,8 @@ test("moves Scenario A's DLI programs and reports where the kids went", async ({
 });
 
 async function playYear(page: Page, year: number) {
-  await hold(page, page.getByRole('button', { name: 'End year (press and hold)' }));
-  await hold(page, page.getByRole('button', { name: 'Play the year (press and hold)' }));
+  await page.getByRole('button', { name: 'Play the year' }).click();
+  await page.getByRole('button', { name: 'Play', exact: true }).click();
   await page.getByTestId('playback').getByRole('button', { name: 'Skip' }).click();
   await expect(page.getByRole('region', { name: new RegExp(`DEC ${year}`) })).toBeVisible();
 }
@@ -296,12 +288,12 @@ test('puts a new levy rate to voters and reports the vote', async ({ page }) => 
   await ballot.scrollIntoViewIfNeeded();
   await shot(page, 'm4-ballot');
 
-  await hold(page, page.getByRole('button', { name: 'End year (press and hold)' }));
+  await page.getByRole('button', { name: 'Play the year' }).click();
   const preflight = page.getByRole('dialog', { name: 'Play 2027-28?' });
   await expect(preflight).toContainText(/May 2027 levy vote\$1\.89 per \$1K · poll/);
   await expect(preflight).toContainText('The plan books it as passing.');
   await shot(page, 'm4-preflight');
-  await hold(page, page.getByRole('button', { name: 'Play the year (press and hold)' }));
+  await page.getByRole('button', { name: 'Play', exact: true }).click();
 
   const playback = page.getByTestId('playback');
   await expect(playback).toContainText(/Voters approve a \$1\.89 levy: \d+% yes|Levy fails: \d+% yes/);

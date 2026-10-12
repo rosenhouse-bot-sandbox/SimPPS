@@ -5,7 +5,6 @@ import type { Budget, Policy, ProgramMove } from '../sim/types';
 import { BallotItem } from './Ballot';
 import { nameOf } from './closeSend';
 import { listEdits, type EditLine } from './edits';
-import { HoldButton } from './HoldButton';
 import { Sourced } from './Sourced';
 import { K } from './sources';
 import { Term } from './Term';
@@ -106,9 +105,9 @@ export function PreflightSheet({ year, draft, base, budget, ballot, closureProgr
           <button type="button" class="btn" onClick={onBack}>
             Back
           </button>
-          <HoldButton class="btn primary" label="Play the year" onConfirm={onConfirm}>
-            Hold to play
-          </HoldButton>
+          <button type="button" class="btn primary" onClick={onConfirm}>
+            Play
+          </button>
         </div>
       </Window>
     </div>

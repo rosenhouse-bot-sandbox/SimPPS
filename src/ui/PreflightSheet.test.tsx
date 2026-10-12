@@ -33,6 +33,15 @@ describe('PreflightSheet', () => {
     expect(onBack).toHaveBeenCalledOnce();
   });
 
+  it('plays on one click', () => {
+    const onConfirm = vi.fn();
+    render(
+      <PreflightSheet year={2027} draft={DEFAULT_POLICY} base={DEFAULT_POLICY} budget={FIXTURE_GAME.budget} ballot={null} onBack={() => {}} onConfirm={onConfirm} />,
+    );
+    fireEvent.click(screen.getByRole('button', { name: 'Play' }));
+    expect(onConfirm).toHaveBeenCalledOnce();
+  });
+
   it("lists the programs the plan's closures carry", () => {
     render(
       <PreflightSheet
