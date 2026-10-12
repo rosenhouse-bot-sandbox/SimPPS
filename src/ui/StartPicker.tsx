@@ -8,19 +8,20 @@ const STARTS = Object.keys(SCENARIOS) as Start[];
 
 function blurb(start: Start): string {
   const n = SCENARIOS[start].closures.length;
-  return n ? `${n} closures load as your first plan.` : "Today's schools and budget.";
+  return n ? `Starts with PPS's ${n} proposed closures.` : "Today's schools and budget.";
 }
 
 export function StartPicker({ onPick }: { onPick: (s: Start) => void }) {
   return (
     <div class="scrim">
       <Window title="New game" class="panel sheet start-picker">
-        <p>
-          You run Portland Public Schools' K-8 schools and budget. There is no win: watch kids, money and trust against a ghost who
-          changes nothing.
+        <p class="intro">You run Portland Public Schools' K-8 schools, starting in January 2027.</p>
+        <p class="intro">
+          Each year, you plan changes: close schools, redraw boundaries, set class sizes or ask voters for a levy. Then you play the
+          year and see how families respond.
         </p>
-        <p>Each January, tap a school or $ to plan, then hold End to play the year.</p>
-        <p class="note">Every start opens in January 2027.</p>
+        <p class="intro">There is no score to win. Each year-end report compares your district with one where nothing changed.</p>
+        <p class="intro">To plan, tap a school or the $ button. To play the year, hold End.</p>
         <ul class="starts">
           {STARTS.map((s) => (
             <li key={s}>

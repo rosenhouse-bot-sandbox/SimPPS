@@ -8,17 +8,19 @@ afterEach(cleanup);
 describe('StartPicker', () => {
   it('says what the game is and how a turn works', () => {
     render(<StartPicker onPick={() => {}} />);
-    expect(screen.getByText(/^You run Portland Public Schools/).textContent).toBe(
-      "You run Portland Public Schools' K-8 schools and budget. There is no win: watch kids, money and trust against a ghost who changes nothing.",
-    );
-    expect(screen.getByText(/hold End/).textContent).toBe('Each January, tap a school or $ to plan, then hold End to play the year.');
+    expect([...document.querySelectorAll('.start-picker p.intro')].map((p) => p.textContent)).toEqual([
+      "You run Portland Public Schools' K-8 schools, starting in January 2027.",
+      'Each year, you plan changes: close schools, redraw boundaries, set class sizes or ask voters for a levy. Then you play the year and see how families respond.',
+      'There is no score to win. Each year-end report compares your district with one where nothing changed.',
+      'To plan, tap a school or the $ button. To play the year, hold End.',
+    ]);
   });
 
   it('offers the three starts, badging what scenarios leave out', () => {
     const onPick = vi.fn();
     render(<StartPicker onPick={onPick} />);
-    expect(screen.getByText('14 closures load as your first plan.')).toBeTruthy();
-    expect(screen.getByText('11 closures load as your first plan.')).toBeTruthy();
+    expect(screen.getByText("Starts with PPS's 14 proposed closures.")).toBeTruthy();
+    expect(screen.getByText("Starts with PPS's 11 proposed closures.")).toBeTruthy();
     expect(document.querySelectorAll('.badge')).toHaveLength(2);
     expect(screen.getByText(SCENARIOS['scenario-b'].notModeled!).getAttribute('data-source')).toBe('model.scenarios');
     fireEvent.click(screen.getByRole('button', { name: 'PPS Scenario B' }));
