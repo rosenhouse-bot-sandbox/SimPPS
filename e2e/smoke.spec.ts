@@ -202,7 +202,7 @@ test('slices 30% of Peninsula into Rosa Parks and reports the re-zoned kids', as
 async function playYear(page: Page, year: number) {
   await hold(page, page.getByRole('button', { name: 'End year (press and hold)' }));
   await hold(page, page.getByRole('button', { name: 'Play the year (press and hold)' }));
-  await page.getByTestId('playback').getByRole('button', { name: 'Skip' }).tap();
+  await page.getByTestId('playback').getByRole('button', { name: 'Skip' }).click();
   await expect(page.getByRole('region', { name: new RegExp(`DEC ${year}`) })).toBeVisible();
 }
 
@@ -272,3 +272,47 @@ test('reveals the hidden cards after three years', async ({ page }) => {
   await shot(page, 'm4-reveal');
   await expect(page.getByRole('region', { name: "Revealed: Closed zone's kindergarten capture" })).toBeVisible();
 });
+
+async function dialsFit(page: Page) {
+  const topbar = page.locator('.topbar');
+  expect(await topbar.evaluate((e) => e.scrollWidth <= e.clientWidth)).toBe(true);
+  for (const dial of await topbar.locator('.sourced').all()) await dial.click({ trial: true, timeout: 2000 });
+}
+
+for (const width of [900, 1024, 1440]) {
+  test.describe(`on a ${width}px desktop`, () => {
+    test.use({ viewport: { width, height: 800 }, isMobile: false, hasTouch: false });
+
+    test('keeps the map wide, the dials in reach and sheets beside the map', async ({ page }) => {
+      await page.goto('?seed=p52');
+      const picker = page.getByRole('region', { name: 'New game' });
+      expect((await picker.boundingBox())!.width).toBeLessThan(720);
+      await picker.getByRole('button', { name: 'Status quo 2026' }).click();
+      await dialsFit(page);
+
+      const map = page.locator('.pps-map');
+      const beside = async (sheet: Locator) => {
+        const [m, s] = [(await map.boundingBox())!, (await sheet.boundingBox())!];
+        expect(m.width).toBeGreaterThan(width * 0.6);
+        expect(s.x).toBeGreaterThanOrEqual(m.x + m.width);
+      };
+
+      await page.getByRole('button', { name: 'Plan' }).click();
+      await page.getByRole('button', { name: 'Rosa Parks Elementary School' }).click();
+      await beside(page.getByRole('region', { name: 'Rosa Parks Elementary School' }));
+      const [m, badge] = [(await map.boundingBox())!, (await page.locator('[data-school="rosa-parks"] > rect').first().boundingBox())!];
+      expect(Math.abs(badge.y + badge.height / 2 - (m.y + m.height / 2))).toBeLessThan(m.height * 0.1);
+
+      await page.getByRole('button', { name: 'Budget' }).click();
+      await beside(page.getByRole('region', { name: 'Budget' }));
+      await page.mouse.click(badge.x + badge.width / 2, badge.y + badge.height / 2);
+      const choose = page.getByRole('dialog', { name: 'Choose a school' });
+      if (await choose.isVisible()) await choose.getByRole('button', { name: 'Rosa Parks' }).click();
+      await expect(page.getByRole('region', { name: 'Rosa Parks Elementary School' })).toBeVisible();
+
+      await playYear(page, 2027);
+      await beside(page.getByRole('region', { name: /DEC 2027/ }));
+      await dialsFit(page);
+    });
+  });
+}

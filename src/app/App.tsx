@@ -23,6 +23,7 @@ import { calendarItems } from '../ui/calendar';
 import { Revealed } from '../ui/Sourced';
 import { DECIDED, initApp, lastTurn, makeReducer, mapState, type Sim } from './machine';
 import { MapSlot, type MapZoneLevel, type Overlay } from './MapSlot';
+import { useMedia } from './useMedia';
 
 interface AppProps {
   sim: Sim;
@@ -38,8 +39,11 @@ interface AppProps {
   playbackMs?: number;
 }
 
-/** Sheets cover the lower map, and the zone sheet more of it. In playback the season sits above center and the ticker below. */
-const FOCUS_AT = { sheet: 0.3, zone: 0.18, playback: 0.5 };
+/** On a phone, sheets cover the lower map, and the zone sheet more of it. Playback and desktop sheets leave the center in view. */
+const FOCUS_AT = { sheet: 0.3, zone: 0.18, clear: 0.5 };
+
+/** Matches the stylesheet's desktop layout, where sheets sit beside the map. */
+const WIDE = '(min-width: 900px)';
 
 type Sent = { school: SchoolId; receivers: { school: SchoolId }[] };
 
@@ -72,6 +76,7 @@ export function App({ sim, seed, start = 'status-quo', onStart, saved, onSave, o
   const [zoneLevel, setZoneLevel] = useState<MapZoneLevel>('elementary');
   const [season, setSeason] = useState<Season>('spring');
   const [zoneDraft, setZoneDraft] = useState<ZoneDraft | null>(null);
+  const wide = useMedia(WIDE);
 
   const turn = lastTurn(s);
   const shown = s.phase === 'report' && turn ? turn.end : s.game;
@@ -131,7 +136,10 @@ export function App({ sim, seed, start = 'status-quo', onStart, saved, onSave, o
     s.phase === 'playing' && played.length > 0 && season !== 'spring' ? played[0].school : (zoning?.to ?? drafting?.school ?? listed);
   const onMapTap = (id: SchoolId) => {
     if (drafting?.step === 1 && candidates.some((c) => c.id === id)) setCloseDraft(toggleReceiver(drafting, id));
-    else if (!drafting) setSelected(id);
+    else if (!drafting) {
+      setSelected(id);
+      setTool('map');
+    }
   };
   const closing = s.draft.closures.find((c) => c.school === selected);
   /** Closing a receiver or a boundary edit's target would silently drop those edits, so it can't close. */
@@ -174,11 +182,12 @@ export function App({ sim, seed, start = 'status-quo', onStart, saved, onSave, o
                 : undefined
             }
             focus={focus}
-            focusAt={s.phase === 'playing' ? FOCUS_AT.playback : zoning ? FOCUS_AT.zone : FOCUS_AT.sheet}
+            focusAt={wide || s.phase === 'playing' ? FOCUS_AT.clear : zoning ? FOCUS_AT.zone : FOCUS_AT.sheet}
             marks={marks}
             links={links}
             flows={flows}
           />
+          <p class="side-hint">To plan, pick a school or the $ button. To play the year, hold End.</p>
           {planning && tool === 'budget' && (
             <BudgetPanel
               game={s.game}
