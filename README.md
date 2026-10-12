@@ -1,6 +1,15 @@
 # SimPPS
 
-A mobile-web sandbox game about Portland Public Schools' closures and budget. The design lives in issue #1, and the alpha plan in issue #2.
+A sandbox game about Portland Public Schools' closures and budget.
+
+## Why?
+
+I live in Portland, near a school that is slated to be closed, and want to understand what's going to happen and why.  I wondered if a playable simulation might help me understand the situation better.
+
+## Built with AI
+This was built entirely by Anthropic's Claude AI agent, including research of public data sources on the web, game design and implementation.  It has used about 0.5B tokens so far, with a 97% cache hit rate -- probably about 20 kWh of electricity, or 70 miles of EV driving.  I hope this turns out to be a worthwhile use of energy!
+
+## Development
 
 ```sh
 npm install
