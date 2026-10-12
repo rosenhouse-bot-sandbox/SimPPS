@@ -2,6 +2,7 @@ import { cleanup, fireEvent, render, screen } from '@testing-library/preact';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { fmtSignedMoney } from '../format';
 import { DEFAULT_POLICY, levyRevenue, type BallotPreview, type Policy } from '../sim';
+import { setModelParams } from '../sim/model';
 import { BudgetPanel } from './BudgetPanel';
 import { FIXTURE_GAME } from './fixtures';
 import { termsIn } from './terms.testing';
@@ -130,6 +131,12 @@ describe('BudgetPanel', () => {
     expect(note).toBe('Reserves after: $23.6M, 2.9%');
     expect(screen.getByText(/Below 5%/).textContent).toBe('Below 5% breaches policy.');
     expect(screen.getByText(/mid-year/).textContent).toBe('Below 3%: 12 positions cut mid-year.');
+  });
+
+  it('quotes the mid-year floor from the model', () => {
+    setModelParams({ midYearFloor: 0.02 });
+    setup();
+    expect(screen.getByText(/mid-year/).textContent).toBe('Below 2%: 12 positions cut mid-year.');
   });
 });
 

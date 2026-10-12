@@ -1,5 +1,5 @@
-import { computeBudget, FIRST_YEAR, generalFund, stateFundingLevel } from './budget';
-import { CLOSED_ZONE_CAPTURE_DROPS, FOLLOW_RATES, gradeOf, HIDDEN_CARDS, M, MAX_GRADE, REVEAL_AFTER_YEARS } from './model';
+import { computeBudget, costIndex, FIRST_YEAR, stateFundingLevel } from './budget';
+import { cleanOverrides, CLOSED_ZONE_CAPTURE_DROPS, FOLLOW_RATES, gradeOf, HIDDEN_CARDS, M, MAX_GRADE, MODEL_DEFAULTS, REVEAL_AFTER_YEARS, setModelParams } from './model';
 import { expectedYes, levyBallot, levyRateFor, pollRange } from './election';
 import { meanTrust, startTrust, strainFor, trustAfterYear } from './trust';
 import { clamp } from '../clamp';
@@ -15,7 +15,7 @@ import { conversionChip as spanChip, conversionOutcomes, convertedIn, effectiveG
 import { familiesDecide, stepYear } from './step';
 import { assignDli, closurePrograms, effectiveProgramMoves, normalizeProgramMoves, programMoveOutcomes, withProgramArrivals } from './programs';
 import { SCHOOL_INFO } from './population';
-import type { Ballot, Budget, Closure, GameState, GradeSpanChange, Household, Policy, ProgramMove, Range, Reveal, SimMemory, YearReport, ZoneMap } from './types';
+import type { Ballot, Budget, Closure, GameState, GradeSpanChange, Household, ModelOverrides, Policy, ProgramMove, Range, Reveal, SimMemory, YearReport, ZoneMap } from './types';
 
 export * from './types';
 export { modeledRange } from './range';
@@ -38,7 +38,6 @@ export { walkLimit } from './walk';
 export { SCENARIOS, type Start } from './scenarios';
 export { DLI_PROGRAMS } from './programs';
 export { FATE_DONE } from './report';
-export const MOTHBALL_PER_YEAR = M.mothball;
 
 export interface ClosureChip extends BaseClosureChip {
   /** The school's DLI programs that move with the closure. */
@@ -94,10 +93,12 @@ export function closureProgramMoves(state: GameState, policy: Policy): ProgramMo
   return carriedPrograms(state, plan.closures, plan.gradeChanges, plan.programMoves);
 }
 
-export const DEFAULT_POLICY: Policy = { k5ClassSize: 24, levyRate: 1.99, levyElection: 'may', reserveDraw: 0, closures: [], boundaryEdits: [], gradeChanges: [], programMoves: [] };
+export const DEFAULT_POLICY: Policy = { k5ClassSize: 24, levyRate: MODEL_DEFAULTS.levyRate, levyElection: 'may', reserveDraw: 0, closures: [], boundaryEdits: [], gradeChanges: [], programMoves: [] };
 
-/** A start loads its closures into the first plan as ordinary edits. */
-export function newGame(opts: { seed: string; start?: Start }): GameState {
+/** A start loads its closures into the first plan as ordinary edits. The game keeps `model` for every year it plays. */
+export function newGame(opts: { seed: string; start?: Start; model?: ModelOverrides }): GameState {
+  const model = cleanOverrides(opts.model);
+  setModelParams(model);
   const seedHash = hashString(opts.seed);
   const pop = generatePopulation(seedHash);
   const middle = defaultZones().middle;
@@ -126,12 +127,17 @@ export function newGame(opts: { seed: string; start?: Start }): GameState {
     stateFunding: stateFundingLevel(seedHash, FIRST_YEAR, 'january'),
     closed: [],
   };
-  const k8 = computeBudget(input).lines;
+  // model.restOfDistrict: sized at default unit costs, so a changed cost or rate shows in the opening gap.
+  const { generalFund: fund, startGap } = M;
+  setModelParams();
+  const k8 = computeBudget({ ...input, schools: buildSchools(households, DEFAULT_POLICY.k5ClassSize) }).lines;
   const revenue = k8.filter((l) => l.amount > 0).reduce((a, l) => a + l.amount, 0);
   const cost = -k8.filter((l) => l.amount < 0).reduce((a, l) => a + l.amount, 0);
-  const total = generalFund(FIRST_YEAR);
+  const total = fund * costIndex(FIRST_YEAR + 1);
+  setModelParams(model);
   const sim: SimMemory = {
     seedHash,
+    model,
     nextId: fall2026.nextId,
     kChoice: pop.kChoice,
     msMix: pop.msMix,
@@ -142,7 +148,7 @@ export function newGame(opts: { seed: string; start?: Start }): GameState {
     cumulativeCuts: 0,
     spending: M.generalFund,
     homeroomsCut: 0,
-    restRevenue: total + M.startGap - revenue,
+    restRevenue: total + startGap - revenue,
     restCost: total - cost,
     closed: [],
     converted: [],
@@ -274,6 +280,7 @@ function reveals(sim: SimMemory, year: number): Reveal[] {
 
 /** Plays a year for the player and for the do-nothing ghost (model.ghost). */
 export function endYear(state: GameState, policy: Policy): { next: GameState; report: YearReport } {
+  setModelParams(state.sim!.model);
   const mine = stepYear(state, normalizePolicy(policy));
   const ghostYear = stepYear(state.sim!.ghost ?? state, DEFAULT_POLICY);
   const ghost = ghostYear.next;

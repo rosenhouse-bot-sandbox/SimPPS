@@ -1,6 +1,7 @@
 import { cleanup, fireEvent, render, screen } from '@testing-library/preact';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { DEFAULT_POLICY, type BallotPreview } from '../sim';
+import { setModelParams } from '../sim/model';
 import { FIXTURE_GAME } from './fixtures';
 import { PreflightSheet } from './PreflightSheet';
 import { termsIn } from './terms.testing';
@@ -57,6 +58,22 @@ describe('PreflightSheet', () => {
     expect(sheet(2029, { rate: 1.99, when: 'november', renewal: true, poll: { lo: 0.72, hi: 0.82 } })).not.toContain('books it');
     cleanup();
     expect(sheet(2027)).toContain('BallotNone');
+  });
+
+  it('quotes the mid-year floor from the model', () => {
+    setModelParams({ midYearFloor: 0.02 });
+    render(
+      <PreflightSheet
+        year={2027}
+        draft={DEFAULT_POLICY}
+        base={DEFAULT_POLICY}
+        budget={{ ...FIXTURE_GAME.budget, midYearCuts: 5 }}
+        ballot={null}
+        onBack={() => {}}
+        onConfirm={() => {}}
+      />,
+    );
+    expect(screen.getByRole('dialog').textContent).toContain('5 more mid-year, as reserves fall below 2%');
   });
 
   it('warns that odd-year plans assume flat state funding', () => {

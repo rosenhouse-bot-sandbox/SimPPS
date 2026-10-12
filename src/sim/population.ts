@@ -115,12 +115,12 @@ export function apportion(n: number, weights: number[]): number[] {
 
 /** model.exitCapacity */
 export function exitCapacityFor(zoneSchool: SchoolId, u: number): number {
-  return clamp(1 - directCert(zoneSchool) / M.directCertForZeroExit + (u - 0.5) * 0.2, 0.02, 0.98);
+  return clamp(1 - directCert(zoneSchool) / M.directCertForZeroExit + (u - 0.5) * M.exitNoise, M.exitMin, M.exitMax);
 }
 
 /** model.voice */
 export function voiceFor(exitCapacity: number, u: number): number {
-  return clamp(0.1 + 0.4 * exitCapacity + (u - 0.5) * 0.2, 0, 1);
+  return clamp(M.voiceBase + M.voicePerExit * exitCapacity + (u - 0.5) * M.voiceNoise, 0, 1);
 }
 
 export interface Population {
@@ -188,7 +188,7 @@ export function generatePopulation(seedHash: number): Population {
   for (let g = 0; g <= MAX_GRADE; g++) {
     const perZone = apportion(
       outByGrade[g],
-      residents.map((r, z) => r[g] * (0.5 + zoneExit[z])),
+      residents.map((r, z) => r[g] * (M.outsideBaseWeight + zoneExit[z])),
     );
     perZone.forEach((n, z) => {
       for (let k = 0; k < n; k++)
@@ -220,7 +220,7 @@ export function generatePopulation(seedHash: number): Population {
       school: h.school,
       exitCapacity,
       // model.loyalty
-      loyalty: clamp(zoneKeep[h.elemZone] + (rand() - 0.5) * 0.2, 0, 1),
+      loyalty: clamp(zoneKeep[h.elemZone] + (rand() - 0.5) * M.loyaltyNoise, 0, 1),
       voice: voiceFor(exitCapacity, rand()),
       status: h.school === null ? 'left' : 'stayed',
     };

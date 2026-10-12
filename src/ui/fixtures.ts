@@ -31,6 +31,7 @@ export const FIXTURE_GAME: GameState = {
     newBusRiders: 0,
     trust: 35,
     k5Class: 24,
+    classrooms: 12_400,
   },
   policy: DEFAULT_POLICY,
   zones: defaultZones(),

@@ -443,3 +443,28 @@ test.describe('on a desktop', () => {
     await shot(page, 'glossary-desktop');
   });
 });
+
+test('changes a model parameter for a new game and keeps it in the link', async ({ page }) => {
+  await page.goto('?seed=params');
+  await page.getByRole('region', { name: 'New game' }).getByRole('button', { name: 'Advanced: model parameters' }).tap();
+  const params = page.getByRole('dialog', { name: 'Model parameters' });
+  const leave = params.getByLabel('leaveRate', { exact: true });
+  await leave.fill('2');
+  await expect(params).toContainText('Use 0 to 0.1.');
+  await leave.fill('0.02');
+  await expect(params.locator('.param.changed')).toHaveCount(1);
+  expect(await params.evaluate((e) => e.scrollWidth <= e.clientWidth && e.getBoundingClientRect().right <= innerWidth)).toBe(true);
+  await shot(page, 'm1-model-params');
+  await params.getByRole('button', { name: 'Done' }).tap();
+
+  const starts = page.getByRole('region', { name: 'New game' });
+  await expect(starts).toContainText('This game changes 1 model parameter.');
+  await starts.getByRole('button', { name: 'Status quo 2026' }).tap();
+  await expect(page).toHaveURL(/[?&]m\.leaveRate=0\.02(&|$)/);
+
+  await page.reload();
+  await playYear(page, 2027);
+  const badge = page.getByRole('region', { name: /DEC 2027/ }).locator('.model-changed');
+  await badge.getByText('Changed model: 1 parameter').tap();
+  await expect(badge).toContainText(': 0.02, default 0.015');
+});

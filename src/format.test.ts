@@ -7,6 +7,9 @@ describe('format', () => {
     expect(fmtMoney(1_830_000_000)).toBe('$1.8B');
     expect(fmtMoney(155_000)).toBe('$155K');
     expect(fmtMoney(70)).toBe('$70');
+    expect(fmtMoney(2.5e12)).toBe('$2.5T');
+    expect(fmtMoney(-1e300)).toBe('−$999T+');
+    expect(fmtMoney(NaN)).toBe('$?');
     expect(fmtSignedMoney(4_000_000)).toBe('+$4M');
   });
 

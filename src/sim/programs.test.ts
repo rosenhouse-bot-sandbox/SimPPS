@@ -105,7 +105,7 @@ describe('a program move over the years', () => {
   it('follows less often past 2 miles', () => {
     const at = (miles: number): Point => [schoolPos('woodstock')[0] + miles * METERS_PER_MILE, schoolPos('woodstock')[1]];
     expect(programStay(at(1), 'woodstock')).toBe(M.programMoveStay);
-    expect(programStay(at(4), 'woodstock')).toBeCloseTo(M.programMoveStay - 2 * M.followPerMilePastOne);
+    expect(programStay(at(4), 'woodstock')).toBeCloseTo(M.programMoveStay - 2 * M.followPerMile);
   });
 
   it('sends each kid to the receiver exactly when its draw beats model.programMove', () => {
