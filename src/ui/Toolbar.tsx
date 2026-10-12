@@ -1,5 +1,3 @@
-import { HoldButton } from './HoldButton';
-
 export type Tool = 'map' | 'plan' | 'budget' | 'layers' | 'news';
 
 const TOOLS: { id: Tool; text: string; label: string }[] = [
@@ -13,11 +11,12 @@ const TOOLS: { id: Tool; text: string; label: string }[] = [
 interface ToolbarProps {
   active: Tool;
   onPick: (t: Tool) => void;
-  onEnd: () => void;
+  onPlay: () => void;
   disabled: boolean;
+  canPlay: boolean;
 }
 
-export function Toolbar({ active, onPick, onEnd, disabled }: ToolbarProps) {
+export function Toolbar({ active, onPick, onPlay, disabled, canPlay }: ToolbarProps) {
   return (
     <nav class="toolbar" aria-label="Tools">
       {TOOLS.map((t) => (
@@ -33,15 +32,9 @@ export function Toolbar({ active, onPick, onEnd, disabled }: ToolbarProps) {
           {t.text}
         </button>
       ))}
-      {disabled ? (
-        <button type="button" class="tool" disabled>
-          End
-        </button>
-      ) : (
-        <HoldButton class="tool end" label="End year" onConfirm={onEnd}>
-          End
-        </HoldButton>
-      )}
+      <button type="button" class="tool play" aria-label="Play the year" disabled={!canPlay} onClick={onPlay}>
+        ▶︎
+      </button>
     </nav>
   );
 }

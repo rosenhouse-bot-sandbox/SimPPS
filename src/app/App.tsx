@@ -266,7 +266,7 @@ export function App({ sim, seed, start = 'status-quo', model: initialModel = {},
             links={links}
             flows={flows}
           />
-          <p class="side-hint">To plan, pick a school or the $ button. To play the year, hold End.</p>
+          <p class="side-hint">To plan, pick a school or the $ button. To play the year, press ▶︎.</p>
           {planning && tool === 'budget' && (
             <BudgetPanel
               game={s.game}
@@ -394,13 +394,14 @@ export function App({ sim, seed, start = 'status-quo', model: initialModel = {},
         <Toolbar
           active={tool}
           onPick={setTool}
-          onEnd={() => {
+          onPlay={() => {
             setCloseDraft(null);
             setSpanDraft(null);
             setZoneDraft(null);
             dispatch({ type: 'preflight' });
           }}
           disabled={s.phase !== 'plan'}
+          canPlay={planning}
         />
         {picking && (
           <StartPicker

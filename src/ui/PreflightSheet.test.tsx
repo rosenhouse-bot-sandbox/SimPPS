@@ -1,9 +1,9 @@
-import { cleanup, fireEvent, render, screen } from '@testing-library/preact';
+import { act, cleanup, fireEvent, render, screen } from '@testing-library/preact';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { DEFAULT_POLICY, type BallotPreview } from '../sim';
 import { setModelParams } from '../sim/model';
 import { FIXTURE_GAME } from './fixtures';
-import { PreflightSheet } from './PreflightSheet';
+import { PLAY_ARM_MS, PreflightSheet } from './PreflightSheet';
 import { termsIn } from './terms.testing';
 
 afterEach(cleanup);
@@ -32,6 +32,24 @@ describe('PreflightSheet', () => {
     );
     fireEvent.keyDown(screen.getByRole('dialog'), { key: 'Escape' });
     expect(onBack).toHaveBeenCalledOnce();
+  });
+
+  it('plays on one click once a double-tap on ▶ could no longer land on Play', () => {
+    vi.useFakeTimers();
+    const onConfirm = vi.fn();
+    render(
+      <PreflightSheet year={2027} draft={DEFAULT_POLICY} base={DEFAULT_POLICY} budget={FIXTURE_GAME.budget} ballot={null} onBack={() => {}} onConfirm={onConfirm} />,
+    );
+    const play = screen.getByRole('button', { name: 'Play' });
+    expect(play).toHaveProperty('disabled', true);
+    fireEvent.click(play);
+    expect(onConfirm).not.toHaveBeenCalled();
+    act(() => {
+      vi.advanceTimersByTime(PLAY_ARM_MS);
+    });
+    fireEvent.click(play);
+    expect(onConfirm).toHaveBeenCalledOnce();
+    vi.useRealTimers();
   });
 
   it("lists the programs the plan's closures carry", () => {
