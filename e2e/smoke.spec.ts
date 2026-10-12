@@ -129,6 +129,7 @@ test('closes Peninsula into Rosa Parks and reports where the kids went', async (
   for (let i = 0; i < 4; i++) await step.tap();
   await shot(page, 'm2-call-it');
   await sheet.getByRole('button', { name: 'Call it' }).tap();
+  await expect(sheet).toBeHidden();
 
   await hold(page, page.getByRole('button', { name: 'End year (press and hold)' }));
   await expect(page.getByRole('dialog', { name: 'Play 2027-28?' })).toContainText('Close Peninsula → Rosa Parks');

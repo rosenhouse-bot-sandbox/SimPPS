@@ -16,6 +16,7 @@ export function HoldButton({ onConfirm, children, label, ms = 1000, class: cls =
   const hintTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [holding, setHolding] = useState(false);
   const [hint, setHint] = useState(false);
+  const byKey = useRef(false);
 
   const cancel = () => {
     if (timer.current) clearTimeout(timer.current);
@@ -30,8 +31,9 @@ export function HoldButton({ onConfirm, children, label, ms = 1000, class: cls =
     if (hintTimer.current) clearTimeout(hintTimer.current);
     hintTimer.current = setTimeout(() => setHint(false), 1500);
   };
-  const start = () => {
+  const start = (key: boolean) => {
     if (timer.current) return;
+    byKey.current = key;
     setHolding(true);
     timer.current = setTimeout(() => {
       timer.current = null;
@@ -53,7 +55,7 @@ export function HoldButton({ onConfirm, children, label, ms = 1000, class: cls =
       class={`hold ${holding ? 'holding' : ''} ${cls}`}
       style={{ '--hold-ms': `${ms}ms` }}
       aria-label={`${label} (press and hold)`}
-      onPointerDown={start}
+      onPointerDown={() => start(false)}
       onPointerUp={release}
       onPointerLeave={cancel}
       onPointerCancel={cancel}
@@ -61,13 +63,13 @@ export function HoldButton({ onConfirm, children, label, ms = 1000, class: cls =
       onKeyDown={(e) => {
         if (e.key === 'Enter' || e.key === ' ') {
           e.preventDefault();
-          start();
+          start(true);
         }
       }}
       onKeyUp={(e) => {
         if (e.key === 'Enter' || e.key === ' ') release();
       }}
-      onBlur={cancel}
+      onBlur={() => byKey.current && cancel()}
     >
       <span class="hold-fill" aria-hidden="true" />
       <span class="hold-label">{hint ? 'Hold' : children}</span>
