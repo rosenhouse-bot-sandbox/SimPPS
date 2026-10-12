@@ -35,10 +35,13 @@ function newGame() {
   if (confirm('Leave this game and start a new one?')) location.search = '';
 }
 
+const root = document.getElementById('app')!;
+// Preact renders beside the static loading text rather than replacing it.
+root.replaceChildren();
 function mount(saved: Policy[]) {
   render(
     <App sim={sim} seed={seed} start={start} saved={saved} onStart={keep} onSave={save} onNewGame={newGame} />,
-    document.getElementById('app')!,
+    root,
   );
 }
 
