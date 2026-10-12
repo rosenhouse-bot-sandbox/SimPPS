@@ -183,7 +183,7 @@ export function CloseSendSheet({ draft, candidates: all, chipFor, onChange, onCo
         <>
           <StepHead title="Building" step={3} />
           <fieldset class="fates">
-            <legend class="sr">Building</legend>
+            <legend class="sr-only">Building</legend>
             {FATES.map((f) => (
               <label key={f.id} class="row choice">
                 <input

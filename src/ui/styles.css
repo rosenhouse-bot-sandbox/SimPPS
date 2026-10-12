@@ -9,18 +9,23 @@
   --faint: #85857d;
   --accent: #1d6b3a;
   --accent-soft: #e2efe5;
+  --accent-hover: #175a30;
+  --paper: #f7f2e3;
+  --reveal-bg: #f3f7fb;
+  --focus: #3b82c4;
   --warn: #a3261b;
   --title: #2c5d8f;
   --chrome: #1f2621;
   --chrome-2: #2c3630;
   --chrome-line: #3d4a41;
   --chrome-text: #efe9d6;
+  --chrome-dim: #8c978d;
   --pixel: 'VT323', ui-monospace, 'SFMono-Regular', Menlo, Consolas, monospace;
   --body: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
   --radius: 8px;
   --row: 48px;
   --step: 44px;
-  --side: clamp(360px, 30vw, 440px);
+  --side: clamp(320px, 30vw, 440px);
   color-scheme: light;
 }
 
@@ -52,7 +57,7 @@ select {
 }
 
 :focus-visible {
-  outline: 2px solid var(--title);
+  outline: 2px solid var(--focus);
   outline-offset: 1px;
 }
 
@@ -173,10 +178,11 @@ select {
   top: 4px;
 }
 
-/* The next-year button stays in view on short screens. */
+/* The next-year button stays in view on short screens, on a band that hides what scrolls under it. */
 .panel.report .btn.wide {
   position: sticky;
-  bottom: -14px;
+  bottom: 0;
+  box-shadow: 0 0 0 14px var(--surface);
 }
 
 h3 {
@@ -241,7 +247,7 @@ dl {
 
 .topbar .sourced,
 .gapbar .sourced {
-  text-decoration-color: #6f7c70;
+  text-decoration-color: var(--chrome-dim);
 }
 
 .sourced:hover {
@@ -283,7 +289,6 @@ dl {
 }
 
 .step:disabled,
-.tool:disabled,
 .btn:disabled {
   color: var(--faint);
   cursor: default;
@@ -372,7 +377,7 @@ dl {
 }
 
 .tool:disabled {
-  color: #6f7c70;
+  color: var(--chrome-dim);
 }
 
 .tool[aria-pressed='true']:disabled {
@@ -430,7 +435,7 @@ dl {
 }
 
 .btn.primary:not(:disabled):hover {
-  background: #175a30;
+  background: var(--accent-hover);
 }
 
 .btn.primary:disabled {
@@ -609,7 +614,7 @@ legend {
   padding: 10px;
   border: 1px solid var(--line);
   border-radius: 6px;
-  background: #f7f2e3;
+  background: var(--paper);
 }
 
 .bulletin li {
@@ -736,14 +741,6 @@ legend {
 
 .fate {
   flex: 1;
-}
-
-.sr {
-  position: absolute;
-  width: 1px;
-  height: 1px;
-  overflow: hidden;
-  clip-path: inset(50%);
 }
 
 .edits li {
@@ -935,7 +932,7 @@ legend {
   padding: 10px;
   border: 1px solid var(--title);
   border-radius: 6px;
-  background: #f3f7fb;
+  background: var(--reveal-bg);
 }
 
 .reveal h3 {
@@ -994,16 +991,18 @@ legend {
     max-width: none;
   }
 
+  /* Dials wrap to a second line before they would run under the toolbar. */
   .topbar {
     display: flex;
+    flex-wrap: wrap;
     align-items: center;
-    gap: 32px;
-    padding: 0 16px;
-    font-size: 24px;
+    gap: 0 20px;
+    padding: 4px 16px;
   }
 
   .topbar-row {
-    gap: 32px;
+    flex-wrap: wrap;
+    gap: 0 20px;
   }
 
   .toolbar {
@@ -1033,16 +1032,16 @@ legend {
     min-height: 0;
   }
 
-  .stage:has(> .window, > .playback) > .side-hint {
-    display: none;
-  }
-
   .side-hint {
     display: block;
     max-width: none;
     margin: 0;
     padding: 24px;
     color: var(--muted);
+  }
+
+  .stage:has(> .window, > .playback) > .side-hint {
+    display: none;
   }
 
   .stage > .panel,
@@ -1095,8 +1094,7 @@ legend {
     transform: translateY(-50%);
   }
 
-  .start-picker p,
-  .start-picker .starts p {
+  .start-picker p {
     max-width: none;
   }
 }

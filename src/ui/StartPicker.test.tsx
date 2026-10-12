@@ -12,7 +12,7 @@ describe('StartPicker', () => {
       "You run Portland Public Schools' K-8 schools, starting in January 2027.",
       'Each year, you plan changes: close schools, redraw boundaries, set class sizes or ask voters for a levy. Then you play the year and see how families respond.',
       'There is no score to win. Each year-end report compares your district with one where nothing changed.',
-      'To plan, tap a school or the $ button. To play the year, hold End.',
+      'To plan, pick a school or the $ button. To play the year, hold End.',
     ]);
   });
 

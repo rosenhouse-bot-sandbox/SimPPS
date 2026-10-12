@@ -23,6 +23,7 @@ import { calendarItems } from '../ui/calendar';
 import { Revealed } from '../ui/Sourced';
 import { DECIDED, initApp, lastTurn, makeReducer, mapState, type Sim } from './machine';
 import { MapSlot, type MapZoneLevel, type Overlay } from './MapSlot';
+import { useMedia } from './useMedia';
 
 interface AppProps {
   sim: Sim;
@@ -43,18 +44,6 @@ const FOCUS_AT = { sheet: 0.3, zone: 0.18, clear: 0.5 };
 
 /** Matches the stylesheet's desktop layout, where sheets sit beside the map. */
 const WIDE = '(min-width: 900px)';
-
-function useMedia(query: string) {
-  const list = typeof matchMedia === 'function' ? matchMedia(query) : null;
-  const [matches, setMatches] = useState(!!list?.matches);
-  useEffect(() => {
-    if (!list) return;
-    const onChange = () => setMatches(list.matches);
-    list.addEventListener('change', onChange);
-    return () => list.removeEventListener('change', onChange);
-  }, [query]);
-  return matches;
-}
 
 type Sent = { school: SchoolId; receivers: { school: SchoolId }[] };
 
@@ -147,7 +136,10 @@ export function App({ sim, seed, start = 'status-quo', onStart, saved, onSave, o
     s.phase === 'playing' && played.length > 0 && season !== 'spring' ? played[0].school : (zoning?.to ?? drafting?.school ?? listed);
   const onMapTap = (id: SchoolId) => {
     if (drafting?.step === 1 && candidates.some((c) => c.id === id)) setCloseDraft(toggleReceiver(drafting, id));
-    else if (!drafting) setSelected(id);
+    else if (!drafting) {
+      setSelected(id);
+      setTool('map');
+    }
   };
   const closing = s.draft.closures.find((c) => c.school === selected);
   /** Closing a receiver or a boundary edit's target would silently drop those edits, so it can't close. */
@@ -195,7 +187,7 @@ export function App({ sim, seed, start = 'status-quo', onStart, saved, onSave, o
             links={links}
             flows={flows}
           />
-          <p class="side-hint">Click a school for its sheet. Plan, $ and End are above.</p>
+          <p class="side-hint">To plan, pick a school or the $ button. To play the year, hold End.</p>
           {planning && tool === 'budget' && (
             <BudgetPanel
               game={s.game}
