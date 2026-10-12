@@ -68,7 +68,7 @@ export function assignDli(households: Household[], seed: number): Household[] {
     let k = 0;
     for (const [p, m] of dliSplit(school, n)) for (let j = 0; j < m; j++) program.set(kids[k++].h.id, p);
   }
-  return households.map(({ program: _, ...h }) => (program.has(h.id) ? { ...h, program: program.get(h.id)! } : h));
+  return households.map((h) => (program.has(h.id) || h.program ? { ...h, program: program.get(h.id) } : h));
 }
 
 /** Lists the programs each school offers after `moves`. */

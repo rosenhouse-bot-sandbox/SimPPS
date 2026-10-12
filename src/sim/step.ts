@@ -27,6 +27,7 @@ import type {
   Household,
   MovedProgram,
   Policy,
+  Program,
   SchoolChoice,
   SchoolId,
   SimMemory,
@@ -152,7 +153,8 @@ export function familiesDecide(
   const programTallies: ProgramTally[] = programMoves
     .filter((m) => m.year === year)
     .map((m) => ({ ...m, arrived: 0, stayers: [] }));
-  const programMoving = new Map(programTallies.flatMap((t) => t.from.map((f) => [`${t.program} ${f}`, t])));
+  const programMoving = new Map<SchoolId, Map<Program, ProgramTally>>();
+  for (const t of programTallies) for (const f of t.from) programMoving.set(f, (programMoving.get(f) ?? new Map()).set(t.program, t));
   const offered = programsAt(programMoves);
   const resolve = (school: SchoolId, grade: number, h: Pick<Household, 'id' | 'pos'>) =>
     closed.has(school) ? resolveSchool(closed, school, grade, h.pos, rezoneDraw(seed, h.id), shut) : school;
@@ -185,7 +187,7 @@ export function familiesDecide(
       const drawn = joins ? entrantProgram(seed, year, id, picked) : undefined;
       const site = drawn ? entrantSite(programMoves, offered, shut, picked, drawn) : null;
       const program = site ? drawn : undefined;
-      households.push({
+      const entrant: Household = {
         id,
         pos,
         cell,
@@ -193,12 +195,14 @@ export function familiesDecide(
         zoneSchool,
         ...(closed.has(zone.school) ? { fundedAs: zone.school } : {}),
         school: joins ? resolve(site && site !== picked ? site : picked === zone.school ? zoneSchool : picked, 0, { id, pos }) : null,
-        ...(program ? { program } : {}),
         exitCapacity,
         loyalty: clamp(mem.zoneKeep[z] + (rand() - 0.5) * 0.2, 0, 1),
         voice: voiceFor(exitCapacity, rand()),
         status: joins ? 'stayed' : 'left',
-      });
+      };
+      // Households keep one shape for speed: no spread here, and no delete of `program` below.
+      if (program) entrant.program = program;
+      households.push(entrant);
     }
   });
 
@@ -230,7 +234,7 @@ export function familiesDecide(
       const region = countKid(regions, h.pos);
       const top = topGrade(h.school, k5);
       // model.programMove: the program's kids follow it, or stay without it and choose like their schoolmates.
-      const move = h.program && programMoving.get(`${h.program} ${h.school}`);
+      const move = h.program && programMoving.get(h.school)?.get(h.program);
       if (move && ng <= top && SCHOOL_INFO.get(move.to)!.lo <= ng && ng <= topGrade(move.to, k5)) {
         if (programMoveDraw(seed, year, h.id) < programStay(h.pos, move.to)) {
           Object.assign(next, { school: move.to, status: 'moved', movedFrom: h.school, forcedMoves: (h.forcedMoves ?? 0) + 1 });
@@ -239,7 +243,7 @@ export function familiesDecide(
           households.push(next);
           continue;
         }
-        delete next.program;
+        next.program = undefined;
         move.stayers.push(next);
       }
       if (closingNow.has(h.school) && ng <= top) {
@@ -340,7 +344,7 @@ export function familiesDecide(
     shut,
   });
   const rezoned = decideRezoned({ seed, year, shut, movers: rezoneMovers, households, flows });
-  for (const h of households) if (h.program && !(h.school && offered.get(h.school)?.has(h.program))) delete h.program;
+  for (const h of households) if (h.program && !(h.school && offered.get(h.school)?.has(h.program))) h.program = undefined;
   return {
     households,
     nextId,
