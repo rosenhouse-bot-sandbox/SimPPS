@@ -22,7 +22,7 @@ import {
   type FollowFactors,
   type Mover,
 } from './closures';
-import { gradeOf, METERS_PER_MILE, oneKid } from './model';
+import { gradeOf, M, METERS_PER_MILE, oneKid } from './model';
 import { SCHOOL_INFO } from './population';
 import { buildSchools } from './schools';
 import { familiesDecide } from './step';
@@ -364,7 +364,10 @@ describe('Scenario A over a year', () => {
       return c && before.get(h.id)!.zoneSchool === c.school && c.receivers.some((r) => r.school === h.school);
     });
     expect(followers.length).toBeGreaterThan(1000);
-    expect(followers.filter((h) => h.school !== h.zoneSchool)).toEqual([]);
+    // A full zone school sends some on: Hosford fills first with Sunnyside's grades 6-8.
+    const full = (id: string) => next.schools[id].enrollment >= Math.floor(M.crowdingLine * next.schools[id].capacity);
+    expect(followers.filter((h) => h.school !== h.zoneSchool && !full(h.zoneSchool))).toEqual([]);
+    expect(full('hosford')).toBe(true);
   });
 
   it('closes 14 schools and empties them', () => {

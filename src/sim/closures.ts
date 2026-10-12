@@ -6,7 +6,7 @@ import { gradeOf, M, METERS_PER_MILE } from './model';
 import { SCHOOL_INFO, type SchoolInfo } from './population';
 import { modeledRange } from './range';
 import { draw, hashString } from './rng';
-import type { Shut } from './gradeSpan';
+import { convertedIn, topGrade, type Shut } from './gradeSpan';
 import type {
   ClosedSchool,
   Closure,
@@ -70,11 +70,6 @@ export function renormalize(receivers: Closure['receivers']): Closure['receivers
 /** Schools that take neighborhood kids: a zone, not a citywide program. */
 const isZoned = (i: SchoolInfo) => i.elemZone >= 0 || i.middleZone >= 0;
 const ZONED = [...SCHOOL_INFO.values()].filter(isZoned);
-
-/** The last grade a school serves, K-5 once converted. */
-function topOf(schools: Record<SchoolId, SchoolState>, school: SchoolId): number {
-  return schools[school]?.converted ? 5 : SCHOOL_INFO.get(school)!.hi;
-}
 
 /** An open school with K-8 kids. */
 export function canClose(schools: Record<SchoolId, SchoolState>, school: SchoolId): boolean {
@@ -248,7 +243,7 @@ export function closureChip(
   const after = withArrivals(schools, closure);
   const home = schoolPos(closure.school);
   const kids = state.households.filter((h) => h.school === closure.school);
-  const hi = topOf(state.schools, closure.school);
+  const hi = topGrade(closure.school, convertedIn(state.schools));
   let walkers = 0;
   let added = 0;
   for (const h of kids) {
@@ -290,14 +285,15 @@ export function receiverCandidates(
   const busy = new Set(plan.map((c) => c.school));
   const home = schoolPos(closing);
   const from = SCHOOL_INFO.get(closing)!;
+  const converted = convertedIn(schools);
   return ZONED.map((i) => schools[i.data.id])
     .filter(
       (s) =>
         s?.open &&
         !busy.has(s.id) &&
         canReceive(closing, s.id) &&
-        SCHOOL_INFO.get(s.id)!.lo <= topOf(schools, closing) &&
-        topOf(schools, s.id) >= from.lo,
+        SCHOOL_INFO.get(s.id)!.lo <= topGrade(closing, converted) &&
+        topGrade(s.id, converted) >= from.lo,
     )
     .map((s) => ({ id: s.id, miles: miles(home, schoolPos(s.id)), kids: s.enrollment, capacity: s.capacity }))
     .sort((a, b) => a.miles - b.miles);

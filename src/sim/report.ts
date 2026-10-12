@@ -59,7 +59,7 @@ function conversionEvents(f: YearFacts): SeasonEvent[] {
   const n = f.converting.length;
   if (n === 0) return [];
   const name = (id: string) => SCHOOL_INFO.get(id)!.data.name;
-  const sends = f.converting.map((c) => `${name(c.school)} sends grades 6-8 to ${name(c.to)}`);
+  const sends = f.converting.map((c) => `${name(c.school)} sends grades 6–8 to ${name(c.to)}`);
   return [
     {
       season: 'summer',
@@ -262,7 +262,7 @@ export function headlines(f: YearFacts, before: Dials, after: Dials): Headline[]
 export function rezoneOutcome(t: RezoneTally): RezoneOutcome {
   return {
     kids: modeledRange(t.kids),
-    zoneSchool: modeledRange(t.zoneSchool),
+    zoneSchool: modeledRange(t.arrived),
     otherPps: modeledRange(t.otherPps),
     leftPps: modeledRange(t.left),
   };

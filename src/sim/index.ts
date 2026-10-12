@@ -1,5 +1,5 @@
 import { computeBudget, FIRST_YEAR, generalFund, stateFundingLevel } from './budget';
-import { CLOSED_ZONE_CAPTURE_DROPS, FOLLOW_RATES, gradeOf, HIDDEN_CARDS, M, REVEAL_AFTER_YEARS } from './model';
+import { CLOSED_ZONE_CAPTURE_DROPS, FOLLOW_RATES, gradeOf, HIDDEN_CARDS, M, MAX_GRADE, REVEAL_AFTER_YEARS } from './model';
 import { expectedYes, levyBallot, levyRateFor, pollRange } from './election';
 import { meanTrust, startTrust, strainFor, trustAfterYear } from './trust';
 import { clamp } from '../clamp';
@@ -183,12 +183,13 @@ export function ballotPreview(state: GameState, policy: Policy): BallotPreview |
   return { ...ballot, poll: pollRange(expectedYes(ballot, sim.levy.failures, trust)) };
 }
 
-/** November counts after summer's closures and planned June cuts. Closing schools' current kids stand in for the kids they move. */
+/** November counts after summer's closures, grade-span changes and planned June cuts. Current kids stand in for the kids they move. */
 function novemberTrust(state: GameState, plan: Policy): number {
   const closing = new Set(effectiveClosures(state.schools, plan.closures).map((c) => c.school));
-  const moved = state.households.map(({ movedFrom: _, ...h }) =>
-    h.school !== null && closing.has(h.school) ? { ...h, movedFrom: h.school } : h,
-  );
+  const converting = new Set(effectiveGradeChanges(state.schools, plan.gradeChanges).map((g) => g.school));
+  const moves = (h: Household) =>
+    h.school !== null && (closing.has(h.school) || (converting.has(h.school) && gradeOf(h) >= 6 && gradeOf(h) < MAX_GRADE));
+  const moved = state.households.map(({ movedFrom: _, ...h }) => (moves(h) ? { ...h, movedFrom: h.school! } : h));
   const strain = strainFor(plan.k5ClassSize, state.sim!.k5ClassSize, previewBudget(state, plan).autoCutPositions);
   return meanTrust(trustAfterYear(state.sim!.trust, moved, [...closing], strain), state.households);
 }

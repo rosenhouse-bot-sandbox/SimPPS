@@ -1,9 +1,9 @@
-import { miles, schoolPos } from './closures';
-import { gradeOf, MAX_GRADE } from './model';
+import { effectiveClosures, miles, normalizeClosures, schoolPos, withArrivals } from './closures';
+import { MAX_GRADE } from './model';
 import { SCHOOL_INFO } from './population';
 import { modeledRange } from './range';
 import type { RezoneTally } from './boundaries';
-import type { Closure, ConversionOutcome, GameState, GradeSpanChange, SchoolId, SchoolState, ZoneMap } from './types';
+import type { Closure, ConversionOutcome, GameState, GradeSpanChange, Policy, SchoolId, SchoolState, ZoneMap } from './types';
 
 /** Schools a grade can't attend. A Map or Set of closed schools ignores the grade. */
 export interface Shut {
@@ -15,8 +15,13 @@ export function shutTo(closed: { has(school: SchoolId): boolean }, converted: Re
   return { has: (school, grade = 0) => closed.has(school) || (grade >= 6 && converted.has(school)) };
 }
 
+/** Schools a grade-span change has made K-5. */
+export function convertedIn(schools: Record<SchoolId, SchoolState>): { has(school: SchoolId): boolean } {
+  return { has: (school) => !!schools[school]?.converted };
+}
+
 /** The last grade a school serves. */
-export function topGrade(school: SchoolId, converted: ReadonlySet<SchoolId>): number {
+export function topGrade(school: SchoolId, converted: { has(school: SchoolId): boolean }): number {
   return converted.has(school) ? 5 : SCHOOL_INFO.get(school)!.hi;
 }
 
@@ -38,14 +43,16 @@ export function canConvert(schools: Record<SchoolId, SchoolState>, school: Schoo
   return !!s?.open && !s.converted && isK8(school);
 }
 
-/** Open zoned middle schools, nearest the K-8 first. */
+/** Open zoned middle schools the plan doesn't close, nearest the K-8 first. */
 export function middleSchoolCandidates(
   schools: Record<SchoolId, SchoolState>,
   school: SchoolId,
+  closures: readonly Closure[],
 ): { id: SchoolId; miles: number; kids: number; capacity: number }[] {
   const home = schoolPos(school);
+  const closing = new Set(closures.map((c) => c.school));
   return MIDDLE_SCHOOLS.map((id) => schools[id])
-    .filter((s) => s?.open)
+    .filter((s) => s?.open && !closing.has(s.id))
     .map((s) => ({ id: s.id, miles: miles(home, schoolPos(s.id)), kids: s.enrollment, capacity: s.capacity }))
     .sort((a, b) => a.miles - b.miles);
 }
@@ -75,23 +82,22 @@ export function convertZones(zones: ZoneMap, converted: readonly GradeSpanChange
 
 /** Arithmetic for a grade-span change. It never predicts family choices. */
 export interface ConversionChip {
-  /** This year's 6th and 7th graders, who must choose next fall. */
+  /** Rising 7th and 8th graders, who must choose next fall. */
   kidsMoving: number;
-  /** The receiver's kids and seats if this year's 5th to 7th graders all arrive. */
+  /** The receiver's kids and seats if the plan's closure kids and every rising 6th to 8th grader sent there arrive. */
   seats: { kids: number; capacity: number };
 }
 
-export function conversionChip(state: Pick<GameState, 'schools' | 'households'>, change: GradeSpanChange): ConversionChip {
-  let kidsMoving = 0;
-  let arriving = 0;
-  for (const h of state.households) {
-    if (h.school !== change.school) continue;
-    const g = gradeOf(h);
-    if (g >= 5 && g < MAX_GRADE) arriving++;
-    if (g >= 6 && g < MAX_GRADE) kidsMoving++;
-  }
-  const to = state.schools[change.to];
-  return { kidsMoving, seats: { kids: to.enrollment + arriving, capacity: to.capacity } };
+const risingMiddle = (s: SchoolState) => s.byGrade.slice(5, MAX_GRADE).reduce((a, n) => a + n, 0);
+
+/** `plan` holds the closures and other grade-span changes that also send kids to the receiver. */
+export function conversionChip(state: Pick<GameState, 'schools'>, change: GradeSpanChange, plan: Policy): ConversionChip {
+  const schools = effectiveClosures(state.schools, normalizeClosures(plan.closures)).reduce(withArrivals, state.schools);
+  const others = (plan.gradeChanges ?? []).filter((g) => g.to === change.to && g.school !== change.school);
+  const from = state.schools[change.school];
+  const to = schools[change.to];
+  const kids = to.enrollment + [from, ...others.map((g) => state.schools[g.school])].reduce((a, s) => a + risingMiddle(s), 0);
+  return { kidsMoving: from.byGrade[6] + from.byGrade[7], seats: { kids, capacity: to.capacity } };
 }
 
 export interface ConversionTally extends RezoneTally {
@@ -105,7 +111,7 @@ export function conversionOutcomes(tallies: readonly ConversionTally[]): Convers
     school: t.school,
     to: t.to,
     kids: modeledRange(t.kids),
-    receiver: modeledRange(t.zoneSchool),
+    receiver: modeledRange(t.arrived),
     otherPps: modeledRange(t.otherPps),
     leftPps: modeledRange(t.left),
   }));

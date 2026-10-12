@@ -224,7 +224,8 @@ export function familiesDecide(
       if (conversion && g >= 6) {
         next.school = null;
         next.status = 'moved';
-        spanMovers.push({ before: h, next, region, target: conversion.to });
+        // A boundary edit that moved the block sends the kid to its new zone school instead.
+        spanMovers.push({ before: h, next, region, ...(zoning.changed.middle.has(h.cell) ? {} : { target: conversion.to }) });
         households.push(next);
         continue;
       }
@@ -282,6 +283,20 @@ export function familiesDecide(
     }
   }
   flows.graduated = graduates;
+  // model.gradeSpan: a conversion's middle zone is the receiver's now, so its movers arrive before closures' kids.
+  const conversions = converting.map((c) => ({
+    school: c.school,
+    to: c.to,
+    ...decideRezoned({
+      seed,
+      year,
+      shut,
+      movers: spanMovers.filter((m) => m.before.school === c.school),
+      households,
+      flows,
+      stay: M.conversionStay,
+    }),
+  }));
   const closureTallies = decideClosures({
     seed,
     year,
@@ -293,21 +308,7 @@ export function familiesDecide(
     flows,
     shut,
   });
-  const rezoned = decideRezoned({ seed, year, closed: shut, movers: rezoneMovers, households, flows });
-  // model.gradeSpan
-  const conversions = converting.map((c) => ({
-    school: c.school,
-    to: c.to,
-    ...decideRezoned({
-      seed,
-      year,
-      closed: shut,
-      movers: spanMovers.filter((m) => m.before.school === c.school),
-      households,
-      flows,
-      stay: M.conversionStay,
-    }),
-  }));
+  const rezoned = decideRezoned({ seed, year, shut, movers: rezoneMovers, households, flows });
   return { households, nextId, kResidents, kEnrolled, graduates, flows, regions, closures: closureTallies, rezoned, conversions };
 }
 
@@ -316,10 +317,7 @@ export function stepYear(state: GameState, policy: Policy): { next: GameState; f
   const year = state.year;
   const index = costIndex(year);
   const closing = closuresTakingEffect(state.schools, policy.closures, policy.k5ClassSize, year);
-  const shutting = new Set(closing.map((c) => c.school));
-  const converting = effectiveGradeChanges(state.schools, policy.gradeChanges)
-    .filter((g) => !shutting.has(g.school) && !shutting.has(g.to))
-    .map((g) => ({ ...g, year }));
+  const converting = effectiveGradeChanges(state.schools, policy.gradeChanges).map((g) => ({ ...g, year }));
   const converted = [...mem.converted, ...converting];
   const planned = planZoning(state, closing, policy.boundaryEdits, converting);
   const { closed, zoning } = planned;

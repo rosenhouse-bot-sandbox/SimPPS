@@ -46,7 +46,7 @@ function closuresOf(s: Published): Closure[] {
   });
 }
 
-/** "MLC becomes K-8" changes only its high school, outside the simulation. */
+/** The 6-8 moves. MLC also "becomes K-8", but it already serves K-8 here and only its high school closes, outside the simulation. */
 function gradeChangesOf(s: Published): GradeSpanChange[] {
   return s.grade_changes.flatMap((g) => {
     if (g.grades !== '6-8') return [];

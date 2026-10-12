@@ -19,8 +19,9 @@ export interface Sim {
   middleSchoolCandidates(
     schools: Record<SchoolId, SchoolState>,
     school: SchoolId,
+    closures: Closure[],
   ): { id: SchoolId; miles: number; kids: number; capacity: number }[];
-  conversionChip(state: GameState, change: GradeSpanChange): ConversionChip;
+  conversionChip(state: GameState, change: GradeSpanChange, plan: Policy): ConversionChip;
   plannedZones(state: GameState, policy: Policy): ZoneMap;
   sliceCells(
     state: { households: Household[]; zones: ZoneMap },

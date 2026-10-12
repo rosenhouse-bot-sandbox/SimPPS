@@ -209,7 +209,7 @@ test('sends Beverly Cleary 6–8 to Beaumont and reports where they went', async
   await expect(page.locator('[data-mark="candidate"]')).toHaveCount(5);
   await sheet.getByRole('button', { name: /Beaumont/ }).tap();
   await expect(page.locator('[data-link="beverly-cleary>beaumont"]')).toHaveCount(1);
-  await expect(page.getByTestId('conversion-chip')).toContainText('6th and 7th graders must choose');
+  await expect(page.getByTestId('conversion-chip')).toContainText('rising 7th and 8th graders must choose');
   expect(await sheet.evaluate((e) => e.scrollWidth <= e.clientWidth)).toBe(true);
   await shot(page, 'grade-span-sheet');
   await sheet.getByRole('button', { name: 'Send 6–8' }).tap();

@@ -122,6 +122,14 @@ export function App({ sim, seed, start = 'status-quo', onStart, saved, onSave, o
       new Set([...shut, ...Object.keys(s.game.schools).filter((id) => s.game.schools[id].converted), ...s.draft.gradeChanges.map((g) => g.school)]),
     [shut, s.game, s.draft],
   );
+  const middleOf = useMemo(
+    () =>
+      Object.fromEntries([
+        ...Object.values(s.game.schools).flatMap((x) => (x.converted ? [[x.id, x.converted.to]] : [])),
+        ...s.draft.gradeChanges.map((g) => [g.school, g.to]),
+      ]),
+    [s.game, s.draft],
+  );
   const targetsFor = (level: ZoneLevel) => targets(level, level === 'middle' ? k5 : shut);
   const planned = useMemo(() => (zoning ? sim.plannedZones(s.game, s.draft) : null), [sim, s.game, s.draft, !!zoning]);
   const zoneEdit = useMemo(() => {
@@ -151,7 +159,7 @@ export function App({ sim, seed, start = 'status-quo', onStart, saved, onSave, o
   const candidates = drafting
     ? withNames(sim.receiverCandidates(s.game.schools, drafting.school, s.draft.closures.filter((c) => c.school !== drafting.school)))
     : [];
-  const spanCandidates = sending ? withNames(sim.middleSchoolCandidates(s.game.schools, sending.school)) : [];
+  const spanCandidates = sending ? withNames(sim.middleSchoolCandidates(s.game.schools, sending.school, s.draft.closures)) : [];
   const played = s.phase === 'playing' || s.phase === 'report' ? (turn?.report.closures ?? []) : [];
   const playedSpans = s.phase === 'playing' || s.phase === 'report' ? (turn?.report.conversions ?? []) : [];
   const { marks, links } = closureMarks(
@@ -180,6 +188,7 @@ export function App({ sim, seed, start = 'status-quo', onStart, saved, onSave, o
   };
   const closing = s.draft.closures.find((c) => c.school === selected);
   const converting = s.draft.gradeChanges.find((g) => g.school === selected);
+  const sentTo = selected ? shown.schools[selected]?.converted?.to : undefined;
   const gradesFrom = s.draft.gradeChanges.filter((g) => g.to === selected).map((g) => g.school);
   const commitSpan = (g: GradeSpanChange) => {
     dispatch({ type: 'edit', policy: { gradeChanges: [...s.draft.gradeChanges.filter((x) => x.school !== g.school), g] } });
@@ -281,7 +290,7 @@ export function App({ sim, seed, start = 'status-quo', onStart, saved, onSave, o
               school={sending.school}
               candidates={spanCandidates}
               to={sending.to}
-              chip={sending.to ? sim.conversionChip(s.game, { school: sending.school, to: sending.to }) : null}
+              chip={sending.to ? sim.conversionChip(s.game, { school: sending.school, to: sending.to }, s.draft) : null}
               onPick={(to) => setSpanDraft({ ...sending, to })}
               onCommit={commitSpan}
               onClose={() => setSpanDraft(null)}
@@ -293,6 +302,7 @@ export function App({ sim, seed, start = 'status-quo', onStart, saved, onSave, o
               edit={zoneEdit}
               chip={zoneChip}
               targetsFor={targetsFor}
+              middleOf={middleOf}
               sources={planned ? sliceSources(zoning.level, planned, zoning.to) : []}
               onChange={setZoneDraft}
               onCommit={commitBoundary}
@@ -309,6 +319,7 @@ export function App({ sim, seed, start = 'status-quo', onStart, saved, onSave, o
               rezonedInto={rezonedInto}
               converting={converting}
               gradesFrom={gradesFrom}
+              receiverOpen={!sentTo || shown.schools[sentTo].open}
               onCloseSend={
                 s.phase === 'plan' &&
                 receivesFrom.length === 0 &&

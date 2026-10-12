@@ -381,7 +381,7 @@ export const MODEL_SOURCES: Source[] = [
     key: 'model.gradeSpan',
     label: 'K-8 to K-5',
     tag: 'M',
-    explain: `A K-8 that sends grades 6-8 to a middle school serves K-5 from that fall. Its 7th and 8th graders go to the middle school with a ${pct(M.conversionStay)} chance, less the adjustments under "Who follows a closed school". The rest choose like a closed school's kids who don't follow. Its 5th graders, and every class after them, face the grade-6 transition. Its middle zone feeds the middle school. Its rooms seat K-5 classes, so it keeps about ${Math.round(M.conversionCapacity * 100)}% of its seats.`,
+    explain: `A K-8 that sends grades 6–8 to a middle school serves K-5 from that fall. Its rising 7th and 8th graders go to the middle school with a ${pct(M.conversionStay)} chance, less the adjustments under "Who follows a closed school". The rest choose like a closed school's kids who don't follow. Its rising 6th graders, and every class after them, face the grade-6 transition. Its middle zone feeds the middle school. Its rooms seat K-5 classes, so it keeps about ${Math.round(M.conversionCapacity * 100)}% of its seats.`,
     links: [DESIGN, RIGHTSIZING],
   },
   {

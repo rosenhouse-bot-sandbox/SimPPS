@@ -39,7 +39,7 @@ describe('SendGradesSheet', () => {
     const { onCommit } = sheet({ to: 'beaumont', chip });
     expect(screen.getByRole('button', { name: /Beaumont/ }).getAttribute('aria-pressed')).toBe('true');
     const moving = fmtRange(modeledRange(120));
-    expect(screen.getByTestId('conversion-chip').textContent).toBe(`Seats${fmtRange(modeledRange(680))}/700${moving} 6th and 7th graders must choose.`);
+    expect(screen.getByTestId('conversion-chip').textContent).toBe(`Seats${fmtRange(modeledRange(680))}/700${moving} rising 7th and 8th graders must choose.`);
     expect(screen.getByRole('button', { name: moving }).getAttribute('data-source')).toBe('model.gradeSpan');
     fireEvent.click(screen.getByRole('button', { name: 'Send 6–8' }));
     expect(onCommit).toHaveBeenCalledWith({ school: 'beverly-cleary', to: 'beaumont' });

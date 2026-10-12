@@ -498,6 +498,20 @@ describe('App', () => {
       fireEvent.pointerUp(map, { pointerId: 1, clientX: x, clientY: y });
     }
 
+    it('marks only the drafted change and paints 6-8 into the receiver of a converting K-8', () => {
+      render(<App sim={realSim} seed="t" start="scenario-a" playbackMs={5000} />);
+      click('Plan');
+      click('Beverly Cleary School');
+      click('Send 6–8 to…');
+      expect(marked('closing')).toEqual([]);
+      expect(marked('converting')).toEqual(['beverly-cleary']);
+      click('Cancel');
+      click('Edit boundary');
+      click('6-8');
+      expect(screen.getByRole('region', { name: 'Zone: Beaumont' })).toBeTruthy();
+      expect([...document.querySelectorAll('option')].map((o) => o.value)).not.toContain('beverly-cleary');
+    });
+
     it("sends a K-8's grades 6-8 through the plan, pre-flight and report", () => {
       setup();
       click('Plan');

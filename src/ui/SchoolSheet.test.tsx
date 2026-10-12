@@ -83,10 +83,20 @@ describe('SchoolSheet', () => {
     const state = { ...FIXTURE_GAME.schools.vernon, capacity: 564.2, converted: { year: 2027, to: 'harriet-tubman' } };
     render(<SchoolSheet id="vernon" state={state} onClose={() => {}} />);
     expect(factValue('K-5 seats').textContent).toBe('564');
+    expect(factValue('Capacity as K-8').textContent).toBe('579');
     expect(screen.getByRole('button', { name: '564' }).getAttribute('data-source')).toBe('model.gradeSpan');
     expect(screen.getByRole('button', { name: 'K-5 since 2027. Grades 6–8 go to Harriet Tubman.' }).getAttribute('data-source')).toBe(
       'model.gradeSpan',
     );
+  });
+
+  it('drops the receiver once it closes, and the K-5 line once the school closes', () => {
+    const state = { ...FIXTURE_GAME.schools.vernon, converted: { year: 2027, to: 'harriet-tubman' } };
+    render(<SchoolSheet id="vernon" state={state} onClose={() => {}} receiverOpen={false} />);
+    expect(screen.getByRole('button', { name: 'K-5 since 2027.' })).toBeTruthy();
+    cleanup();
+    render(<SchoolSheet id="vernon" state={{ ...state, open: false, closed: { year: 2028, building: 'mothball' } }} onClose={() => {}} />);
+    expect(screen.queryByText(/K-5 since/)).toBeNull();
   });
 
   it('offers Edit boundary while planning', () => {

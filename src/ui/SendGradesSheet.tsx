@@ -39,7 +39,7 @@ export function SendGradesSheet({ school, candidates, to, chip, onPick, onCommit
             </div>
           </dl>
           <p class="pays">
-            <Sourced k={K.gradeSpan}>{fmtRange(modeledRange(chip.kidsMoving))}</Sourced> 6th and 7th graders must choose.
+            <Sourced k={K.gradeSpan}>{fmtRange(modeledRange(chip.kidsMoving))}</Sourced> rising 7th and 8th graders must choose.
           </p>
         </div>
       )}

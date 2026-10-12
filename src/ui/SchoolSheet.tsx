@@ -28,10 +28,11 @@ function orNull<T>(v: T | null, f: (v: T) => string): string | null {
   return v === null ? null : f(v);
 }
 
-export function schoolFacts(s: SchoolData) {
+/** A converted school's capacity fact is its K-8 one; the simulated K-5 seats show apart. */
+export function schoolFacts(s: SchoolData, converted = false) {
   return [
     { label: 'Enrolled 25-26', column: 'enrollment_2025_26', value: orNull(s.enrollment, fmtCount) },
-    { label: 'Capacity', column: 'functional_capacity_model', value: orNull(s.capacity, fmtCount) },
+    { label: converted ? 'Capacity as K-8' : 'Capacity', column: 'functional_capacity_model', value: orNull(s.capacity, fmtCount) },
     {
       label: 'Utilization',
       column: 'utilization_model_2526',
@@ -65,6 +66,8 @@ interface SchoolSheetProps {
   converting?: GradeSpanChange;
   /** K-8s the plan sends grades 6-8 into this school. */
   gradesFrom?: string[];
+  /** A converted school's 6-8 receiver is still open. */
+  receiverOpen?: boolean;
 }
 
 export function SchoolSheet({
@@ -79,6 +82,7 @@ export function SchoolSheet({
   onSendGrades,
   converting,
   gradesFrom = [],
+  receiverOpen = true,
 }: SchoolSheetProps) {
   const school = SCHOOLS.find((s) => s.id === id);
   if (!school) return null;
@@ -89,9 +93,11 @@ export function SchoolSheet({
           <Sourced k={K.buildingFate} text>{`Closed in ${state.closed.year}, ${FATE_DONE[state.closed.building]}.`}</Sourced>
         </p>
       )}
-      {state?.converted && (
+      {state?.open && state.converted && (
         <p class="note">
-          <Sourced k={K.gradeSpan} text>{`K-5 since ${state.converted.year}. Grades 6–8 go to ${nameOf(state.converted.to)}.`}</Sourced>
+          <Sourced k={K.gradeSpan} text>
+            {`K-5 since ${state.converted.year}.${receiverOpen ? ` Grades 6–8 go to ${nameOf(state.converted.to)}.` : ''}`}
+          </Sourced>
         </p>
       )}
       {converting && (
@@ -135,7 +141,7 @@ export function SchoolSheet({
         </button>
       )}
       <dl>
-        {schoolFacts(school).map((f) => (
+        {schoolFacts(school, !!state?.converted).map((f) => (
           <Fact key={f.column} {...f} />
         ))}
       </dl>
