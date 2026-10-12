@@ -19,7 +19,7 @@ describe('SchoolSheet', () => {
     expect(factValue('Built').textContent).toBe('2006');
     expect(factValue('URM').textContent).toBe('No');
     expect(factValue('Direct cert.').textContent).toBe('62.9%');
-    expect(factValue('DLI').textContent).toBe('None');
+    expect(factValue('DLI 25-26').textContent).toBe('None');
     fireEvent.click(screen.getByRole('button', { name: '2006' }));
     expect(screen.getByRole('dialog', { name: 'Year built' })).toBeTruthy();
   });
@@ -97,6 +97,31 @@ describe('SchoolSheet', () => {
     cleanup();
     render(<SchoolSheet id="vernon" state={{ ...state, open: false, closed: { year: 2028, building: 'mothball' } }} onClose={() => {}} />);
     expect(screen.queryByText(/K-5 since/)).toBeNull();
+  });
+
+  it('shows each DLI program and its simulated kids', () => {
+    render(<SchoolSheet id="roseway-heights" state={{ ...FIXTURE_GAME.schools['roseway-heights'], dli: { Spanish: 80, Vietnamese: 40 } }} onClose={() => {}} />);
+    expect(factValue('DLI kids').textContent).toBe('Spanish 74–86~, Vietnamese 36–44~');
+    expect(screen.getByRole('button', { name: '74–86~' }).getAttribute('data-source')).toBe('model.dli');
+  });
+
+  it('says a school lost its DLI, and shows no DLI row at a school that never had it', () => {
+    render(<SchoolSheet id="clark" state={FIXTURE_GAME.schools.clark} onClose={() => {}} />);
+    expect(factValue('DLI kids').textContent).toBe('None');
+    expect(factValue('DLI 25-26').textContent).toBe('Mandarin');
+    cleanup();
+    render(<SchoolSheet id="rosa-parks" state={FIXTURE_GAME.schools['rosa-parks']} onClose={() => {}} />);
+    expect(screen.queryByText('DLI kids')).toBeNull();
+  });
+
+  it('names the program moves the plan makes from or into it', () => {
+    const move = { program: 'Mandarin' as const, from: ['clark'], to: 'woodstock' };
+    render(<SchoolSheet id="woodstock" state={FIXTURE_GAME.schools.woodstock} onClose={() => {}} programMoves={[move]} />);
+    expect(screen.getByRole('button', { name: 'Move Mandarin DLI: Clark → Woodstock' }).getAttribute('data-source')).toBe('model.programMove');
+    expect(screen.getByText(/In the plan/).textContent).toBe('In the plan: Move Mandarin DLI: Clark → Woodstock. Undo that to close this school.');
+    cleanup();
+    render(<SchoolSheet id="clark" state={FIXTURE_GAME.schools.clark} onClose={() => {}} programMoves={[move]} />);
+    expect(screen.getByText(/In the plan/).textContent).toBe('In the plan: Move Mandarin DLI: Clark → Woodstock');
   });
 
   it('offers Edit boundary while planning', () => {

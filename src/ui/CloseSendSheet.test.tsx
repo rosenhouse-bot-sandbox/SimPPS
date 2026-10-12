@@ -38,11 +38,11 @@ const chip = () => screen.getByTestId('closure-chip');
 const picks = () => [...document.querySelectorAll('.pick-name')].map((b) => b.textContent!.slice(1));
 
 describe('CloseSendSheet', () => {
-  it('says a dual-language program will not move with the kids', () => {
+  it('says a dual-language program moves with the closure', () => {
     setup('james-john');
     const note = screen.getByText(/DLI/);
-    expect(note.textContent).toBe('Its Spanish dual-language (DLI) program: moves are not modeled yet.');
-    expect(note.closest('[data-source]')!.getAttribute('data-source')).toBe('field.dli_languages');
+    expect(note.textContent).toBe('Its Spanish dual-language (DLI) program moves with it.');
+    expect(note.closest('[data-source]')!.getAttribute('data-source')).toBe('model.programMove');
     cleanup();
     setup('peninsula');
     expect(screen.queryByText(/DLI/)).toBeNull();
@@ -91,6 +91,15 @@ describe('CloseSendSheet', () => {
     expect(pays.textContent).toBe(`Pays off if fewer than ${fmtCount(c.paysOffIfFewerThan)}~ leave PPS. ${fmtCount(c.busRiders)}~ new bus riders`);
     expect([...pays.querySelectorAll('[data-source]')].map((e) => e.getAttribute('data-source'))).toEqual(['ui.paysOff', 'model.busing']);
     expect(screen.getByText('Rosa Parks').closest('.row')!.textContent).toBe('Rosa Parks100%');
+  });
+
+  it('says where a closing DLI school\'s program goes', () => {
+    setup('richmond');
+    click(/Glencoe/);
+    click('Next >');
+    const line = chip().querySelector('.programs')!;
+    expect(line.textContent).toBe('Japanese DLI moves to Glencoe.');
+    expect(line.querySelector('[data-source]')!.getAttribute('data-source')).toBe('model.programMove');
   });
 
   it('splits two receivers 70/30 by default and steps the split', () => {

@@ -127,6 +127,31 @@ describe('ReportView', () => {
     ]);
   });
 
+  it("shows how many of a moved program's kids kept it, as sourced ranges", () => {
+    const programMoves = [
+      {
+        program: 'Spanish' as const,
+        from: ['beach', 'james-john', 'sitton'],
+        to: 'cesar-chavez',
+        kids: { lo: 330, hi: 370 },
+        receiver: { lo: 280, hi: 320 },
+        leftDli: { lo: 40, hi: 50 },
+        leftPps: { lo: 2, hi: 6 },
+      },
+    ];
+    render(<ReportView report={{ ...FIXTURE_REPORT, programMoves }} turn={1} onNext={() => {}} />);
+    const section = screen.getByRole('region', { name: "Who kept Beach, James John and Sitton's Spanish DLI" });
+    expect(section.textContent).toContain('Who kept Spanish DLI from Beach, James John and Sitton, of 330–370~ kids:');
+    const rows = [...section.querySelectorAll('.flow')].map((r) => [r.querySelector('dt')!.textContent, r.querySelector('dd')!.textContent]);
+    expect(rows).toEqual([
+      ['César Chávez', '280–320~'],
+      ['Left DLI', '40–50~'],
+      ['Left PPS', '2–6~'],
+    ]);
+    expect(new Set([...section.querySelectorAll('[data-source]')].map((e) => e.getAttribute('data-source')))).toEqual(new Set(['model.programMove']));
+    expect(termsIn(section)).toEqual(['Left DLI', 'Left PPS']);
+  });
+
   it('shows no re-zoning section without re-zoned kids', () => {
     render(<ReportView report={FIXTURE_REPORT} turn={1} onNext={() => {}} />);
     expect(screen.queryByRole('region', { name: 'Where re-zoned kids went' })).toBeNull();

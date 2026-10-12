@@ -1,8 +1,9 @@
 import { classesFor, cutCreep, stateWeight } from './budget';
 import { gradeOf, M, MAX_GRADE } from './model';
 import { SCHOOL_INFO } from './population';
+import { programsAt } from './programs';
 import { newBusRiders, walkK5 } from './walk';
-import type { ClosedSchool, ConvertedSchool, Dials, GameState, Household, SchoolState } from './types';
+import type { ClosedSchool, ConvertedSchool, Dials, GameState, Household, ProgramMove, SchoolState } from './types';
 
 /** Each school's kids and homerooms. Cuts remove `homeroomsCut` homerooms across schools. */
 export function buildSchools(
@@ -11,6 +12,7 @@ export function buildSchools(
   homeroomsCut = 0,
   closed: ClosedSchool[] = [],
   converted: ConvertedSchool[] = [],
+  programMoves: readonly ProgramMove[] = [],
 ): Record<string, SchoolState> {
   const schools: Record<string, SchoolState> = {};
   for (const [id, info] of SCHOOL_INFO)
@@ -33,9 +35,12 @@ export function buildSchools(
     const s = schools[c.school];
     Object.assign(s, { capacity: s.capacity * M.conversionCapacity, converted: { year: c.year, to: c.to } });
   }
+  for (const [id, programs] of programsAt(programMoves))
+    if (programs.size && schools[id].open) schools[id].dli = Object.fromEntries([...programs].map((p) => [p, 0]));
   for (const h of households) {
     if (h.school === null) continue;
     const s = schools[h.school];
+    if (h.program && s.dli?.[h.program] !== undefined) s.dli[h.program]!++;
     s.enrollment++;
     s.byGrade[gradeOf(h)]++;
     s.stateRevenue += stateWeight(h.fundedAs ?? h.school);

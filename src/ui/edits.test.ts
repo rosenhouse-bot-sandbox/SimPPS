@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { DEFAULT_POLICY } from '../sim';
-import type { BoundaryEdit, Closure } from '../sim/types';
+import type { BoundaryEdit, Closure, ProgramMove } from '../sim/types';
 import { fmtLevy, listEdits } from './edits';
 
 describe('edits', () => {
@@ -48,6 +48,16 @@ describe('edits', () => {
     expect(listEdits(draft, draft)).toEqual([
       { text: 'Send Beverly Cleary 6–8 → Beaumont', sourceKey: 'model.gradeSpan', undo: { gradeChanges: [vernon] } },
       { text: 'Send Vernon 6–8 → Harriet Tubman', sourceKey: 'model.gradeSpan', undo: { gradeChanges: [cleary] } },
+    ]);
+  });
+
+  it('lists each program move with an undo that drops only it', () => {
+    const spanish: ProgramMove = { program: 'Spanish', from: ['beach', 'james-john', 'sitton'], to: 'cesar-chavez' };
+    const clark: ProgramMove = { program: 'Mandarin', from: ['clark'], to: 'woodstock' };
+    const draft = { ...DEFAULT_POLICY, programMoves: [spanish, clark] };
+    expect(listEdits(draft, draft)).toEqual([
+      { text: 'Move Spanish DLI: Beach, James John, Sitton → César Chávez', sourceKey: 'model.programMove', undo: { programMoves: [clark] } },
+      { text: 'Move Mandarin DLI: Clark → Woodstock', sourceKey: 'model.programMove', undo: { programMoves: [spanish] } },
     ]);
   });
 

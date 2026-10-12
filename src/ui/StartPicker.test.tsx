@@ -19,8 +19,8 @@ describe('StartPicker', () => {
   it('offers the three starts, badging what scenarios leave out', () => {
     const onPick = vi.fn();
     render(<StartPicker onPick={onPick} />);
-    expect(screen.getByText("Starts with PPS's 14 proposed closures and 7 grade-span changes.")).toBeTruthy();
-    expect(screen.getByText("Starts with PPS's 11 proposed closures and 7 grade-span changes.")).toBeTruthy();
+    expect(screen.getByText("Starts with PPS's 14 proposed closures, 7 grade-span changes and 11 program moves.")).toBeTruthy();
+    expect(screen.getByText("Starts with PPS's 11 proposed closures, 7 grade-span changes and 10 program moves.")).toBeTruthy();
     expect(document.querySelectorAll('.badge')).toHaveLength(2);
     expect(screen.getByText(SCENARIOS['scenario-b'].notModeled!).getAttribute('data-source')).toBe('model.scenarios');
     fireEvent.click(screen.getByRole('button', { name: 'PPS Scenario B' }));

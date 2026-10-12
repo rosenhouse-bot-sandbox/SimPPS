@@ -230,8 +230,10 @@ describe('MapView for Close & send', () => {
   it('marks the closing school, receivers and candidates, and links them', () => {
     const { container } = renderMap({
       marks: { peninsula: 'closing', 'rosa-parks': 'receiver', sitton: 'candidate' },
-      links: [['peninsula', 'rosa-parks']],
+      links: [['peninsula', 'rosa-parks'], ['clark', 'woodstock', 'program']],
     });
+    expect(container.querySelector('[data-link="peninsula>rosa-parks"]')!.getAttribute('class')).toBe('pps-map-link');
+    expect(container.querySelector('[data-link="clark>woodstock"]')!.getAttribute('class')).toBe('pps-map-link pps-map-link-program');
     for (const [id, mark] of [['peninsula', 'closing'], ['rosa-parks', 'receiver'], ['sitton', 'candidate']])
       expect(container.querySelector(`[data-school="${id}"] .pps-map-mark-${mark}`), id).toBeTruthy();
     expect(container.querySelectorAll('.pps-map-mark')).toHaveLength(3);

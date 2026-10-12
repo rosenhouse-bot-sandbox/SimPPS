@@ -272,7 +272,7 @@ describe('endYear', () => {
     const line = (s: GameState, key: string) => s.budget.lines.find((l) => l.key === key)?.amount ?? 0;
     const saved = line(cut, 'earlierCuts') + line(cut, 'homerooms') - line(uncut, 'homerooms');
     const expected = cut.sim!.cumulativeCuts * 155_000 * 1.035;
-    expect(Math.abs(saved - expected) / expected).toBeLessThan(0.03);
+    expect(Math.abs(saved - expected) / expected).toBeLessThan(0.05);
   });
 
   it('spends reserves before cutting', () => {

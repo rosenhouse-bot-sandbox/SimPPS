@@ -237,6 +237,8 @@ export function closureChip(
   classSize: number,
   busRiders = 0,
   converting: readonly GradeSpanChange[] = [],
+  /** Moves kids that don't split by receiver share, such as a carried DLI program's. */
+  carry: (schools: Record<SchoolId, SchoolState>) => Record<SchoolId, SchoolState> = (schools) => schools,
 ): ClosureChip {
   const schools = withConversions(
     effectiveClosures(
@@ -245,7 +247,7 @@ export function closureChip(
     ).reduce(withArrivals, state.schools),
     converting,
   );
-  const after = withArrivals(schools, closure);
+  const after = withArrivals(carry(schools), closure);
   const home = schoolPos(closure.school);
   const kids = state.households.filter((h) => h.school === closure.school);
   const hi = topGrade(closure.school, convertedIn(state.schools));

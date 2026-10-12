@@ -1,8 +1,9 @@
 import { fmtCount, fmtMoney } from '../format';
 import { legislatureVotes } from '../sim/budget';
 import type { BallotPreview } from '../sim';
-import type { Budget, Policy } from '../sim/types';
+import type { Budget, Policy, ProgramMove } from '../sim/types';
 import { BallotItem } from './Ballot';
+import { nameOf } from './closeSend';
 import { listEdits, type EditLine } from './edits';
 import { HoldButton } from './HoldButton';
 import { Sourced } from './Sourced';
@@ -17,6 +18,8 @@ interface PreflightProps {
   /** The sim's plan for the draft. */
   budget: Budget;
   ballot: BallotPreview | null;
+  /** The DLI programs the plan's closures carry. */
+  closurePrograms?: ProgramMove[];
   onBack: () => void;
   onConfirm: () => void;
 }
@@ -37,14 +40,20 @@ function List({ items, empty }: { items: EditLine[]; empty: string }) {
   );
 }
 
-export function PreflightSheet({ year, draft, base, budget, ballot, onBack, onConfirm }: PreflightProps) {
+export function PreflightSheet({ year, draft, base, budget, ballot, closurePrograms = [], onBack, onConfirm }: PreflightProps) {
   const applied = { ...draft, reserveDraw: budget.reserveDraw };
   const { autoCutPositions: june, midYearCuts: winter } = budget;
   return (
     <div class="scrim">
       <Window title={`Play ${year}-${String(year + 1).slice(2)}?`} class="panel sheet" onClose={onBack} dialog>
         <h3>Edits</h3>
-        <List items={listEdits(applied, base)} empty="None. The year plays as it stands." />
+        <List
+          items={[
+            ...listEdits(applied, base),
+            ...closurePrograms.map((m) => ({ text: `${m.program} DLI moves to ${nameOf(m.to)}`, sourceKey: K.programMove })),
+          ]}
+          empty="None. The year plays as it stands."
+        />
         <h3>
           <Term t="Gap" />
         </h3>

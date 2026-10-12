@@ -80,7 +80,19 @@ function spanMarks(
   }
 }
 
+/** Marks and links for program moves. A school's closing or converting mark wins. */
+function programMarks(marks: Partial<Record<SchoolId, Mark>>, links: Link[], moves: { from: SchoolId[]; to: SchoolId }[]) {
+  for (const m of moves) {
+    for (const f of m.from) {
+      if (marks[f] !== 'closing' && marks[f] !== 'converting') marks[f] = 'program';
+      links.push([f, m.to, 'program']);
+    }
+    marks[m.to] ??= 'receiver';
+  }
+}
+
 type SpanDraft = { school: SchoolId; to: SchoolId | null };
+type Link = [SchoolId, SchoolId, 'program'?];
 
 export function App({ sim, seed, start = 'status-quo', onStart, saved, onSave, onNewGame, playbackMs }: AppProps) {
   const reduce = useMemo(() => makeReducer(sim), [sim]);
@@ -168,6 +180,7 @@ export function App({ sim, seed, start = 'status-quo', onStart, saved, onSave, o
   const spanCandidates = sending ? withNames(sim.middleSchoolCandidates(s.game.schools, sending.school, s.draft.closures)) : [];
   const played = s.phase === 'playing' || s.phase === 'report' ? (turn?.report.closures ?? []) : [];
   const playedSpans = s.phase === 'playing' || s.phase === 'report' ? (turn?.report.conversions ?? []) : [];
+  const playedPrograms = s.phase === 'playing' || s.phase === 'report' ? (turn?.report.programMoves ?? []) : [];
   const { marks, links } = closureMarks(
     sending ? [] : planning ? s.draft.closures : played,
     drafting,
@@ -179,8 +192,9 @@ export function App({ sim, seed, start = 'status-quo', onStart, saved, onSave, o
     drafting ? [] : sending ? [sending] : planning ? s.draft.gradeChanges : playedSpans,
     spanCandidates.slice(0, NEARBY).map((c) => c.id),
   );
+  programMarks(marks, links, drafting || sending ? [] : planning ? s.draft.programMoves : playedPrograms);
   if (zoning) marks[zoning.to] = 'receiver';
-  const firstPlayed = played[0]?.school ?? playedSpans[0]?.school;
+  const firstPlayed = played[0]?.school ?? playedSpans[0]?.school ?? playedPrograms[0]?.from[0];
   const flows = s.phase === 'playing' && !!firstPlayed && DECIDED.includes(season);
   const focus =
     s.phase === 'playing' && firstPlayed && season !== 'spring' ? firstPlayed : (zoning?.to ?? drafting?.school ?? sending?.school ?? listed);
@@ -202,6 +216,9 @@ export function App({ sim, seed, start = 'status-quo', onStart, saved, onSave, o
   /** Closing a receiver or a boundary edit's target would silently drop those edits, so it can't close. */
   const receivesFrom = s.draft.closures.filter((c) => c.receivers.some((r) => r.school === selected)).map((c) => c.school);
   const rezonedInto = s.draft.boundaryEdits.some((e) => e.to === selected);
+  const programMoves = s.draft.programMoves.filter((m) => m.to === selected || m.from.includes(selected!));
+  /** Closing a program's new school would silently drop the move. */
+  const programInto = programMoves.some((m) => m.to === selected);
   /** A K-5 school takes no 6-8 blocks, so those edits block Send 6–8. */
   const middleInto = s.draft.boundaryEdits.some((e) => e.level === 'middle' && e.to === selected);
   const commit = (c: Closure) =>
@@ -284,7 +301,7 @@ export function App({ sim, seed, start = 'status-quo', onStart, saved, onSave, o
             <CloseSendSheet
               draft={drafting}
               candidates={candidates}
-              chipFor={(c) => sim.closureChip(s.game, c, s.draft.closures, s.draft.k5ClassSize, s.draft.gradeChanges)}
+              chipFor={(c) => sim.closureChip(s.game, c, s.draft.closures, s.draft.k5ClassSize, s.draft.gradeChanges, s.draft.programMoves)}
               onChange={setCloseDraft}
               onCommit={commit}
               onClose={() => setCloseDraft(null)}
@@ -325,10 +342,12 @@ export function App({ sim, seed, start = 'status-quo', onStart, saved, onSave, o
               converting={converting}
               gradesFrom={gradesFrom}
               middleSchool={shown.schools[selected]?.converted ? sim.middleZoneOf(shown, selected) : undefined}
+              programMoves={programMoves}
               onCloseSend={
                 s.phase === 'plan' &&
                 receivesFrom.length === 0 &&
                 !rezonedInto &&
+                !programInto &&
                 !converting &&
                 gradesFrom.length === 0 &&
                 sim.canClose(s.game.schools, selected)
@@ -395,6 +414,7 @@ export function App({ sim, seed, start = 'status-quo', onStart, saved, onSave, o
             base={s.game.policy}
             budget={plan}
             ballot={ballot}
+            closurePrograms={sim.closureProgramMoves(s.game, s.draft)}
             onBack={() => dispatch({ type: 'back' })}
             onConfirm={() => dispatch({ type: 'confirm' })}
           />

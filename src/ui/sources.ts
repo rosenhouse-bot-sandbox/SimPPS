@@ -44,6 +44,8 @@ export const K = {
   households: 'model.households',
   sliceStay: 'model.sliceStay',
   gradeSpan: 'model.gradeSpan',
+  programMove: 'model.programMove',
+  dli: 'model.dli',
   walkLimit: 'model.walkLimit',
   busing: 'model.busing',
   busReimbursement: 'model.busReimbursement',

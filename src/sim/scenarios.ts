@@ -1,12 +1,11 @@
 import rightsizing from '../data/rightsizing.json';
-import type { Closure, GradeSpanChange, SchoolId } from './types';
+import type { Closure, GradeSpanChange, ProgramMove, SchoolId } from './types';
 
 export type Start = 'status-quo' | 'scenario-a' | 'scenario-b';
 
 /**
  * model.scenarios: receivers from PPS's Rightsizing deck. Sellwood MS's split is unpublished, so it is
- * even. Irvington's 6-8 receiver (Beaumont) is left out because Irvington serves K-5. DLI and
- * Deaf/HH program moves are later levers.
+ * even. Irvington's 6-8 receiver (Beaumont) is left out because Irvington serves K-5.
  */
 const RECEIVERS: Record<string, { id: SchoolId; to: [SchoolId, number][] }> = {
   Beach: { id: 'beach', to: [['chief-joseph', 1]] },
@@ -36,7 +35,34 @@ const GRADE_CHANGES: Record<string, GradeSpanChange> = {
   Chavez: { school: 'cesar-chavez', to: 'george' },
 };
 
+/**
+ * model.scenarios: each DLI program move, by PPS's wording; a move naming no program moves its
+ * school's only one. Chavez 6–8's Spanish kids go to George with Chavez's grade-span change. Null
+ * moves have no student counts in the data.
+ */
+const PROGRAM_MOVES: Record<string, ProgramMove | null> = {
+  'Spanish: Beach, James John, and Sitton to Cesar Chavez': { program: 'Spanish', from: ['beach', 'james-john', 'sitton'], to: 'cesar-chavez' },
+  'Atkinson to Lent': { program: 'Spanish', from: ['atkinson'], to: 'lent' },
+  'Scott to Rigler': { program: 'Spanish', from: ['scott'], to: 'rigler' },
+  'Beaumont MS to Roseway Heights MS': { program: 'Spanish', from: ['beaumont'], to: 'roseway-heights' },
+  'Chavez 6–8 and Ockley Green MS to George MS': { program: 'Spanish', from: ['ockley-green'], to: 'george' },
+  'Vietnamese: Rose City Park to Vestal': { program: 'Vietnamese', from: ['rose-city-park'], to: 'vestal' },
+  'Mandarin: Clark to Woodstock': { program: 'Mandarin', from: ['clark'], to: 'woodstock' },
+  'MLK Jr. to Boise-Eliot/Humboldt': { program: 'Mandarin', from: ['dr-martin-luther-king-jr'], to: 'boise-eliot' },
+  'Creston Deaf and Hard of Hearing to Glencoe': null,
+  'Odyssey moves to the MLC site': null,
+};
+
 type Published = (typeof rightsizing.scenarios)['A'];
+
+function programMove(text: string): ProgramMove | null {
+  if (!(text in PROGRAM_MOVES)) throw new Error(`No program move for ${text}`);
+  return PROGRAM_MOVES[text];
+}
+
+function programMovesOf(s: Published): ProgramMove[] {
+  return s.program_moves.flatMap((m) => programMove(m.text) ?? []);
+}
 
 function closuresOf(s: Published): Closure[] {
   return s.closing.map((name) => {
@@ -58,17 +84,40 @@ function gradeChangesOf(s: Published): GradeSpanChange[] {
 
 const plural = (n: number, noun: string) => `${n} ${noun}${n === 1 ? '' : 's'}`;
 
+/** PPS counts a program move once per school it leaves. */
+function programMoveCount(s: Published, modeled: boolean): number {
+  return s.program_moves.filter((m) => !!programMove(m.text) === modeled).reduce((n, m) => n + m.from.length, 0);
+}
+
 function notModeled(s: Published): string {
   const spans = s.grade_changes_count - gradeChangesOf(s).length;
-  return `Not modeled yet: ${plural(spans, 'grade-span change')}, ${plural(s.program_moves_count, 'program move')} and ${plural(s.boundary_changes_count, 'boundary change')}.`;
+  const programs = programMoveCount(s, false);
+  return `Not modeled yet: ${plural(spans, 'grade-span change')}, ${plural(programs, 'program move')} and ${plural(s.boundary_changes_count, 'boundary change')}.`;
 }
 
 function scenario(label: string, s: Published) {
-  return { label, closures: closuresOf(s), gradeChanges: gradeChangesOf(s), notModeled: notModeled(s) };
+  return {
+    label,
+    closures: closuresOf(s),
+    gradeChanges: gradeChangesOf(s),
+    programMoves: programMovesOf(s),
+    programMoveCount: programMoveCount(s, true),
+    notModeled: notModeled(s),
+  };
 }
 
-export const SCENARIOS: Record<Start, { label: string; closures: Closure[]; gradeChanges: GradeSpanChange[]; notModeled: string | null }> = {
-  'status-quo': { label: 'Status quo 2026', closures: [], gradeChanges: [], notModeled: null },
+export interface Scenario {
+  label: string;
+  closures: Closure[];
+  gradeChanges: GradeSpanChange[];
+  programMoves: ProgramMove[];
+  /** Modeled program moves, counted per school left as PPS does. */
+  programMoveCount: number;
+  notModeled: string | null;
+}
+
+export const SCENARIOS: Record<Start, Scenario> = {
+  'status-quo': { label: 'Status quo 2026', closures: [], gradeChanges: [], programMoves: [], programMoveCount: 0, notModeled: null },
   'scenario-a': scenario('PPS Scenario A', rightsizing.scenarios.A),
   'scenario-b': scenario('PPS Scenario B', rightsizing.scenarios.B),
 };

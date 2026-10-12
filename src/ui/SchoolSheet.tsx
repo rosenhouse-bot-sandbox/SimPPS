@@ -1,9 +1,9 @@
-import type { ComponentChildren } from 'preact';
+import { Fragment, type ComponentChildren } from 'preact';
 import { SCHOOLS, type SchoolData } from '../data';
-import { FATE_DONE, modeledRange } from '../sim';
-import type { Closure, GradeSpanChange, SchoolId, SchoolState } from '../sim/types';
+import { DLI_PROGRAMS, FATE_DONE, modeledRange } from '../sim';
+import type { Closure, GradeSpanChange, Program, ProgramMove, SchoolId, SchoolState } from '../sim/types';
 import { nameOf } from './closeSend';
-import { closureText, gradeSpanText } from './edits';
+import { closureText, gradeSpanText, programMoveText } from './edits';
 import { fmtCount, fmtMoney, fmtPct, fmtRange } from '../format';
 import { isTerm, type GlossaryTerm, type PlainLabel } from './glossary';
 import { Sourced } from './Sourced';
@@ -56,8 +56,24 @@ export function schoolFacts(s: SchoolData, converted = false): FactData[] {
     { label: 'URM', column: 'is_urm_building', value: s.isUrm ? 'Yes' : 'No' },
     { label: 'Retrofit left', column: 'retrofit_cost_remaining_usd', value: orNull(s.retrofitRemaining, fmtMoney) },
     { label: 'Direct cert.', column: 'pct_direct_cert', value: orNull(s.pctDirectCert, fmtPct) },
-    { label: 'DLI', column: 'dli_languages', value: s.dliLanguages ?? 'None' },
+    { label: 'DLI 25-26', column: 'dli_languages', value: DLI_PROGRAMS.get(s.id)?.join(', ') ?? 'None' },
   ];
+}
+
+function DliKids({ dli = {} }: { dli?: SchoolState['dli'] }) {
+  const programs = Object.entries(dli) as [Program, number][];
+  if (!programs.length) return <>None</>;
+  return (
+    <>
+      {programs.map(([p, n], i) => (
+        <Fragment key={p}>
+          {i > 0 && ', '}
+          {`${p} `}
+          <Sourced k={K.dli}>{fmtRange(modeledRange(n))}</Sourced>
+        </Fragment>
+      ))}
+    </>
+  );
 }
 
 interface SchoolSheetProps {
@@ -82,6 +98,8 @@ interface SchoolSheetProps {
   gradesFrom?: string[];
   /** Where a converted school's grades 6-8 go. */
   middleSchool?: SchoolId;
+  /** The plan's program moves from or into this school. */
+  programMoves?: ProgramMove[];
 }
 
 export function SchoolSheet({
@@ -97,6 +115,7 @@ export function SchoolSheet({
   converting,
   gradesFrom = [],
   middleSchool,
+  programMoves = [],
 }: SchoolSheetProps) {
   const school = SCHOOLS.find((s) => s.id === id);
   if (!school) return null;
@@ -122,6 +141,15 @@ export function SchoolSheet({
           </Sourced>
         </p>
       )}
+      {programMoves.map((m) => (
+        <p key={programMoveText(m)} class="note">
+          In the plan:{' '}
+          <Sourced k={K.programMove} text>
+            {programMoveText(m)}
+          </Sourced>
+          {m.to === id && '. Undo that to close this school.'}
+        </p>
+      ))}
       {gradesFrom.length > 0 && (
         <p class="note">In the plan: takes grades 6–8 from {gradesFrom.map(nameOf).join(' and ')}. Undo that to close this school.</p>
       )}
@@ -171,6 +199,11 @@ export function SchoolSheet({
             {state.converted && (
               <Row label="K-5 seats">
                 <Sourced k={K.gradeSpan}>{fmtCount(state.capacity)}</Sourced>
+              </Row>
+            )}
+            {(state.dli || school.dliLanguages) && (
+              <Row label="DLI kids">
+                <DliKids dli={state.dli} />
               </Row>
             )}
             <Row label="Homerooms">

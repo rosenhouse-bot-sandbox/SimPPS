@@ -26,7 +26,7 @@ describe('glossary', () => {
       'URM',
       'Retrofit left',
       'Direct cert.',
-      'DLI',
+      'DLI 25-26',
       'Simulated',
       'Enrollment',
       'Homerooms',

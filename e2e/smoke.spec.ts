@@ -226,6 +226,56 @@ test('sends Beverly Cleary 6–8 to Beaumont and reports where they went', async
   await shot(page, 'grade-span-report');
 });
 
+test("moves Scenario A's DLI programs and reports where the kids went", async ({ page }) => {
+  test.setTimeout(90_000);
+  await page.goto('?seed=p52');
+  const starts = page.getByRole('region', { name: 'New game' });
+  await expect(starts).toContainText('14 proposed closures, 7 grade-span changes and 11 program moves');
+  await expect(starts).toContainText('2 program moves and 38 boundary changes');
+  await shot(page, 'program-start');
+  await starts.getByRole('button', { name: 'PPS Scenario A' }).tap();
+  await expect(page.locator('[data-link="clark>woodstock"].pps-map-link-program')).toHaveCount(1);
+  await expect(page.locator('[data-mark="program"]')).toHaveCount(7);
+  await shot(page, 'program-map');
+
+  await page.getByRole('button', { name: 'Plan' }).tap();
+  const move = page.getByText('Move Mandarin DLI: Clark → Woodstock');
+  await expect(page.locator('.edits')).toContainText('Move Spanish DLI: Beach, James John, Sitton → César Chávez');
+  await move.scrollIntoViewIfNeeded();
+  await shot(page, 'program-plan');
+  await page.getByRole('button', { name: 'Clark Elementary School' }).tap();
+  const clark = page.getByRole('region', { name: 'Clark Elementary School' });
+  await expect(clark).toContainText('In the plan: Move Mandarin DLI: Clark → Woodstock');
+  const dli = clark.locator('.fact', { hasText: 'DLI kids' });
+  await expect(dli).toContainText(/Mandarin \d+–\d+~/);
+  await dli.scrollIntoViewIfNeeded();
+  await shot(page, 'program-sheet');
+  await clark.getByRole('button', { name: 'Close', exact: true }).tap();
+
+  await hold(page, page.getByRole('button', { name: 'End year (press and hold)' }));
+  await expect(page.getByRole('dialog', { name: 'Play 2027-28?' })).toContainText('Move Mandarin DLI: Clark → Woodstock');
+  await hold(page, page.getByRole('button', { name: 'Play the year (press and hold)' }));
+  const playback = page.getByTestId('playback');
+  await expect(playback.locator('.season')).toHaveText('Summer', { timeout: 20_000 });
+  await expect(playback).toContainText('8 DLI programs move');
+  await page.getByRole('button', { name: 'Pause' }).tap();
+  await shot(page, 'program-playback');
+  await playback.getByRole('button', { name: 'Skip' }).tap();
+
+  const where = page.getByRole('region', { name: "Who kept Beach, James John and Sitton's Spanish DLI" });
+  for (const row of ['Who kept Spanish DLI from Beach, James John and Sitton', 'César Chávez', 'Left DLI', 'Left PPS']) await expect(where).toContainText(row);
+  await where.scrollIntoViewIfNeeded();
+  await shot(page, 'program-report');
+
+  await page.getByRole('button', { name: 'Plan 2028' }).tap();
+  await page.getByRole('button', { name: 'Plan' }).tap();
+  await page.getByRole('button', { name: 'César Chávez K-8 School' }).tap();
+  const chavez = page.getByRole('region', { name: 'César Chávez K-8 School' }).locator('.fact', { hasText: 'DLI kids' });
+  await expect(chavez).toContainText(/Spanish \d+–\d+~/);
+  await chavez.scrollIntoViewIfNeeded();
+  await shot(page, 'program-receiver-sheet');
+});
+
 async function playYear(page: Page, year: number) {
   await hold(page, page.getByRole('button', { name: 'End year (press and hold)' }));
   await hold(page, page.getByRole('button', { name: 'Play the year (press and hold)' }));
