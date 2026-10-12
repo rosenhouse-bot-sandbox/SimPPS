@@ -75,6 +75,9 @@ test('fits a small phone: one-line dials, a pausable playback and pop-overs on s
   await page.goto('?seed=p52&start=scenario-a');
   const rows = page.locator('.topbar-row');
   for (const row of await rows.all()) expect((await row.boundingBox())!.height).toBeLessThan(40);
+  const bodyFont = await page.evaluate(() => getComputedStyle(document.body).fontFamily);
+  for (const bar of [page.locator('.topbar [data-source]').first(), page.getByTestId('gapbar').locator('[data-source]').first()])
+    expect(await bar.evaluate((e) => getComputedStyle(e).fontFamily)).toBe(bodyFont);
 
   await hold(page, page.getByRole('button', { name: 'End year (press and hold)' }));
   await hold(page, page.getByRole('button', { name: 'Play the year (press and hold)' }));
