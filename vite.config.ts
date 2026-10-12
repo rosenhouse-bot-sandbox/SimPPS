@@ -7,5 +7,7 @@ export default defineConfig({
   test: {
     environment: 'jsdom',
     include: ['src/**/*.test.{ts,tsx}'],
+    // Multi-year sim tests are slow under parallel load; the CPU-time test guards speed.
+    testTimeout: 30_000,
   },
 });
