@@ -1,6 +1,6 @@
 import { createContext, type ComponentChildren } from 'preact';
 import { createPortal } from 'preact/compat';
-import { useContext, useEffect, useRef, useState } from 'preact/hooks';
+import { useContext, useLayoutEffect, useRef, useState } from 'preact/hooks';
 import { FIRST_YEAR } from '../sim';
 import { getSource, type HiddenCard, type Source, type SourceTag } from '../sources/registry';
 import { GLOSSARY, type GlossaryTerm } from './glossary';
@@ -69,8 +69,9 @@ function withTilde(text: string) {
 
 export function Popover({ title, onClose, children }: { title: string; onClose: () => void; children: ComponentChildren }) {
   const closeButton = useRef<HTMLButtonElement>(null);
-  useEffect(() => closeButton.current?.focus(), []);
-  useEffect(() => {
+  // Layout effects attach before paint, so an Escape pressed right after opening still closes.
+  useLayoutEffect(() => closeButton.current?.focus(), []);
+  useLayoutEffect(() => {
     const onKey = (e: KeyboardEvent) => e.key === 'Escape' && onClose();
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);

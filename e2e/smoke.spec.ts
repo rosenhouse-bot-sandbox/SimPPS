@@ -385,6 +385,7 @@ test.describe('on a desktop', () => {
     await page.getByRole('button', { name: 'What is Reserves?' }).click();
     await expect(page.getByRole('dialog', { name: 'Reserves' })).toContainText('at least 5%');
     await page.keyboard.press('Escape');
+    await expect(page.getByRole('dialog')).toHaveCount(0);
     await page.locator('.topbar [data-source="dial.trust"]').click();
     const trust = page.getByRole('dialog', { name: 'Trust' });
     await expect(trust.locator('.definition')).toContainText('from 0 to 100');
