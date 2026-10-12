@@ -14,7 +14,7 @@ describe('url', () => {
   });
 
   it('reads model overrides, ignoring unknown keys and bad numbers', () => {
-    expect(readModel('?seed=a&m.leaveRate=0.02&m.closureOneTime.lo=200000&m.nope=1&m.returnRate=x&m.awayShare=3')).toEqual({
+    expect(readModel('?seed=a&m.leaveRate=0.02&m.closureOneTime.lo=200000&m.nope=1&m.returnRate=x&m.awayShare=3&m.overload=0x4&m.kCapture2025=0')).toEqual({
       leaveRate: 0.02,
       'closureOneTime.lo': 200_000,
     });

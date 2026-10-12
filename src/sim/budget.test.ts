@@ -150,6 +150,19 @@ describe('computeBudget', () => {
     expect(b.spending).toBeCloseTo(kept.spending + b.rehired! * position, 0);
     expect(computeBudget({ ...input, cumulativeCuts: 3 }).rehired).toBe(3);
   });
+
+  it('rehires only from the surplus above the reserve policy, so no mid-year cuts follow', () => {
+    setModelParams({ surplusRehire: 1 });
+    const b = computeBudget({ ...base, reserves: 0, restRevenue: 450_000_000, restCost: 420_000_000, cumulativeCuts: 300 });
+    const position = 155_000 * 1.035;
+    expect(b.gap).toBeGreaterThan(30e6);
+    expect(b.rehired).toBeGreaterThan(50);
+    expect(b.rehired).toBeLessThan(300);
+    expect(b.rehired! * position).toBeLessThan(b.gap);
+    expect(b.reservesAfter).toBeGreaterThanOrEqual(M.reservePolicy * b.spending);
+    expect(b.reservesAfter).toBeLessThan(M.reservePolicy * b.spending + 2 * position);
+    expect(b.midYearCuts).toBe(0);
+  });
 });
 
 describe('state funding card', () => {

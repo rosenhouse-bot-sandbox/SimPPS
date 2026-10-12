@@ -125,7 +125,7 @@ const defaults = () => ({
   followShift: 0,
   // model.followAdjustments
   followFreeMiles: 1,
-  followPerMilePastOne: 0.03,
+  followPerMile: 0.03,
   followBarrier: 0.04,
   followRiskier: 0.03,
   followMovedTwice: 0.08,
@@ -161,7 +161,7 @@ const defaults = () => ({
   trustMovedTwice: 5,
   trustCalmYear: 2,
   trustPer100PositionsCut: 1,
-  trustPerKidOver24: 1,
+  trustPerKidOverBase: 1,
   // model.levyTerm: the fall year of the levy's last school year
   levyThrough: 2029,
   levyYears: 5,
@@ -176,7 +176,7 @@ const defaults = () => ({
   // model.electionBill
   electionBill: 500_000,
   // model.classrooms
-  classroomsK5: 0,
+  classroomsK5: 276,
   classroomsMiddle: 375,
 });
 
@@ -192,13 +192,140 @@ export const MODEL_DEFAULTS: Readonly<Model> = deepFreeze(defaults());
 /** The parameters of the game being played. setModelParams changes them in place. */
 export const M: Model = defaults();
 
+/** Bounds that keep households and the budget sane, about a quarter to four times a count or cost. */
+export const LIMITS: Record<keyof Model, readonly [min: number, max: number] | 'fixed'> = {
+  outsideKids: [4_000, 32_000],
+  inZoneShare: [0.2, 1],
+  focusInZoneShare: [0, 1],
+  gradeTilt: [-0.05, 0.05],
+  outsideBaseWeight: [0, 2],
+  directCertForZeroExit: [0.3, 1],
+  exitNoise: [0, 0.5],
+  exitMin: [0, 0.5],
+  exitMax: [0.5, 1],
+  loyaltyNoise: [0, 0.5],
+  voiceBase: [0, 1],
+  voicePerExit: [0, 1],
+  voiceNoise: [0, 0.5],
+  kCapture2025: [0.6, 0.95],
+  kCapture2028: [0.6, 0.95],
+  kCaptureMax: [0.95, 1],
+  cohortTrend: [-0.1, 0.1],
+  leaveRate: [0, 0.1],
+  leaveBase: [0, 2],
+  leavePerExit: [0, 2],
+  awayShare: [0, 1],
+  returnRate: [0, 0.2],
+  grade6Exit: [0, 0.3],
+  grade6Return: [0, 0.3],
+  feederShare: [0, 1],
+  baseClassSize: [18, 30],
+  classSizeExitPerKid: [0, 0.01],
+  cutsExitPer100Positions: [0, 0.01],
+  worseYearCap: [0, 0.05],
+  betterYearCap: [0, 0.05],
+  worseBase: [1.25, 3],
+  worsePerLoyalty: [0, 1.25],
+  rangeShare: [0, 0.5],
+  rangeExtra: [0, 50],
+  homeroomCost: [40_000, 640_000],
+  msClassSize: [15, 40],
+  overload: [0, 6],
+  staffSteps: 'fixed',
+  positionCost: [40_000, 620_000],
+  plantPerSqft: [3.45, 55],
+  costGrowth: [0, 0.1],
+  revenueBase: [1_750, 28_000],
+  revenuePoverty: [0, 24_000],
+  directCertForMaxWeight: [0.3, 1],
+  stateFunding2025: [10e9, 12.56e9],
+  stateFundingCeiling: [11.36e9, 15e9],
+  otherStudents: [3_914, 62_624],
+  levyRate: 'fixed',
+  levyNet: [26e6, 415.6e6],
+  compression: [0, 213.6e6],
+  compressionPower: [1, 3],
+  generalFund: [431e6, 1_724e6],
+  reserves: [0, 164.4e6],
+  reservePolicy: [0.03, 0.2],
+  startGap: [-260.8e6, 65.2e6],
+  midYearFloor: [0, 0.05],
+  midYearPayShare: [0.1, 1],
+  surplusRehire: [0, 1],
+  closureSavingsSpread: [0, 0.5],
+  principalOffice: [0, 6],
+  closurePhasing: 'fixed',
+  closureOneTime: [75_000, 2_400_000],
+  oneTimeFromReserves: [0, 1],
+  mothball: [0, 280_000],
+  followSchoolSpread: [0, 0.2],
+  followShift: [-0.5, 0.5],
+  followFreeMiles: [0, 5],
+  followPerMile: [0, 0.2],
+  followBarrier: [0, 0.3],
+  followRiskier: [0, 0.3],
+  followMovedTwice: [0, 0.3],
+  followLoyal: [0, 0.3],
+  followExit: [0, 0.3],
+  followWholeClasses: [0, 0.3],
+  nonFollowerOtherPps: [0, 0.9],
+  nonFollowerCharter: [0, 0.65],
+  crowdingLine: [0.8, 2],
+  sliceStay: [0, 1],
+  conversionStay: [0, 1],
+  conversionCapacity: [0.5, 1],
+  programMoveStay: [0, 1],
+  programFarMiles: [0, 10],
+  programStayPerMile: [0, 0.2],
+  walkLimitK5: [0.25, 4],
+  walkLimitMiddle: [0.25, 6],
+  walkDialMiles: [0.25, 4],
+  busRider: [250, 7_200],
+  busReimbursed: [0, 1],
+  trustStart: [0, 100],
+  trustClosure: [0, 32],
+  trustMovedTwice: [0, 20],
+  trustCalmYear: [0, 8],
+  trustPer100PositionsCut: [0, 4],
+  trustPerKidOverBase: [0, 4],
+  levyThrough: 'fixed',
+  levyYears: 'fixed',
+  yesBase: [0.3, 1],
+  yesPerTrustPoint: [0, 0.05],
+  yesPerDime: [0, 0.12],
+  yesPerFailure: [0, 0.16],
+  yesNoise: [0, 0.24],
+  pollSpread: [0, 0.2],
+  electionBill: [125_000, 2_000_000],
+  classroomsK5: [100, 600],
+  classroomsMiddle: [100, 1_000],
+};
+
+/** Pairs where the first must stay at or below the second. Range ends join them below. */
+const ORDERED: [string, string][] = [
+  ['exitMin', 'exitMax'],
+  ['kCapture2025', 'kCaptureMax'],
+  ['kCapture2028', 'kCaptureMax'],
+  ['stateFunding2025', 'stateFundingCeiling'],
+  ['midYearFloor', 'reservePolicy'],
+  ['worsePerLoyalty', 'worseBase'],
+];
+
+/** Shares that must sum to at most 1. */
+const SHARES: string[][] = [['nonFollowerOtherPps', 'nonFollowerCharter']];
+
 const isRange = (v: unknown): v is { lo: number; hi: number } =>
   typeof v === 'object' && v !== null && !Array.isArray(v) && typeof (v as { lo: unknown }).lo === 'number';
 
 /** Every parameter a game can change: scalars by name and ranges as "name.lo" and "name.hi". */
-export const PARAM_PATHS: readonly string[] = Object.entries(MODEL_DEFAULTS).flatMap(([key, v]) =>
-  typeof v === 'number' ? [key] : isRange(v) ? [`${key}.lo`, `${key}.hi`] : [],
+export const EDITABLE_PATHS: readonly string[] = Object.entries(MODEL_DEFAULTS).flatMap(([key, v]) =>
+  LIMITS[key as keyof Model] === 'fixed' ? [] : typeof v === 'number' ? [key] : isRange(v) ? [`${key}.lo`, `${key}.hi`] : [],
 );
+
+const PAIRS: [string, string][] = [
+  ...ORDERED,
+  ...EDITABLE_PATHS.filter((p) => p.endsWith('.lo')).map((lo): [string, string] => [lo, lo.replace(/lo$/, 'hi')]),
+];
 
 export function defaultValue(path: string): number {
   const [key, end] = path.split('.');
@@ -206,21 +333,46 @@ export function defaultValue(path: string): number {
   return end ? (v as Record<string, number>)[end] : (v as number);
 }
 
-/** Resets M to the defaults, then applies each known override that is a finite number. */
+const fmt = (x: number) => x.toLocaleString('en-US', { maximumFractionDigits: 6 });
+
+/** Why `value` can't stand for `path` next to the other `overrides`, or null when it can. */
+export function paramError(path: string, value: number, overrides: ModelOverrides): string | null {
+  if (!EDITABLE_PATHS.includes(path)) return 'Not editable.';
+  if (!Number.isFinite(value)) return 'Enter a number.';
+  const [min, max] = LIMITS[path.split('.')[0] as keyof Model] as readonly [number, number];
+  if (value < min || value > max) return `Use ${fmt(min)} to ${fmt(max)}.`;
+  const at = (p: string) => (p === path ? value : (overrides[p] ?? defaultValue(p)));
+  for (const [lo, hi] of PAIRS) {
+    if (path === lo && at(lo) > at(hi)) return `Keep at or below ${hi}.`;
+    if (path === hi && at(lo) > at(hi)) return `Keep at or above ${lo}.`;
+  }
+  for (const shares of SHARES)
+    if (shares.includes(path) && shares.reduce((a, p) => a + at(p), 0) > 1) return `Keep ${shares.join(' + ')} at or below 1.`;
+  return null;
+}
+
+/** The overrides that are editable, valid and different from the defaults. Both ends of a broken pair go. */
+export function cleanOverrides(raw: ModelOverrides = {}): ModelOverrides {
+  const out: ModelOverrides = {};
+  for (const path of EDITABLE_PATHS) if (path in raw && paramError(path, raw[path], {}) !== 'Enter a number.') out[path] = raw[path];
+  for (;;) {
+    const bad = Object.keys(out).filter((p) => paramError(p, out[p], out) !== null);
+    if (!bad.length) break;
+    for (const p of bad) delete out[p];
+  }
+  for (const p of Object.keys(out)) if (out[p] === defaultValue(p)) delete out[p];
+  return out;
+}
+
+/** Resets M to the defaults, then applies the valid overrides. */
 export function setModelParams(overrides: ModelOverrides = {}): void {
   Object.assign(M, defaults());
-  for (const [path, value] of Object.entries(overrides)) {
-    if (!PARAM_PATHS.includes(path) || !Number.isFinite(value)) continue;
+  const m = M as unknown as Record<string, number | Record<string, number>>;
+  for (const [path, value] of Object.entries(cleanOverrides(overrides))) {
     const [key, end] = path.split('.');
-    const m = M as unknown as Record<string, number | Record<string, number>>;
     if (end) (m[key] as Record<string, number>)[end] = value;
     else m[key] = value;
   }
-}
-
-/** model.classrooms: the Avg K-5 class dial becomes the Classrooms dial when a two-section floor is set. */
-export function classroomsDial(): boolean {
-  return M.classroomsK5 > 0;
 }
 
 /** The report that reveals the hidden cards comes after this many played years. */

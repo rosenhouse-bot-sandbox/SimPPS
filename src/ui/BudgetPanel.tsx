@@ -126,7 +126,7 @@ export function BudgetPanel({ game, draft, plan, ballot, levyThrough, onEdit, on
           )}
           {plan.midYearCuts > 0 && (
             <p class="note warn">
-              <Sourced k={K.midYearCuts} text>{`Below 3%: ${plan.midYearCuts.toLocaleString('en-US')} positions cut mid-year.`}</Sourced>
+              <Sourced k={K.midYearCuts} text>{`Below ${fmtPct(M.midYearFloor)}: ${plan.midYearCuts.toLocaleString('en-US')} positions cut mid-year.`}</Sourced>
             </p>
           )}
         </>

@@ -39,7 +39,7 @@ export interface FollowFactors {
 export function followChance(base: number, f: FollowFactors): number {
   return clamp(
     base -
-      M.followPerMilePastOne * Math.max(0, f.miles - M.followFreeMiles) -
+      M.followPerMile * Math.max(0, f.miles - M.followFreeMiles) -
       (f.barrier ? M.followBarrier : 0) -
       (f.riskier ? M.followRiskier : 0) -
       (f.movedBefore ? M.followMovedTwice : 0) -

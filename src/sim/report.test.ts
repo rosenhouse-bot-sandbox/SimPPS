@@ -59,6 +59,7 @@ const dials: Dials = {
   newBusRiders: 0,
   trust: 35,
   k5Class: 24,
+  classrooms: 12_000,
 };
 
 const detail = (f: YearFacts, title: string) => seasonEvents(f).find((e) => e.title === title)!.detail;
@@ -94,6 +95,13 @@ describe('seasonEvents', () => {
     );
     expect(detail({ ...facts, reserveDraw: 1_000_000 }, 'June budget closes with cuts')).toContain(
       'Reserves cover $1M.',
+    );
+  });
+
+  it('says when reserves pay one-time costs and a surplus rehires', () => {
+    const f = { ...facts, autoCuts: 0, plan: { ...facts.plan, gap: 5_000_000, oneTimeDraw: 2_500_000, rehired: 12 } };
+    expect(detail(f, 'June budget closes')).toBe(
+      "The gap is $5M. Reserves pay $2.5M of closures' one-time costs. The surplus rehires 12 cut positions.",
     );
   });
 

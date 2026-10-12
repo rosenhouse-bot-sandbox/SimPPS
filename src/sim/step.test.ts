@@ -119,6 +119,21 @@ describe('a worse year', () => {
   });
 });
 
+describe('a surplus with surplusRehire', () => {
+  const start = newGame({ seed: 'rehire', model: { surplusRehire: 1 } });
+  const flush = { ...start, sim: { ...start.sim!, cumulativeCuts: 600, homeroomsCut: 5 } };
+
+  it('rehires cut positions and restores their homerooms, never below none cut', () => {
+    const { next, report } = endYear(flush, DEFAULT_POLICY);
+    const rehired = report.budget.rehired!;
+    expect(rehired).toBeGreaterThan(50);
+    expect(rehired).toBeLessThan(600);
+    expect(next.sim!.cumulativeCuts).toBe(600 + report.budget.autoCutPositions + report.budget.midYearCuts - rehired);
+    expect(next.sim!.homeroomsCut).toBe(0);
+    expect(report.events.map((e) => e.detail).join(' ')).toContain(`The surplus rehires ${rehired} cut positions.`);
+  });
+});
+
 describe('policy bounds', () => {
   it('treats a negative reserve draw as none', () => {
     expect(normalizePolicy({ ...DEFAULT_POLICY, reserveDraw: -5e6 }).reserveDraw).toBe(0);

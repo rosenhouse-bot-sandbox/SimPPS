@@ -36,6 +36,13 @@ describe('app state machine', () => {
     expect(s.draft.closures.map((c) => c.school)).toEqual(sim.SCENARIOS['scenario-b'].closures.map((c) => c.school));
   });
 
+  it('restarts with changed model parameters', () => {
+    const plain = run([{ type: 'restart', start: 'status-quo' }]);
+    const s = run([{ type: 'restart', start: 'status-quo', model: { homeroomCost: 100_000 } }]);
+    expect(s.game.sim!.model).toEqual({ homeroomCost: 100_000 });
+    expect(s.game.budget.gap).toBeGreaterThan(plain.game.budget.gap + 30e6);
+  });
+
   it('replays saved plans to the same January, history included', () => {
     const played = run([
       { type: 'edit', policy: { k5ClassSize: 26 } },

@@ -1,5 +1,5 @@
 import { classesFor, cutCreep, stateWeight } from './budget';
-import { classroomsDial, gradeOf, M, MAX_GRADE } from './model';
+import { gradeOf, M, MAX_GRADE } from './model';
 import { SCHOOL_INFO } from './population';
 import { programsAt } from './programs';
 import { newBusRiders, walkK5 } from './walk';
@@ -97,6 +97,7 @@ export function computeDials(state: Pick<GameState, 'households' | 'schools' | '
     walkK5: walkK5(state.households),
     newBusRiders: newBusRiders(state.households),
     trust,
-    k5Class: classroomsDial() ? classrooms : k5Rooms ? k5Kids / k5Rooms : 0,
+    k5Class: k5Rooms ? k5Kids / k5Rooms : 0,
+    classrooms,
   };
 }

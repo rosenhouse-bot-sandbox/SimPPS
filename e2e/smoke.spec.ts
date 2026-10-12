@@ -450,7 +450,7 @@ test('changes a model parameter for a new game and keeps it in the link', async 
   const params = page.getByRole('dialog', { name: 'Model parameters' });
   const leave = params.getByLabel('leaveRate', { exact: true });
   await leave.fill('2');
-  await expect(params).toContainText('Use 0 to 1.');
+  await expect(params).toContainText('Use 0 to 0.1.');
   await leave.fill('0.02');
   await expect(params.locator('.param.changed')).toHaveCount(1);
   expect(await params.evaluate((e) => e.scrollWidth <= e.clientWidth && e.getBoundingClientRect().right <= innerWidth)).toBe(true);
@@ -464,5 +464,7 @@ test('changes a model parameter for a new game and keeps it in the link', async 
 
   await page.reload();
   await playYear(page, 2027);
-  await expect(page.getByRole('region', { name: /DEC 2027/ })).toContainText('Changed model: leaveRate = 0.02');
+  const badge = page.getByRole('region', { name: /DEC 2027/ }).locator('.model-changed');
+  await badge.getByText('Changed model: 1 parameter').tap();
+  await expect(badge).toContainText(': 0.02, default 0.015');
 });

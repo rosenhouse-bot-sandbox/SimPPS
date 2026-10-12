@@ -1,5 +1,5 @@
-import { computeBudget, FIRST_YEAR, generalFund, stateFundingLevel } from './budget';
-import { CLOSED_ZONE_CAPTURE_DROPS, FOLLOW_RATES, gradeOf, HIDDEN_CARDS, M, MAX_GRADE, MODEL_DEFAULTS, REVEAL_AFTER_YEARS, setModelParams } from './model';
+import { computeBudget, costIndex, FIRST_YEAR, stateFundingLevel } from './budget';
+import { cleanOverrides, CLOSED_ZONE_CAPTURE_DROPS, FOLLOW_RATES, gradeOf, HIDDEN_CARDS, M, MAX_GRADE, MODEL_DEFAULTS, REVEAL_AFTER_YEARS, setModelParams } from './model';
 import { expectedYes, levyBallot, levyRateFor, pollRange } from './election';
 import { meanTrust, startTrust, strainFor, trustAfterYear } from './trust';
 import { clamp } from '../clamp';
@@ -97,7 +97,8 @@ export const DEFAULT_POLICY: Policy = { k5ClassSize: 24, levyRate: MODEL_DEFAULT
 
 /** A start loads its closures into the first plan as ordinary edits. The game keeps `model` for every year it plays. */
 export function newGame(opts: { seed: string; start?: Start; model?: ModelOverrides }): GameState {
-  setModelParams(opts.model);
+  const model = cleanOverrides(opts.model);
+  setModelParams(model);
   const seedHash = hashString(opts.seed);
   const pop = generatePopulation(seedHash);
   const middle = defaultZones().middle;
@@ -126,13 +127,17 @@ export function newGame(opts: { seed: string; start?: Start; model?: ModelOverri
     stateFunding: stateFundingLevel(seedHash, FIRST_YEAR, 'january'),
     closed: [],
   };
-  const k8 = computeBudget(input).lines;
+  // model.restOfDistrict: sized at default unit costs, so a changed cost or rate shows in the opening gap.
+  const { generalFund: fund, startGap } = M;
+  setModelParams();
+  const k8 = computeBudget({ ...input, schools: buildSchools(households, DEFAULT_POLICY.k5ClassSize) }).lines;
   const revenue = k8.filter((l) => l.amount > 0).reduce((a, l) => a + l.amount, 0);
   const cost = -k8.filter((l) => l.amount < 0).reduce((a, l) => a + l.amount, 0);
-  const total = generalFund(FIRST_YEAR);
+  const total = fund * costIndex(FIRST_YEAR + 1);
+  setModelParams(model);
   const sim: SimMemory = {
     seedHash,
-    model: opts.model,
+    model,
     nextId: fall2026.nextId,
     kChoice: pop.kChoice,
     msMix: pop.msMix,
@@ -143,7 +148,7 @@ export function newGame(opts: { seed: string; start?: Start; model?: ModelOverri
     cumulativeCuts: 0,
     spending: M.generalFund,
     homeroomsCut: 0,
-    restRevenue: total + M.startGap - revenue,
+    restRevenue: total + startGap - revenue,
     restCost: total - cost,
     closed: [],
     converted: [],

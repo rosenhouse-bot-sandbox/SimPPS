@@ -1,5 +1,5 @@
 import { fmtMoney } from '../format';
-import { classroomsDial, M } from './model';
+import { M } from './model';
 import { SCHOOL_INFO } from './population';
 import { dialSourceKey } from '../sources/model';
 import type { YearFacts } from './step';
@@ -314,6 +314,7 @@ const HIGHER_IS_BETTER: Record<keyof Dials, boolean> = {
   kidsInUrm: false,
   trust: true,
   k5Class: false,
+  classrooms: true,
 };
 
 /** One unit of each dial that counts as a comparable gap. */
@@ -329,21 +330,18 @@ const SCALE: Record<keyof Dials, number> = {
   kidsInUrm: 100,
   trust: 1,
   k5Class: 0.2,
+  classrooms: 100,
 };
-
-/** The Classrooms dial counts kids, so more is better. */
-const higherIsBetter = (dial: keyof Dials) => HIGHER_IS_BETTER[dial] || (dial === 'k5Class' && classroomsDial());
-const scale = (dial: keyof Dials) => (dial === 'k5Class' && classroomsDial() ? SCALE.kids : SCALE[dial]);
 
 /** Dials that differ from the ghost by at least half a unit, biggest gap first. */
 export function versusGhost(you: Dials, ghost: Dials): YearReport['vsGhost'] {
   return (Object.keys(HIGHER_IS_BETTER) as (keyof Dials)[])
-    .filter((dial) => Math.abs(you[dial] - ghost[dial]) >= scale(dial) / 2)
+    .filter((dial) => Math.abs(you[dial] - ghost[dial]) >= SCALE[dial] / 2)
     .map((dial) => ({
       dial,
       you: you[dial],
       ghost: ghost[dial],
-      better: higherIsBetter(dial) ? you[dial] > ghost[dial] : you[dial] < ghost[dial],
+      better: HIGHER_IS_BETTER[dial] ? you[dial] > ghost[dial] : you[dial] < ghost[dial],
     }))
-    .sort((a, b) => Math.abs(b.you - b.ghost) / scale(b.dial) - Math.abs(a.you - a.ghost) / scale(a.dial));
+    .sort((a, b) => Math.abs(b.you - b.ghost) / SCALE[b.dial] - Math.abs(a.you - a.ghost) / SCALE[a.dial]);
 }

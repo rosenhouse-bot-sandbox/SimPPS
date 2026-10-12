@@ -1,8 +1,8 @@
-import { useState } from 'preact/hooks';
-import { defaultValue, MODEL_DEFAULTS, type Model } from '../sim/model';
+import { useEffect, useState } from 'preact/hooks';
+import { cleanOverrides, defaultValue, EDITABLE_PATHS, LIMITS, MODEL_DEFAULTS, paramError, setModelParams, type Model } from '../sim/model';
 import type { ModelOverrides } from '../sim/types';
 import { MODEL_PARAMS } from '../sources/model';
-import { cleanOverrides, EDITABLE_PATHS, paramError, paramInfo } from '../sources/params';
+import { allowsNegative, paramInfo, parseParam } from '../sources/params';
 import { getSource } from '../sources/registry';
 import { Sourced } from './Sourced';
 import { Window } from './Window';
@@ -11,18 +11,30 @@ import { Window } from './Window';
 const GROUPS = (() => {
   const groups = new Map<string, string[]>();
   for (const key of Object.keys(MODEL_PARAMS) as (keyof Model)[]) {
-    const paths = MODEL_PARAMS[key].fixed ? [key] : EDITABLE_PATHS.filter((p) => p.split('.')[0] === key);
+    const paths = LIMITS[key] === 'fixed' ? [key] : EDITABLE_PATHS.filter((p) => p.split('.')[0] === key);
     const source = MODEL_PARAMS[key].source;
     groups.set(source, [...(groups.get(source) ?? []), ...paths]);
   }
   return [...groups];
 })();
 
-const parse = (text: string) => (text.trim() === '' ? NaN : Number(text));
-
 function fmtFixed(v: unknown): string {
   if (Array.isArray(v)) return `[${v.map(fmtFixed).join(', ')}]`;
   return v === Infinity ? '∞' : String(v);
+}
+
+/** `model` with each typed value that is valid next to the others. A bad value keeps the last valid one. */
+function withTexts(model: ModelOverrides, texts: Record<string, string>): ModelOverrides {
+  const next = { ...model };
+  for (const [path, text] of Object.entries(texts)) next[path] = parseParam(text);
+  for (;;) {
+    const bad = Object.keys(texts).filter((p) => next[p] !== model[p] && paramError(p, next[p], next) !== null);
+    if (!bad.length) return cleanOverrides(next);
+    for (const p of bad) {
+      if (p in model) next[p] = model[p];
+      else delete next[p];
+    }
+  }
 }
 
 interface ModelParamsProps {
@@ -33,12 +45,21 @@ interface ModelParamsProps {
 
 export function ModelParams({ model, onChange, onClose }: ModelParamsProps) {
   const [texts, setTexts] = useState<Record<string, string>>({});
-  const raw: ModelOverrides = { ...model };
-  for (const [path, text] of Object.entries(texts)) raw[path] = parse(text);
+  // The pop-overs here quote the defaults. The game that starts next sets its own parameters.
+  useEffect(() => setModelParams(), []);
+  const typed: ModelOverrides = { ...model };
+  for (const [path, text] of Object.entries(texts)) typed[path] = parseParam(text);
+  const errors = Object.fromEntries(
+    Object.keys(texts).flatMap((p) => {
+      const error = paramError(p, typed[p], typed);
+      return error ? [[p, error]] : [];
+    }),
+  );
+  const invalid = Object.keys(errors).length;
   const edit = (path: string, text: string) => {
     const next = { ...texts, [path]: text };
     setTexts(next);
-    onChange(cleanOverrides({ ...raw, [path]: parse(text) }));
+    onChange(withTexts(model, next));
   };
   const reset = () => {
     setTexts({});
@@ -61,17 +82,17 @@ export function ModelParams({ model, onChange, onClose }: ModelParamsProps) {
               {paths.map((path) => {
                 const info = paramInfo(path);
                 const tag = <span class="param-tag">[{info.tag ?? s.tag}]</span>;
-                if (info.fixed)
+                if (LIMITS[path as keyof Model] === 'fixed')
                   return (
                     <li key={path} class="param">
                       <span class="param-name">
                         <code>{path}</code> {tag}
                       </span>
                       <span class="param-value">{fmtFixed(MODEL_DEFAULTS[path as keyof Model])}</span>
-                      <p class="note">{info.note}</p>
+                      <p class="note">{info.label}</p>
                     </li>
                   );
-                const error = path in texts ? paramError(path, raw[path], raw) : null;
+                const error = errors[path];
                 const isChanged = path in model;
                 const id = `param-${path}`;
                 return (
@@ -83,17 +104,22 @@ export function ModelParams({ model, onChange, onClose }: ModelParamsProps) {
                       id={id}
                       class="param-value"
                       type="text"
-                      inputMode="decimal"
+                      inputMode={allowsNegative(path) ? 'text' : 'decimal'}
                       aria-label={path}
                       aria-invalid={error ? 'true' : undefined}
+                      aria-describedby={error ? `${id}-error` : undefined}
                       value={texts[path] ?? String(model[path] ?? defaultValue(path))}
                       onInput={(e) => edit(path, e.currentTarget.value)}
                     />
                     <p class="note">
-                      {info.note}
-                      {isChanged && ` Default ${defaultValue(path)}.`}
+                      {info.label}
+                      {isChanged && ` · default ${defaultValue(path)}`}
                     </p>
-                    {error && <p class="param-error">{error}</p>}
+                    {error && (
+                      <p id={`${id}-error`} class="param-error">
+                        {error}
+                      </p>
+                    )}
                   </li>
                 );
               })}
@@ -105,7 +131,9 @@ export function ModelParams({ model, onChange, onClose }: ModelParamsProps) {
         <button type="button" class="btn" onClick={reset} disabled={!changed && !Object.keys(texts).length}>
           Reset all
         </button>
-        <span class="note">{changed ? `${changed} changed` : 'All defaults'}</span>
+        <span class={invalid ? 'note param-error' : 'note'}>
+          {invalid ? `${invalid} invalid, last valid value kept` : changed ? `${changed} changed` : 'All defaults'}
+        </span>
         <button type="button" class="btn primary" onClick={onClose}>
           Done
         </button>

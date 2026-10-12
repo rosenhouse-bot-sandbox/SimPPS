@@ -944,6 +944,19 @@ span.param-value {
   margin-bottom: 8px;
 }
 
+.model-changed summary {
+  cursor: pointer;
+}
+
+.model-changed[open] {
+  max-width: none;
+}
+
+.model-changed ul {
+  margin: 4px 0 0;
+  padding-left: 18px;
+}
+
 /* Step buttons stay in view while the sheet scrolls. */
 .closesend .actions,
 .zonesheet .actions,

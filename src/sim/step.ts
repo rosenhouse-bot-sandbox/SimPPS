@@ -431,7 +431,7 @@ export function stepYear(state: GameState, policy: Policy): { next: GameState; f
     if (s.capacity > 0 && s.enrollment > s.capacity) crowded++;
   }
 
-  // Winter: below 3% reserves, mid-year cuts save half a year's pay.
+  // Winter: below M.midYearFloor reserves, mid-year cuts save half a year's pay.
   const midYearCuts = plan.midYearCuts;
   const midYearSavings = midYearCuts * position * M.midYearPayShare;
   const homeroomsCut = octoberCut + Math.round(midYearCuts * classroomShare);

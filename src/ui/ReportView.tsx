@@ -1,7 +1,8 @@
 import type { ComponentChildren } from 'preact';
-import { classroomsDial } from '../sim/model';
 import type { ClosureOutcome, ConversionOutcome, Dials, ElectionOutcome, Flows, ModelOverrides, ProgramMoveOutcome, Range, RezoneOutcome, YearReport } from '../sim/types';
 import { RevealSheet } from './RevealSheet';
+import { defaultValue } from '../sim/model';
+import { paramInfo } from '../sources/params';
 import { fmtMoney, fmtPct, fmtRange } from '../format';
 import { nameOf } from './closeSend';
 import { Sourced } from './Sourced';
@@ -38,12 +39,13 @@ const DIAL_TERMS: Record<keyof Dials, GlossaryTerm> = {
   newBusRiders: 'New bus riders',
   trust: 'Trust',
   k5Class: 'Avg K-5 class',
+  classrooms: 'Classrooms',
 };
 
 const SHORT: Partial<Record<keyof Dials, string>> = { kindergartenCapture: 'K capture' };
 
 function DialName({ dial }: { dial: keyof Dials }) {
-  return <Term t={dial === 'k5Class' && classroomsDial() ? 'Classrooms' : DIAL_TERMS[dial]}>{SHORT[dial]}</Term>;
+  return <Term t={DIAL_TERMS[dial]}>{SHORT[dial]}</Term>;
 }
 
 function exact(n: number): string {
@@ -52,7 +54,7 @@ function exact(n: number): string {
 
 export function fmtDial(dial: keyof Dials, v: number): string {
   if (dial === 'gap') return fmtMoney(v);
-  if (dial === 'k5Class') return classroomsDial() ? exact(v) : v.toFixed(1);
+  if (dial === 'k5Class') return v.toFixed(1);
   if (dial === 'capture' || dial === 'kindergartenCapture' || dial === 'reservePct') return fmtPct(v);
   return exact(v);
 }
@@ -205,12 +207,25 @@ interface ReportProps {
   model?: ModelOverrides;
 }
 
+const RANGE_END: Record<string, string> = { lo: ' (low)', hi: ' (high)' };
+
+function paramName(path: string): string {
+  return paramInfo(path).label + (RANGE_END[path.split('.')[1]] ?? '');
+}
+
 export function ReportView({ report, turn, onNext, walk, model = {} }: ReportProps) {
   const changed = Object.entries(model);
   return (
     <Window title={`DEC ${report.year} · YEAR ${turn}`} class="panel report">
       {changed.length > 0 && (
-        <p class="badge model-changed">Changed model: {changed.map(([path, v]) => `${path} = ${v}`).join(', ')}</p>
+        <details class="badge model-changed">
+          <summary>{`Changed model: ${changed.length} parameter${changed.length === 1 ? '' : 's'}`}</summary>
+          <ul>
+            {changed.map(([path, v]) => (
+              <li key={path}>{`${paramName(path)}: ${v}, default ${defaultValue(path)}`}</li>
+            ))}
+          </ul>
+        </details>
       )}
       <h3>
         <Term t="Where kids went" />

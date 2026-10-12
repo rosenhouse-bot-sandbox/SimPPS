@@ -99,11 +99,6 @@ export function costIndex(year: number): number {
   return (1 + M.costGrowth) ** (year - FIRST_YEAR);
 }
 
-/** The general fund for the school year starting in fall `year`; $862.1M in 2026-27. */
-export function generalFund(year: number): number {
-  return M.generalFund * costIndex(year + 1);
-}
-
 export const MEDIAN_SQFT = (() => {
   const s = [...SCHOOL_INFO.values()].map((i) => i.data.squareFeet).filter((x): x is number => x !== null).sort((a, b) => a - b);
   return s[Math.floor(s.length / 2)];
@@ -213,9 +208,13 @@ export function computeBudget(input: BudgetInput): Budget {
   const autoCutPositions = Math.ceil(Math.max(0, -gap - reserveDraw - oneTimeDraw) / position);
   // model.surplus
   const surplus = Math.max(0, gap);
-  const rehired = Math.min(input.cumulativeCuts, Math.floor((surplus * M.surplusRehire) / position));
-  const spending = revenue - gap - autoCutPositions * position + rehired * position;
-  const reservesAfter = input.reserves - reserveDraw - oneTimeDraw + surplus - rehired * position;
+  const kept = input.reserves - reserveDraw - oneTimeDraw + surplus;
+  const before = revenue - gap - autoCutPositions * position;
+  // Rehires leave reserves at the policy share of the spending they add to.
+  const aboveFloor = Math.max(0, (kept - M.reservePolicy * before) / (1 + M.reservePolicy));
+  const rehired = Math.min(input.cumulativeCuts, Math.floor(Math.min(surplus * M.surplusRehire, aboveFloor) / position));
+  const spending = before + rehired * position;
+  const reservesAfter = kept - rehired * position;
   const floor = M.midYearFloor * spending;
   return {
     lines,

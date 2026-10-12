@@ -1,6 +1,7 @@
 import { SCENARIOS, type Start } from '../sim';
 import type { ModelOverrides } from '../sim/types';
-import { cleanOverrides } from '../sources/params';
+import { cleanOverrides } from '../sim/model';
+import { parseParam } from '../sources/params';
 
 /** Each model override is its own query parameter, e.g. "m.leaveRate=0.02". */
 const MODEL_PREFIX = 'm.';
@@ -14,7 +15,7 @@ export function readUrl(search: string): { seed: string | null; start: Start | n
 export function readModel(search: string): ModelOverrides {
   const raw: ModelOverrides = {};
   for (const [k, v] of new URLSearchParams(search))
-    if (k.startsWith(MODEL_PREFIX) && v.trim() !== '') raw[k.slice(MODEL_PREFIX.length)] = Number(v);
+    if (k.startsWith(MODEL_PREFIX)) raw[k.slice(MODEL_PREFIX.length)] = parseParam(v);
   return cleanOverrides(raw);
 }
 

@@ -12,6 +12,9 @@ function trim(x: number): string {
 
 export function fmtMoney(n: number): string {
   const a = Math.abs(n);
+  if (Number.isNaN(n)) return '$?';
+  if (a >= 999.95e12) return `${sign(n)}$999T+`;
+  if (a >= 1e12) return `${sign(n)}$${trim(a / 1e12)}T`;
   if (a >= 1e9) return `${sign(n)}$${trim(a / 1e9)}B`;
   if (a >= 1e6) return `${sign(n)}$${trim(a / 1e6)}M`;
   if (a >= 1e3) return `${sign(n)}$${trim(a / 1e3)}K`;

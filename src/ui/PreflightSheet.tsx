@@ -1,5 +1,6 @@
-import { fmtCount, fmtMoney } from '../format';
+import { fmtCount, fmtMoney, fmtPct } from '../format';
 import { legislatureVotes } from '../sim/budget';
+import { M } from '../sim/model';
 import type { BallotPreview } from '../sim';
 import type { Budget, Policy, ProgramMove } from '../sim/types';
 import { BallotItem } from './Ballot';
@@ -84,7 +85,7 @@ export function PreflightSheet({ year, draft, base, budget, ballot, closureProgr
             )}
             {winter > 0 && (
               <li>
-                <Sourced k={K.midYearCuts}>{fmtCount(winter)}</Sourced> more mid-year, as reserves fall below 3%
+                <Sourced k={K.midYearCuts}>{fmtCount(winter)}</Sourced> more mid-year, as reserves fall below {fmtPct(M.midYearFloor)}
               </li>
             )}
           </ul>

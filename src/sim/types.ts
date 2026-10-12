@@ -187,7 +187,7 @@ export interface Budget {
   /** Reserves after the draw, over this year's spending. */
   reservesAfter: number;
   reservePctAfterDraw: number;
-  /** Winter cuts forced when reserves after the draw fall below 3%. */
+  /** Winter cuts forced when reserves after the draw fall below M.midYearFloor. */
   midYearCuts: number;
 }
 
@@ -207,6 +207,8 @@ export interface Dials {
   trust: number;
   /** K-5 kids per K-5 homeroom at open schools. */
   k5Class: number;
+  /** K-5 kids at two-section schools without blending, and grade 6-8 kids in large middle grades. */
+  classrooms: number;
 }
 
 export interface SeasonEvent {
