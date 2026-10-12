@@ -479,14 +479,45 @@ describe('App', () => {
     expect(onStart).toHaveBeenCalledWith('scenario-a');
     expect(screen.queryByRole('button', { name: 'PPS Scenario B' })).toBeNull();
     click('Plan');
-    expect(document.querySelectorAll('.edits li')).toHaveLength(21);
+    expect(document.querySelectorAll('.edits li')).toHaveLength(29);
     expect(screen.getByText(realSim.SCENARIOS['scenario-a'].notModeled!)).toBeTruthy();
     expect(document.querySelectorAll('[data-mark="closing"]')).toHaveLength(14);
     expect(document.querySelectorAll('[data-mark="converting"]')).toHaveLength(7);
+    const programFrom = [...document.querySelectorAll('[data-mark="program"]')].map((e) => e.getAttribute('data-school'));
+    expect(programFrom.sort()).toEqual(['atkinson', 'beaumont', 'clark', 'dr-martin-luther-king-jr', 'ockley-green', 'scott', 'sitton']);
+    expect(document.querySelector('[data-link="clark>woodstock"]')).not.toBeNull();
+    expect(document.querySelector('[data-school="woodstock"]')!.getAttribute('data-mark')).toBe('receiver');
     click('Rosa Parks Elementary School');
     expect(screen.getByText(/takes kids/).textContent).toBe(
       'In the plan: takes kids from Peninsula. Change that closure to close this school.',
     );
+  });
+
+  it("names a scenario's program move on its schools, and won't close the program's new school", () => {
+    render(<App sim={realSim} seed="t" start="scenario-a" playbackMs={5000} />);
+    click('Plan');
+    click('Lent Elementary School');
+    expect(screen.getByText(/In the plan/).textContent).toBe('In the plan: Move Spanish DLI: Atkinson → Lent. Undo that to close this school.');
+    expect(screen.queryByRole('button', { name: 'Close & send' })).toBeNull();
+  });
+
+  it('plays program moves alone: links and focus in playback, then where the kids went', { timeout: 30_000 }, () => {
+    render(<App sim={realSim} seed="t" start="scenario-a" playbackMs={5000} />);
+    click('Plan');
+    for (const undo of screen.getAllByRole('button', { name: /^Undo (Close|Send)/ })) fireEvent.click(undo);
+    expect(document.querySelectorAll('.edits li')).toHaveLength(8);
+    click('Close');
+    hold('End year');
+    hold('Play the year');
+    act(() => {
+      vi.advanceTimersByTime(1000);
+    });
+    expect(document.querySelector('[data-link="clark>woodstock"]')).toBeTruthy();
+    expect(isFocused(badgeAt('beach'), 0.5)).toBe(true);
+    act(() => {
+      vi.advanceTimersByTime(5000);
+    });
+    expect(screen.getAllByRole('region', { name: 'Where the Spanish DLI kids went' })).toHaveLength(5);
   });
 
   describe('Send 6–8', { timeout: 30_000 }, () => {

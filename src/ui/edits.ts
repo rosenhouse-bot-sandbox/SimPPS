@@ -1,6 +1,6 @@
 import { fmtMoney } from '../format';
 import { FATE_DONE } from '../sim';
-import type { BoundaryEdit, Closure, GradeSpanChange, Policy } from '../sim/types';
+import type { BoundaryEdit, Closure, GradeSpanChange, Policy, ProgramMove } from '../sim/types';
 import { nameOf } from './closeSend';
 import { K } from './sources';
 
@@ -25,6 +25,10 @@ export function gradeSpanText(g: GradeSpanChange): string {
   return `Send ${nameOf(g.school)} 6–8 → ${nameOf(g.to)}`;
 }
 
+export function programMoveText(m: ProgramMove): string {
+  return `Move ${m.program} DLI: ${m.from.map(nameOf).join(', ')} → ${nameOf(m.to)}`;
+}
+
 export function fmtLevy(rate: number): string {
   return rate === 0 ? 'lapse' : `$${rate.toFixed(2)}`;
 }
@@ -38,6 +42,8 @@ export function listEdits(draft: Policy, base: Policy): EditLine[] {
   }));
   for (const g of draft.gradeChanges)
     out.push({ text: gradeSpanText(g), sourceKey: K.gradeSpan, undo: { gradeChanges: draft.gradeChanges.filter((x) => x !== g) } });
+  for (const m of draft.programMoves)
+    out.push({ text: programMoveText(m), sourceKey: K.programMove, undo: { programMoves: draft.programMoves.filter((x) => x !== m) } });
   for (const e of draft.boundaryEdits)
     out.push({ text: boundaryText(e), sourceKey: K.zoneGrid, undo: { boundaryEdits: draft.boundaryEdits.filter((x) => x !== e) } });
   if (draft.k5ClassSize !== base.k5ClassSize)

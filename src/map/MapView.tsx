@@ -17,7 +17,7 @@ import './map.css';
 
 export type Overlay = 'none' | 'seats' | 'families';
 /** Close & send and Send 6–8 highlights: the school closing or converting, its receivers and schools that could receive. */
-export type Mark = 'closing' | 'converting' | 'receiver' | 'candidate';
+export type Mark = 'closing' | 'converting' | 'program' | 'receiver' | 'candidate';
 export type MapZoneLevel = ZoneLevel | 'high';
 
 /** Zone mode: the block grid, where one finger paints and two pan. */

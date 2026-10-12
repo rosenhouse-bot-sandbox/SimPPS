@@ -76,6 +76,29 @@ function conversionEvents(f: YearFacts): SeasonEvent[] {
   ];
 }
 
+/** Summer names each moved DLI program and its schools. */
+function programEvents(f: YearFacts): SeasonEvent[] {
+  const n = f.programMoves.length;
+  if (n === 0) return [];
+  const name = (id: string) => SCHOOL_INFO.get(id)!.data.name;
+  const moves = f.programMoves.map((m) => `${m.program} leaves ${list(m.from.map(name))} for ${name(m.to)}.`);
+  const [first] = f.programMoves;
+  return [
+    {
+      season: 'summer',
+      title: n === 1 ? `${first.program} DLI moves to ${name(first.to)}` : `${n} DLI programs move`,
+      detail: [...moves.slice(0, SHOWN), ...(n > SHOWN ? [`${n - SHOWN} more move.`] : [])].join(' '),
+      sourceKey: 'model.programMove',
+    },
+    {
+      season: 'fall',
+      title: 'DLI families decide',
+      detail: 'Kids in moved programs follow them or stay without them. The report shows where they went.',
+      sourceKey: 'model.programMove',
+    },
+  ];
+}
+
 /** Boundary events name no school and give no counts of a school's families. */
 function boundaryEvents(f: YearFacts): SeasonEvent[] {
   const { elementary, middle } = f.rezonedCells;
@@ -155,6 +178,7 @@ export function seasonEvents(f: YearFacts): SeasonEvent[] {
   const [closes, decide] = closureEvents(f);
   const [rezone, rezonedDecide] = boundaryEvents(f);
   const [convert, convertedDecide] = conversionEvents(f);
+  const [program, programDecide] = programEvents(f);
   const vote = f.election ? electionEvent(f.election) : null;
   const events: SeasonEvent[] = [
     {
@@ -182,6 +206,7 @@ export function seasonEvents(f: YearFacts): SeasonEvent[] {
     },
     ...(closes ? [closes] : []),
     ...(convert ? [convert] : []),
+    ...(program ? [program] : []),
     ...(rezone ? [rezone] : []),
     {
       season: 'summer',
@@ -197,6 +222,7 @@ export function seasonEvents(f: YearFacts): SeasonEvent[] {
     },
     ...(decide ? [decide] : []),
     ...(convertedDecide ? [convertedDecide] : []),
+    ...(programDecide ? [programDecide] : []),
     ...(rezonedDecide ? [rezonedDecide] : []),
     {
       season: 'october',

@@ -385,6 +385,20 @@ export const MODEL_SOURCES: Source[] = [
     links: [DESIGN, RIGHTSIZING],
   },
   {
+    key: 'model.programMove',
+    label: 'DLI program moves',
+    tag: 'M',
+    explain: `A moved Dual Language Immersion program serves its new school from that fall. Each of its kids still in their old school's grades follows it with a ${pct(M.programMoveStay)} chance, ${M.followPerMilePastOne * 100} points less for each mile past 2 from home. Families chose DLI by lottery, so most should keep it when it moves [I]; a closed school's follow rate is lower. Arrivals aren't capped by the receiver's seats. The rest stay at their old school without the program, or choose like its other kids if it closes or changes grades. New DLI kindergartners who would have picked the old school go to the new one.`,
+    links: [DESIGN, RIGHTSIZING],
+  },
+  {
+    key: 'model.dli',
+    label: 'DLI kids',
+    tag: 'I',
+    explain: "Each school starts with PPS's October 2025 count of DLI kids, or all its kids when fewer, picked at random. A school with two languages splits its count evenly. Each year, a kindergartner who picks a DLI school joins its program with the school's 2025-26 DLI share. A kid keeps the program only at a school that offers it, so DLI kids who reach a middle school without their language leave it.",
+    links: [PPS_DATA],
+  },
+  {
     key: 'model.walkLimit',
     label: 'Walk limit',
     tag: 'V',
@@ -409,7 +423,7 @@ export const MODEL_SOURCES: Source[] = [
     key: 'model.scenarios',
     label: 'PPS scenarios',
     tag: 'F',
-    explain: "Scenario A closes 14 schools and Scenario B 11, with PPS's receivers and shares. Sellwood MS's split is unpublished, so the game splits it evenly [I]. Each building is mothballed until you change it [M]. Program moves, grade-span changes and PPS's boundary changes are not modeled yet.",
+    explain: "Scenario A closes 14 schools and Scenario B 11, with PPS's receivers and shares. Sellwood MS's split is unpublished, so the game splits it evenly [I]. Each building is mothballed until you change it [M]. DLI program moves and K-8 grade-span changes follow PPS's lists; a program move that names no language moves its school's only one [I]. The Deaf and Hard of Hearing and Odyssey moves have no student counts, and PPS's boundary changes are not modeled yet.",
     links: [RIGHTSIZING],
   },
 ];

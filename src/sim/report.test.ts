@@ -39,6 +39,7 @@ const facts: YearFacts = {
   closures: [],
   converting: [],
   conversions: [],
+  programMoves: [],
   rezonedCells: { elementary: 0, middle: 0 },
   grandfathered: 'none',
   rezoned: { kids: 0, arrived: 0, otherPps: 0, left: 0 },

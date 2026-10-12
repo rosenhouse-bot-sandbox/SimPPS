@@ -11,8 +11,9 @@ import { closureChip as chipFor, closureOutcomes, effectiveClosures, normalizeCl
 import { closureRiders, plannedRiders, planZoning } from './boundaries';
 import { defaultZones, normalizeBoundaryEdits } from './zones';
 import { SCENARIOS, type Start } from './scenarios';
-import { conversionOutcomes, effectiveGradeChanges, normalizeGradeChanges } from './gradeSpan';
+import { conversionOutcomes, convertedIn, effectiveGradeChanges, normalizeGradeChanges, topGrade } from './gradeSpan';
 import { familiesDecide, stepYear } from './step';
+import { assignDli, effectiveProgramMoves, normalizeProgramMoves, programMoveOutcomes } from './programs';
 import type { Ballot, Budget, Closure, GameState, GradeSpanChange, Household, Policy, Range, Reveal, SimMemory, YearReport, ZoneMap } from './types';
 
 export * from './types';
@@ -34,6 +35,7 @@ export {
 } from './zones';
 export { walkLimit } from './walk';
 export { SCENARIOS, type Start } from './scenarios';
+export { DLI_PROGRAMS } from './programs';
 export { FATE_DONE } from './report';
 export const MOTHBALL_PER_YEAR = M.mothball;
 
@@ -48,7 +50,7 @@ export function closureChip(
   return chipFor(state, closure, plan, classSize, closureRiders(state, closure, plan), converting);
 }
 
-export const DEFAULT_POLICY: Policy = { k5ClassSize: 24, levyRate: 1.99, levyElection: 'may', reserveDraw: 0, closures: [], boundaryEdits: [], gradeChanges: [] };
+export const DEFAULT_POLICY: Policy = { k5ClassSize: 24, levyRate: 1.99, levyElection: 'may', reserveDraw: 0, closures: [], boundaryEdits: [], gradeChanges: [], programMoves: [] };
 
 /** A start loads its closures into the first plan as ordinary edits. */
 export function newGame(opts: { seed: string; start?: Start }): GameState {
@@ -63,7 +65,7 @@ export function newGame(opts: { seed: string; start?: Start }): GameState {
     DEFAULT_POLICY.k5ClassSize,
     0,
   );
-  const households = settle(fall2026.households);
+  const households = assignDli(settle(fall2026.households), seedHash);
   const schools = buildSchools(households, DEFAULT_POLICY.k5ClassSize);
   const levy = { rate: M.levyRate, through: M.levyThrough, failures: 0 };
   const input = {
@@ -100,6 +102,7 @@ export function newGame(opts: { seed: string; start?: Start }): GameState {
     restCost: total - cost,
     closed: [],
     converted: [],
+    programMoves: [],
     busing: 0,
     levy,
     trust: startTrust(seedHash),
@@ -108,8 +111,8 @@ export function newGame(opts: { seed: string; start?: Start }): GameState {
       closedZoneCaptureDrop: CLOSED_ZONE_CAPTURE_DROPS[Math.floor(draw(seedHash, 2) * CLOSED_ZONE_CAPTURE_DROPS.length)],
     },
   };
-  const { closures, gradeChanges } = SCENARIOS[opts.start ?? 'status-quo'];
-  const policy = { ...DEFAULT_POLICY, closures, gradeChanges };
+  const { closures, gradeChanges, programMoves } = SCENARIOS[opts.start ?? 'status-quo'];
+  const policy = { ...DEFAULT_POLICY, closures, gradeChanges, programMoves };
   const budget = computeBudget({ ...input, policy, restRevenue: sim.restRevenue, restCost: sim.restCost });
   return {
     seed: opts.seed,
@@ -138,6 +141,7 @@ export function normalizePolicy(p: Policy): Policy {
     ...p,
     closures,
     gradeChanges: normalizeGradeChanges(p.gradeChanges ?? [], closures),
+    programMoves: normalizeProgramMoves(p.programMoves ?? [], closures),
     boundaryEdits: normalizeBoundaryEdits(p.boundaryEdits ?? []),
     k5ClassSize: clamp(Math.round(p.k5ClassSize), 22, 28),
     levyRate: Math.max(0, p.levyRate),
@@ -189,12 +193,16 @@ export function ballotPreview(state: GameState, policy: Policy): BallotPreview |
   return { ...ballot, poll: pollRange(expectedYes(ballot, sim.levy.failures, trust)) };
 }
 
-/** November counts after summer's closures, grade-span changes and planned June cuts. Current kids stand in for the kids they move. */
+/** November counts after summer's closures, grade-span changes, program moves and planned June cuts. Current kids stand in for the kids they move. */
 function novemberTrust(state: GameState, plan: Policy): number {
   const closing = new Set(effectiveClosures(state.schools, plan.closures).map((c) => c.school));
   const converting = new Set(effectiveGradeChanges(state.schools, plan.gradeChanges).map((g) => g.school));
+  const programs = new Set(effectiveProgramMoves(state.schools, plan.programMoves).flatMap((m) => m.from.map((f) => `${m.program} ${f}`)));
   const moves = (h: Household) =>
-    h.school !== null && (closing.has(h.school) || (converting.has(h.school) && gradeOf(h) >= 6 && gradeOf(h) < MAX_GRADE));
+    h.school !== null &&
+    (closing.has(h.school) ||
+      (converting.has(h.school) && gradeOf(h) >= 6 && gradeOf(h) < MAX_GRADE) ||
+      (programs.has(`${h.program} ${h.school}`) && gradeOf(h) < topGrade(h.school, convertedIn(state.schools))));
   const moved = state.households.map(({ movedFrom: _, ...h }) => (moves(h) ? { ...h, movedFrom: h.school! } : h));
   const strain = strainFor(plan.k5ClassSize, state.sim!.k5ClassSize, previewBudget(state, plan).autoCutPositions);
   return meanTrust(trustAfterYear(state.sim!.trust, moved, [...closing], strain), state.households);
@@ -231,6 +239,7 @@ export function endYear(state: GameState, policy: Policy): { next: GameState; re
       budget: mine.facts.plan,
       closures: closureOutcomes(mine.facts.closures, mine.facts.closing),
       conversions: conversionOutcomes(mine.facts.conversions),
+      programMoves: programMoveOutcomes(mine.facts.programMoves),
       ...(mine.facts.rezoned.kids > 0 ? { rezoned: rezoneOutcome(mine.facts.rezoned) } : {}),
       ...(mine.facts.election ? { election: mine.facts.election } : {}),
       ...(ghostYear.facts.election ? { ghostElection: ghostYear.facts.election } : {}),

@@ -42,6 +42,21 @@ export interface ConvertedSchool extends GradeSpanChange {
   year: number;
 }
 
+/** A Dual Language Immersion program. */
+export type Program = 'Spanish' | 'Mandarin' | 'Japanese' | 'Russian' | 'Vietnamese';
+
+/** A DLI program leaves its `from` schools for `to`. It takes effect in summer. */
+export interface ProgramMove {
+  program: Program;
+  from: SchoolId[];
+  to: SchoolId;
+}
+
+/** A program move in force since fall `year`. */
+export interface MovedProgram extends ProgramMove {
+  year: number;
+}
+
 export type ZoneLevel = 'elementary' | 'middle';
 
 /** Blocks moved into `to`'s zone at one level. It takes effect in summer. */
@@ -90,6 +105,7 @@ export interface Policy {
   closures: Closure[];
   boundaryEdits: BoundaryEdit[];
   gradeChanges: GradeSpanChange[];
+  programMoves: ProgramMove[];
 }
 
 export type HouseholdStatus = 'stayed' | 'moved' | 'left' | 'returned';
@@ -119,6 +135,8 @@ export interface Household {
   forcedMoves?: number;
   /** A closed school whose state funding weight the household's kids keep. */
   fundedAs?: SchoolId;
+  /** The DLI program the kid is in, offered at its school. */
+  program?: Program;
 }
 
 export interface SchoolState {
@@ -137,6 +155,8 @@ export interface SchoolState {
   closed?: { year: number; building: BuildingFate };
   /** Set when a grade-span change sent grades 6-8 to `to`. */
   converted?: { year: number; to: SchoolId };
+  /** Kids in each DLI program the school offers. */
+  dli?: Partial<Record<Program, number>>;
 }
 
 export interface BudgetLine {
@@ -236,6 +256,15 @@ export interface ConversionOutcome {
   leftPps: Range;
 }
 
+/** Where a moved program's kids went. Kids are those still in their school's grades this fall. */
+export interface ProgramMoveOutcome extends ProgramMove {
+  kids: Range;
+  receiver: Range;
+  /** Kids who stayed in PPS without the program. */
+  leftDli: Range;
+  leftPps: Range;
+}
+
 /** A levy vote. Yes is a share of votes. */
 export interface ElectionOutcome extends Ballot {
   yes: number;
@@ -260,6 +289,7 @@ export interface YearReport {
   budget: Budget;
   closures: ClosureOutcome[];
   conversions: ConversionOutcome[];
+  programMoves: ProgramMoveOutcome[];
   /** Present when boundary edits moved kids off their zone school. */
   rezoned?: RezoneOutcome;
   /** Present when a levy measure went to voters. */
@@ -318,6 +348,8 @@ export interface SimMemory {
   closed: ClosedSchool[];
   /** Grade-span changes in force, oldest first. */
   converted: ConvertedSchool[];
+  /** Program moves in force, oldest first. */
+  programMoves: MovedProgram[];
   /** Busing dollars booked this year, which the state repays next year. */
   busing: number;
   levy: Levy;

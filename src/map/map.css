@@ -74,6 +74,11 @@
   stroke-dasharray: 6 2;
 }
 
+.pps-map-mark-program {
+  stroke: #c2a5cf;
+  stroke-dasharray: 2 2;
+}
+
 .pps-map-mark-receiver {
   stroke: #9fd8ff;
 }

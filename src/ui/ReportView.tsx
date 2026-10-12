@@ -1,5 +1,5 @@
 import type { ComponentChildren } from 'preact';
-import type { ClosureOutcome, ConversionOutcome, Dials, ElectionOutcome, Flows, Range, RezoneOutcome, YearReport } from '../sim/types';
+import type { ClosureOutcome, ConversionOutcome, Dials, ElectionOutcome, Flows, ProgramMoveOutcome, Range, RezoneOutcome, YearReport } from '../sim/types';
 import { RevealSheet } from './RevealSheet';
 import { fmtMoney, fmtPct, fmtRange } from '../format';
 import { nameOf } from './closeSend';
@@ -130,6 +130,24 @@ function ConversionReport({ c }: { c: ConversionOutcome }) {
   );
 }
 
+const list = (items: string[]) => (items.length < 2 ? items.join('') : `${items.slice(0, -1).join(', ')} and ${items.at(-1)}`);
+
+function ProgramMoveReport({ m }: { m: ProgramMoveOutcome }) {
+  const of = (m.kids.lo + m.kids.hi) / 2;
+  return (
+    <section class="closure-report" aria-label={`Where the ${m.program} DLI kids went`}>
+      <p>
+        {m.program} DLI from {list(m.from.map(nameOf))}, <Sourced k={K.programMove}>{fmtRange(m.kids)}</Sourced> kids:
+      </p>
+      <dl class="flows">
+        <OutcomeRow label={nameOf(m.to)} kids={m.receiver} of={of} k={K.programMove} />
+        <OutcomeRow label={<Term t="Left DLI" />} kids={m.leftDli} of={of} k={K.programMove} />
+        <OutcomeRow label={<Term t="Left PPS" />} kids={m.leftPps} of={of} k={K.programMove} />
+      </dl>
+    </section>
+  );
+}
+
 function RezoneReport({ r }: { r: RezoneOutcome }) {
   const of = (r.kids.lo + r.kids.hi) / 2;
   return (
@@ -195,6 +213,9 @@ export function ReportView({ report, turn, onNext, walk }: ReportProps) {
       ))}
       {report.conversions.map((c) => (
         <ConversionReport key={c.school} c={c} />
+      ))}
+      {report.programMoves.map((m) => (
+        <ProgramMoveReport key={`${m.program} ${m.from.join()}`} m={m} />
       ))}
       {report.rezoned && <RezoneReport r={report.rezoned} />}
       {walk && (

@@ -117,6 +117,8 @@ export const M = {
   conversionStay: 0.95,
   /** A K-5 room seats 24 and a middle-grade room 26, and a third of a K-8's rooms held grades 6-8. */
   conversionCapacity: (6 + (3 * 24) / 26) / 9,
+  // model.programMove
+  programMoveStay: 0.85,
   // model.walkLimit
   walkLimitK5: 1,
   walkLimitMiddle: 1.5,
