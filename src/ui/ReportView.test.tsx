@@ -105,6 +105,27 @@ describe('ReportView', () => {
     expect(sources).toEqual(['model.sliceStay', 'model.sliceStay', 'model.nonFollowers', 'model.nonFollowers']);
   });
 
+  it('shows where a converted K-8\'s middle graders went, as sourced ranges', () => {
+    const conversions = [
+      { school: 'vernon', to: 'harriet-tubman', kids: { lo: 45, hi: 55 }, receiver: { lo: 40, hi: 48 }, otherPps: { lo: 1, hi: 5 }, leftPps: { lo: 0, hi: 3 } },
+    ];
+    render(<ReportView report={{ ...FIXTURE_REPORT, conversions }} turn={1} onNext={() => {}} />);
+    const section = screen.getByRole('region', { name: 'Where Vernon 6–8 went' });
+    expect(section.textContent).toContain('Vernon 6–8, 45–55~ kids:');
+    const rows = [...section.querySelectorAll('.flow')].map((r) => [r.querySelector('dt')!.textContent, r.querySelector('dd')!.textContent]);
+    expect(rows).toEqual([
+      ['Harriet Tubman', '40–48~'],
+      ['Other PPS', '1–5~'],
+      ['Left PPS', '0–3~'],
+    ]);
+    expect([...section.querySelectorAll('[data-source]')].map((e) => e.getAttribute('data-source'))).toEqual([
+      'model.gradeSpan',
+      'model.gradeSpan',
+      'model.nonFollowers',
+      'model.nonFollowers',
+    ]);
+  });
+
   it('shows no re-zoning section without re-zoned kids', () => {
     render(<ReportView report={FIXTURE_REPORT} turn={1} onNext={() => {}} />);
     expect(screen.queryByRole('region', { name: 'Where re-zoned kids went' })).toBeNull();

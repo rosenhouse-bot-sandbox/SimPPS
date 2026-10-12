@@ -1,9 +1,10 @@
 import { ZONES, type Point } from '../data';
 import { nearestOpen, receiversFor, renormalize, schoolPos } from './closures';
 import { inRing } from './geo';
+import { convertZones, type Shut } from './gradeSpan';
 import { CELL_METERS, zoneGrid, neighbors, type ZoneCell } from './grid';
 import { middleZoneSchool, SCHOOL_INFO } from './population';
-import type { BoundaryEdit, Closure, GameState, Household, SchoolId, ZoneLevel, ZoneMap } from './types';
+import type { BoundaryEdit, Closure, GameState, GradeSpanChange, Household, SchoolId, ZoneLevel, ZoneMap } from './types';
 
 export { CELL_METERS, cellAt, cellAtPoint, neighbors, zoneGrid, type ZoneCell, type ZoneGrid } from './grid';
 
@@ -188,15 +189,18 @@ export interface ZoningYear {
   changed: Record<ZoneLevel, Map<number, boolean>>;
 }
 
-/** `closed` holds every closure in force this fall. Edits apply after closures re-zone. */
+/** `closed` holds every closure in force this fall, `converted` every grade-span change. Edits apply after both re-zone. */
 export function zoningYear(
   zones: ZoneMap,
   closed: readonly Pick<Closure, 'school' | 'receivers'>[],
   edits: readonly BoundaryEdit[],
   homes: ReadonlyMap<number, number>,
+  converted: readonly GradeSpanChange[] = [],
 ): ZoningYear {
-  const afterClosures = closeZones(zones, closed, homes);
-  const effective = effectiveEdits(afterClosures, edits, new Set(closed.map((c) => c.school)));
+  const afterClosures = convertZones(closeZones(zones, closed, homes), converted);
+  const k5 = new Set(converted.map((c) => c.school));
+  const open = edits.filter((e) => e.level === 'elementary' || !k5.has(e.to));
+  const effective = effectiveEdits(afterClosures, open, new Set(closed.map((c) => c.school)));
   const changed: ZoningYear['changed'] = { elementary: new Map(), middle: new Map() };
   for (const e of effective) for (const c of e.cells) changed[e.level].set(c, e.grandfather);
   return { zones: applyEdits(afterClosures, effective), changed };
@@ -211,13 +215,13 @@ export function nextZone(
   h: Household,
   ng: number,
   z: ZoningYear,
-  shut: { has(school: SchoolId): boolean },
+  shut: Shut,
 ): { zone: SchoolId; forced: boolean } {
   const level = levelOf(ng);
   if (ng === ENTRY_GRADE.middle) return { zone: mappedZone(z.zones, h, level), forced: false };
   const grandfather = z.changed[level].get(h.cell);
   const moves = grandfather === false || (grandfather === true && h.school === null);
-  if (!moves && !shut.has(h.zoneSchool)) return { zone: h.zoneSchool, forced: false };
+  if (!moves && !shut.has(h.zoneSchool, ng)) return { zone: h.zoneSchool, forced: false };
   const zone = mappedZone(z.zones, h, level);
   return { zone, forced: moves && h.school !== null && h.school === h.zoneSchool && zone !== h.zoneSchool };
 }

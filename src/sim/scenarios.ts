@@ -1,5 +1,5 @@
 import rightsizing from '../data/rightsizing.json';
-import type { Closure, SchoolId } from './types';
+import type { Closure, GradeSpanChange, SchoolId } from './types';
 
 export type Start = 'status-quo' | 'scenario-a' | 'scenario-b';
 
@@ -25,6 +25,17 @@ const RECEIVERS: Record<string, { id: SchoolId; to: [SchoolId, number][] }> = {
   Woodmere: { id: 'woodmere', to: [['whitman', 1]] },
 };
 
+/** model.scenarios: each K-8 that sends grades 6-8 to a middle school. */
+const GRADE_CHANGES: Record<string, GradeSpanChange> = {
+  'Beverly Cleary': { school: 'beverly-cleary', to: 'beaumont' },
+  Laurelhurst: { school: 'laurelhurst', to: 'mt-tabor' },
+  'Bridger Creative Science': { school: 'bridger-creative-science', to: 'harrison-park' },
+  'Sunnyside Environmental': { school: 'sunnyside-environmental', to: 'hosford' },
+  Faubion: { school: 'faubion', to: 'ockley-green' },
+  Vernon: { school: 'vernon', to: 'harriet-tubman' },
+  Chavez: { school: 'cesar-chavez', to: 'george' },
+};
+
 type Published = (typeof rightsizing.scenarios)['A'];
 
 function closuresOf(s: Published): Closure[] {
@@ -35,12 +46,29 @@ function closuresOf(s: Published): Closure[] {
   });
 }
 
-function notModeled(s: Published): string {
-  return `Not modeled yet: ${s.grade_changes_count} grade-span changes, ${s.program_moves_count} program moves and ${s.boundary_changes_count} boundary changes.`;
+/** The 6-8 moves. MLC also "becomes K-8", but it already serves K-8 here and only its high school closes, outside the simulation. */
+function gradeChangesOf(s: Published): GradeSpanChange[] {
+  return s.grade_changes.flatMap((g) => {
+    if (g.grades !== '6-8') return [];
+    const change = GRADE_CHANGES[g.from];
+    if (!change) throw new Error(`No grade-span change for ${g.from}`);
+    return [change];
+  });
 }
 
-export const SCENARIOS: Record<Start, { label: string; closures: Closure[]; notModeled: string | null }> = {
-  'status-quo': { label: 'Status quo 2026', closures: [], notModeled: null },
-  'scenario-a': { label: 'PPS Scenario A', closures: closuresOf(rightsizing.scenarios.A), notModeled: notModeled(rightsizing.scenarios.A) },
-  'scenario-b': { label: 'PPS Scenario B', closures: closuresOf(rightsizing.scenarios.B), notModeled: notModeled(rightsizing.scenarios.B) },
+const plural = (n: number, noun: string) => `${n} ${noun}${n === 1 ? '' : 's'}`;
+
+function notModeled(s: Published): string {
+  const spans = s.grade_changes_count - gradeChangesOf(s).length;
+  return `Not modeled yet: ${plural(spans, 'grade-span change')}, ${plural(s.program_moves_count, 'program move')} and ${plural(s.boundary_changes_count, 'boundary change')}.`;
+}
+
+function scenario(label: string, s: Published) {
+  return { label, closures: closuresOf(s), gradeChanges: gradeChangesOf(s), notModeled: notModeled(s) };
+}
+
+export const SCENARIOS: Record<Start, { label: string; closures: Closure[]; gradeChanges: GradeSpanChange[]; notModeled: string | null }> = {
+  'status-quo': { label: 'Status quo 2026', closures: [], gradeChanges: [], notModeled: null },
+  'scenario-a': scenario('PPS Scenario A', rightsizing.scenarios.A),
+  'scenario-b': scenario('PPS Scenario B', rightsizing.scenarios.B),
 };

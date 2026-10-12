@@ -65,6 +65,40 @@ describe('SchoolSheet', () => {
     expect(screen.queryByText('Enrollment')).toBeNull();
   });
 
+  it('offers Send 6–8 for a K-8 while planning and names the planned change', () => {
+    const onSendGrades = vi.fn();
+    const converting = { school: 'vernon', to: 'harriet-tubman' };
+    render(<SchoolSheet id="vernon" state={FIXTURE_GAME.schools.vernon} onClose={() => {}} onSendGrades={onSendGrades} converting={converting} />);
+    expect(screen.getByRole('button', { name: 'Send Vernon 6–8 → Harriet Tubman' }).getAttribute('data-source')).toBe('model.gradeSpan');
+    fireEvent.click(screen.getByRole('button', { name: 'Send 6–8 to…' }));
+    expect(onSendGrades).toHaveBeenCalledOnce();
+  });
+
+  it('names the K-8s the plan sends grades 6-8 into it', () => {
+    render(<SchoolSheet id="harriet-tubman" state={FIXTURE_GAME.schools['harriet-tubman']} onClose={() => {}} gradesFrom={['vernon']} />);
+    expect(screen.getByText(/takes grades/).textContent).toBe('In the plan: takes grades 6–8 from Vernon. Undo that to close this school.');
+  });
+
+  it('says when a K-8 became K-5 and shows its seats', () => {
+    const state = { ...FIXTURE_GAME.schools.vernon, capacity: 564.2, converted: { year: 2027, to: 'harriet-tubman' } };
+    render(<SchoolSheet id="vernon" state={state} onClose={() => {}} />);
+    expect(factValue('K-5 seats').textContent).toBe('564');
+    expect(factValue('Capacity as K-8').textContent).toBe('579');
+    expect(screen.getByRole('button', { name: '564' }).getAttribute('data-source')).toBe('model.gradeSpan');
+    expect(screen.getByRole('button', { name: 'K-5 since 2027. Grades 6–8 go to Harriet Tubman.' }).getAttribute('data-source')).toBe(
+      'model.gradeSpan',
+    );
+  });
+
+  it('drops the receiver once it closes, and the K-5 line once the school closes', () => {
+    const state = { ...FIXTURE_GAME.schools.vernon, converted: { year: 2027, to: 'harriet-tubman' } };
+    render(<SchoolSheet id="vernon" state={state} onClose={() => {}} receiverOpen={false} />);
+    expect(screen.getByRole('button', { name: 'K-5 since 2027.' })).toBeTruthy();
+    cleanup();
+    render(<SchoolSheet id="vernon" state={{ ...state, open: false, closed: { year: 2028, building: 'mothball' } }} onClose={() => {}} />);
+    expect(screen.queryByText(/K-5 since/)).toBeNull();
+  });
+
   it('offers Edit boundary while planning', () => {
     const onEditBoundary = vi.fn();
     render(<SchoolSheet id="rosa-parks" state={FIXTURE_GAME.schools['rosa-parks']} onClose={() => {}} onEditBoundary={onEditBoundary} />);

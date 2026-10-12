@@ -9,7 +9,7 @@ import { K } from './sources';
 import { Stepper } from './Stepper';
 import { Window } from './Window';
 
-function Seats({ kids, capacity }: { kids: number; capacity: number }) {
+export function Seats({ kids, capacity }: { kids: number; capacity: number }) {
   return (
     <span class="seats">
       <Sourced k={K.enrollment}>{fmtRange(modeledRange(kids))}</Sourced>/<Sourced k={K.capacity}>{fmtCount(capacity)}</Sourced>
@@ -61,7 +61,7 @@ export function ClosureChipView({ chip }: { chip: ClosureChip }) {
   );
 }
 
-function Pick({ c, picked, onToggle }: { c: Candidate; picked: boolean; onToggle: () => void }) {
+export function Pick({ c, picked, onToggle }: { c: Candidate; picked: boolean; onToggle: () => void }) {
   return (
     <li class="row pick">
       <button type="button" class="pick-name" aria-pressed={picked} onClick={onToggle}>

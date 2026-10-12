@@ -123,10 +123,10 @@ describe('re-zoned kids who must choose', () => {
       region: null,
     }));
     const flows = { stayed: 0, movedWithinPps: 0, leftPps: 0, cameBack: 0, enteredK: 0, graduated: 0 };
-    const tally = decideRezoned({ seed: 1, year: 2027, closed: new Set(), movers, households: [], flows });
+    const tally = decideRezoned({ seed: 1, year: 2027, shut: new Set(), movers, households: [], flows });
     const away = movers.filter((m) => m.next.movedAway).length / tally.left;
     const leaveForGood = 1 - M.nonFollowerOtherPps - M.nonFollowerCharter;
-    expect(tally.zoneSchool).toBe(0);
+    expect(tally.arrived).toBe(0);
     expect(away).toBeCloseTo((M.awayShare * leaveForGood) / (leaveForGood + M.nonFollowerCharter), 1);
   });
 });

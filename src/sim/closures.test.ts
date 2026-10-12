@@ -22,7 +22,7 @@ import {
   type FollowFactors,
   type Mover,
 } from './closures';
-import { gradeOf, METERS_PER_MILE, oneKid } from './model';
+import { gradeOf, M, METERS_PER_MILE, oneKid } from './model';
 import { SCHOOL_INFO } from './population';
 import { buildSchools } from './schools';
 import { familiesDecide } from './step';
@@ -353,7 +353,8 @@ describe('Close & send over the years', () => {
 describe('Scenario A over a year', () => {
   const start = newGame({ seed: 'scenario', start: 'scenario-a' });
   const { next, report } = endYear(start, start.policy);
-  const movers = next.households.filter((h) => h.movedFrom);
+  const closing = new Set(start.policy.closures.map((c) => c.school));
+  const movers = next.households.filter((h) => h.movedFrom && closing.has(h.movedFrom));
 
   it('sends each follower who lives in the closed zone to the receiver its block went to', () => {
     const before = new Map(start.households.map((h) => [h.id, h]));
@@ -363,7 +364,10 @@ describe('Scenario A over a year', () => {
       return c && before.get(h.id)!.zoneSchool === c.school && c.receivers.some((r) => r.school === h.school);
     });
     expect(followers.length).toBeGreaterThan(1000);
-    expect(followers.filter((h) => h.school !== h.zoneSchool)).toEqual([]);
+    // A full zone school sends some on: Hosford fills first with Sunnyside's grades 6-8.
+    const full = (id: string) => next.schools[id].enrollment >= Math.floor(M.crowdingLine * next.schools[id].capacity);
+    expect(followers.filter((h) => h.school !== h.zoneSchool && !full(h.zoneSchool))).toEqual([]);
+    expect(full('hosford')).toBe(true);
   });
 
   it('closes 14 schools and empties them', () => {
