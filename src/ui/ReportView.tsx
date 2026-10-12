@@ -1,5 +1,6 @@
 import type { ComponentChildren } from 'preact';
-import type { ClosureOutcome, ConversionOutcome, Dials, ElectionOutcome, Flows, ProgramMoveOutcome, Range, RezoneOutcome, YearReport } from '../sim/types';
+import { classroomsDial } from '../sim/model';
+import type { ClosureOutcome, ConversionOutcome, Dials, ElectionOutcome, Flows, ModelOverrides, ProgramMoveOutcome, Range, RezoneOutcome, YearReport } from '../sim/types';
 import { RevealSheet } from './RevealSheet';
 import { fmtMoney, fmtPct, fmtRange } from '../format';
 import { nameOf } from './closeSend';
@@ -42,7 +43,7 @@ const DIAL_TERMS: Record<keyof Dials, GlossaryTerm> = {
 const SHORT: Partial<Record<keyof Dials, string>> = { kindergartenCapture: 'K capture' };
 
 function DialName({ dial }: { dial: keyof Dials }) {
-  return <Term t={DIAL_TERMS[dial]}>{SHORT[dial]}</Term>;
+  return <Term t={dial === 'k5Class' && classroomsDial() ? 'Classrooms' : DIAL_TERMS[dial]}>{SHORT[dial]}</Term>;
 }
 
 function exact(n: number): string {
@@ -51,7 +52,7 @@ function exact(n: number): string {
 
 export function fmtDial(dial: keyof Dials, v: number): string {
   if (dial === 'gap') return fmtMoney(v);
-  if (dial === 'k5Class') return v.toFixed(1);
+  if (dial === 'k5Class') return classroomsDial() ? exact(v) : v.toFixed(1);
   if (dial === 'capture' || dial === 'kindergartenCapture' || dial === 'reservePct') return fmtPct(v);
   return exact(v);
 }
@@ -200,11 +201,17 @@ interface ReportProps {
   onNext: () => void;
   /** K-5 walkers before and after a year with boundary edits. */
   walk?: { before: number; after: number };
+  /** The game's changed model parameters. */
+  model?: ModelOverrides;
 }
 
-export function ReportView({ report, turn, onNext, walk }: ReportProps) {
+export function ReportView({ report, turn, onNext, walk, model = {} }: ReportProps) {
+  const changed = Object.entries(model);
   return (
     <Window title={`DEC ${report.year} · YEAR ${turn}`} class="panel report">
+      {changed.length > 0 && (
+        <p class="badge model-changed">Changed model: {changed.map(([path, v]) => `${path} = ${v}`).join(', ')}</p>
+      )}
       <h3>
         <Term t="Where kids went" />
       </h3>

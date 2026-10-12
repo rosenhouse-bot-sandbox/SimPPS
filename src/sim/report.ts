@@ -1,5 +1,5 @@
 import { fmtMoney } from '../format';
-import { M } from './model';
+import { classroomsDial, M } from './model';
 import { SCHOOL_INFO } from './population';
 import { dialSourceKey } from '../sources/model';
 import type { YearFacts } from './step';
@@ -167,7 +167,7 @@ function trustEvent({ before, after, fell, strain }: YearFacts['trust']): Season
     cuts > 0 && `Cuts cost every region ${points(cuts)}.`,
     classes > 0 && `A larger K-5 class size costs every region ${points(classes)}.`,
     classes < 0 && `A smaller K-5 class size wins back ${points(-classes)} in every region.`,
-    strain.calmGain < M.trustCalmYear && 'K-5 classes above 24 hold back the calm-year gain.',
+    strain.calmGain < M.trustCalmYear && `K-5 classes above ${M.baseClassSize} hold back the calm-year gain.`,
     fell.length > 0 && `Closures and second moves cost trust in ${list(fell)}.`,
   ].filter(Boolean);
   return {
@@ -181,6 +181,8 @@ function trustEvent({ before, after, fell, strain }: YearFacts['trust']): Season
 export function seasonEvents(f: YearFacts): SeasonEvent[] {
   const cuts = f.autoCuts > 0 ? ` Automatic cuts remove ${count(f.autoCuts)} positions by seniority and spare IEP services.` : '';
   const draw = f.reserveDraw > 0 ? ` Reserves cover ${fmtMoney(f.reserveDraw)}.` : '';
+  const oneTime = f.plan.oneTimeDraw ? ` Reserves pay ${fmtMoney(f.plan.oneTimeDraw)} of closures' one-time costs.` : '';
+  const rehired = f.plan.rehired ? ` The surplus rehires ${count(f.plan.rehired)} cut positions.` : '';
   const [closes, decide] = closureEvents(f);
   const [rezone, rezonedDecide] = boundaryEvents(f);
   const [convert, convertedDecide] = conversionEvents(f);
@@ -207,7 +209,7 @@ export function seasonEvents(f: YearFacts): SeasonEvent[] {
     {
       season: 'spring',
       title: f.autoCuts > 0 ? 'June budget closes with cuts' : 'June budget closes',
-      detail: `The gap is ${fmtMoney(f.plan.gap)}.${draw}${cuts}`,
+      detail: `The gap is ${fmtMoney(f.plan.gap)}.${draw}${oneTime}${cuts}${rehired}`,
       sourceKey: 'model.autoCuts',
     },
     ...(closes ? [closes] : []),
@@ -249,7 +251,7 @@ export function seasonEvents(f: YearFacts): SeasonEvent[] {
     events.push({
       season: 'winter',
       title: 'Mid-year cuts',
-      detail: `Reserves fell below 3%, so ${count(f.midYearCuts)} more positions go.`,
+      detail: `Reserves fell below ${pct(M.midYearFloor)}, so ${count(f.midYearCuts)} more positions go.`,
       sourceKey: 'model.midYearCuts',
     });
   return events;
@@ -329,15 +331,19 @@ const SCALE: Record<keyof Dials, number> = {
   k5Class: 0.2,
 };
 
+/** The Classrooms dial counts kids, so more is better. */
+const higherIsBetter = (dial: keyof Dials) => HIGHER_IS_BETTER[dial] || (dial === 'k5Class' && classroomsDial());
+const scale = (dial: keyof Dials) => (dial === 'k5Class' && classroomsDial() ? SCALE.kids : SCALE[dial]);
+
 /** Dials that differ from the ghost by at least half a unit, biggest gap first. */
 export function versusGhost(you: Dials, ghost: Dials): YearReport['vsGhost'] {
   return (Object.keys(HIGHER_IS_BETTER) as (keyof Dials)[])
-    .filter((dial) => Math.abs(you[dial] - ghost[dial]) >= SCALE[dial] / 2)
+    .filter((dial) => Math.abs(you[dial] - ghost[dial]) >= scale(dial) / 2)
     .map((dial) => ({
       dial,
       you: you[dial],
       ghost: ghost[dial],
-      better: HIGHER_IS_BETTER[dial] ? you[dial] > ghost[dial] : you[dial] < ghost[dial],
+      better: higherIsBetter(dial) ? you[dial] > ghost[dial] : you[dial] < ghost[dial],
     }))
-    .sort((a, b) => Math.abs(b.you - b.ghost) / SCALE[b.dial] - Math.abs(a.you - a.ghost) / SCALE[a.dial]);
+    .sort((a, b) => Math.abs(b.you - b.ghost) / scale(b.dial) - Math.abs(a.you - a.ghost) / scale(a.dial));
 }

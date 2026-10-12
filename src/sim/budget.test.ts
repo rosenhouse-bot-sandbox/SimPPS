@@ -5,11 +5,11 @@ import {
   levyRevenue,
   otherStaff,
   revenuePerStudent,
-  STATE_PER_STUDENT,
+  statePerStudent,
   stateFundingGrowth,
   stateFundingLevel,
 } from './budget';
-import { M } from './model';
+import { M, setModelParams } from './model';
 import type { SchoolState } from './types';
 
 describe('classesFor', () => {
@@ -120,7 +120,7 @@ describe('computeBudget', () => {
     const flat = computeBudget(base);
     expect(amount(flat, 'stateFunding')).toBe(0);
     const up = computeBudget({ ...base, stateFunding: 1.05 });
-    const stateRevenue = amount(flat, 'stateK8')! + M.otherStudents * STATE_PER_STUDENT;
+    const stateRevenue = amount(flat, 'stateK8')! + M.otherStudents * statePerStudent();
     expect(amount(up, 'stateFunding')).toBeCloseTo(0.05 * stateRevenue, 0);
     expect(up.gap - flat.gap).toBeCloseTo(0.05 * stateRevenue, 0);
     expect(up.spending).toBeCloseTo(flat.spending - (up.autoCutPositions - flat.autoCutPositions) * 155_000 * 1.035, 0);
@@ -136,6 +136,19 @@ describe('computeBudget', () => {
     const b = computeBudget({ ...base, restRevenue: -10_000_000 });
     expect(b.autoCutPositions).toBe(Math.ceil((-b.gap - 5_000_000) / (155_000 * 1.035)));
     expect(computeBudget({ ...base, restRevenue: 50_000_000 }).autoCutPositions).toBe(0);
+  });
+
+  it('rehires cut positions with the surplusRehire share of a surplus', () => {
+    const input = { ...base, restRevenue: 50_000_000, cumulativeCuts: 1_000 };
+    const kept = computeBudget(input);
+    expect(kept.rehired).toBe(0);
+    setModelParams({ surplusRehire: 0.5 });
+    const b = computeBudget(input);
+    const position = 155_000 * 1.035;
+    expect(b.rehired).toBe(Math.floor((0.5 * b.gap) / position));
+    expect(b.reservesAfter).toBeCloseTo(kept.reservesAfter - b.rehired! * position, 0);
+    expect(b.spending).toBeCloseTo(kept.spending + b.rehired! * position, 0);
+    expect(computeBudget({ ...input, cumulativeCuts: 3 }).rehired).toBe(3);
   });
 });
 

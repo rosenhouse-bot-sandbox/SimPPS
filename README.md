@@ -19,7 +19,7 @@ npm run build   # typecheck and build to dist/
 npm run e2e     # phone-size Playwright run; SCREENSHOT_DIR=… saves screenshots
 ```
 
-`?seed=abc&start=status-quo|scenario-a|scenario-b` picks a game. Without `start` the game asks. Played years are saved in the browser by seed and start.
+`?seed=abc&start=status-quo|scenario-a|scenario-b` picks a game. Without `start` the game asks. Each changed model parameter adds `m.<name>=<value>`, e.g. `m.leaveRate=0.02` or `m.closureOneTime.lo=200000`; the start picker's advanced menu sets them. Played years are saved in the browser by seed, start and changed parameters.
 
 Pushes to `main` deploy to GitHub Pages once the repo is public and Pages uses GitHub Actions.
 

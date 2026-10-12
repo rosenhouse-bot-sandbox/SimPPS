@@ -2,7 +2,7 @@ import { useEffect, useMemo, useReducer, useState } from 'preact/hooks';
 import { ZONES } from '../data';
 import type { Mark } from '../map/MapView';
 import type { Start } from '../sim';
-import type { BoundaryEdit, Closure, GradeSpanChange, Policy, SchoolId, Season, ZoneLevel } from '../sim/types';
+import type { BoundaryEdit, Closure, GradeSpanChange, ModelOverrides, Policy, SchoolId, Season, ZoneLevel } from '../sim/types';
 import { NEARBY, startDraft, toggleReceiver, withNames, type CloseDraft } from '../ui/closeSend';
 import { CloseSendSheet } from '../ui/CloseSendSheet';
 import { SendGradesSheet } from '../ui/SendGradesSheet';
@@ -31,7 +31,9 @@ interface AppProps {
   seed: string;
   /** Null asks the player to pick one. */
   start?: Start | null;
-  onStart?: (start: Start) => void;
+  /** Changed model parameters for the game. */
+  model?: ModelOverrides;
+  onStart?: (start: Start, model: ModelOverrides) => void;
   /** Plans already played, to replay on open. */
   saved?: Policy[];
   /** Called with every plan played so far, after each year. */
@@ -94,9 +96,10 @@ function programMarks(marks: Partial<Record<SchoolId, Mark>>, links: Link[], mov
 type SpanDraft = { school: SchoolId; to: SchoolId | null };
 type Link = [SchoolId, SchoolId, 'program'?];
 
-export function App({ sim, seed, start = 'status-quo', onStart, saved, onSave, onNewGame, playbackMs }: AppProps) {
+export function App({ sim, seed, start = 'status-quo', model: initialModel = {}, onStart, saved, onSave, onNewGame, playbackMs }: AppProps) {
   const reduce = useMemo(() => makeReducer(sim), [sim]);
-  const [s, dispatch] = useReducer(reduce, undefined, () => initApp(sim, seed, start ?? 'status-quo', saved));
+  const [s, dispatch] = useReducer(reduce, undefined, () => initApp(sim, seed, start ?? 'status-quo', saved, initialModel));
+  const [model, setModel] = useState(initialModel);
   useEffect(() => onSave?.(s.history.map((t) => t.policy)), [s.history]);
   const [picking, setPicking] = useState(start === null);
   const [closeDraft, setCloseDraft] = useState<CloseDraft | null>(null);
@@ -379,6 +382,7 @@ export function App({ sim, seed, start = 'status-quo', onStart, saved, onSave, o
                   ? { before: turn.start.dials.walkK5, after: turn.end.dials.walkK5 }
                   : undefined
               }
+              model={s.game.sim?.model}
               onNext={() => {
                 setTool('map');
                 dispatch({ type: 'nextYear' });
@@ -400,9 +404,11 @@ export function App({ sim, seed, start = 'status-quo', onStart, saved, onSave, o
         />
         {picking && (
           <StartPicker
+            model={model}
+            onModel={setModel}
             onPick={(start) => {
-              dispatch({ type: 'restart', start });
-              onStart?.(start);
+              dispatch({ type: 'restart', start, model });
+              onStart?.(start, model);
               setPicking(false);
             }}
           />

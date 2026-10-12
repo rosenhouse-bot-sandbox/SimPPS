@@ -14,13 +14,13 @@ export function levyBallot(levy: Levy, year: number, policy: Pick<Policy, 'levyR
 }
 
 /** Trust midway through its starting range moves no votes. */
-const TRUST_MID = (M.trustStart.lo + M.trustStart.hi) / 2;
+const trustMid = () => (M.trustStart.lo + M.trustStart.hi) / 2;
 
 /** model.election: the yes share before the election's luck. */
 export function expectedYes(ballot: Ballot, failures: number, trust: number): number {
   return clamp(
     M.yesBase +
-      M.yesPerTrustPoint * (trust - TRUST_MID) -
+      M.yesPerTrustPoint * (trust - trustMid()) -
       (M.yesPerDime * (ballot.rate - M.levyRate)) / 0.1 -
       M.yesPerFailure * failures,
     0,

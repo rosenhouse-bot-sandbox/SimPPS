@@ -476,7 +476,7 @@ describe('App', () => {
     const onStart = vi.fn();
     render(<App sim={realSim} seed="t" start={null} onStart={onStart} playbackMs={5000} />);
     fireEvent.click(screen.getByRole('button', { name: 'PPS Scenario A' }));
-    expect(onStart).toHaveBeenCalledWith('scenario-a');
+    expect(onStart).toHaveBeenCalledWith('scenario-a', {});
     expect(screen.queryByRole('button', { name: 'PPS Scenario B' })).toBeNull();
     click('Plan');
     expect(document.querySelectorAll('.edits li')).toHaveLength(29);
@@ -491,6 +491,16 @@ describe('App', () => {
     expect(screen.getByText(/takes kids/).textContent).toBe(
       'In the plan: takes kids from Peninsula. Change that closure to close this school.',
     );
+  });
+
+  it('starts a game with the model parameters changed in the start picker', () => {
+    const onStart = vi.fn();
+    render(<App sim={realSim} seed="t" start={null} onStart={onStart} playbackMs={5000} />);
+    click('Advanced: model parameters');
+    fireEvent.input(screen.getByLabelText('leaveRate'), { target: { value: '0.02' } });
+    click('Done');
+    click('Status quo 2026');
+    expect(onStart).toHaveBeenCalledWith('status-quo', { leaveRate: 0.02 });
   });
 
   it("names a scenario's program move on its schools, and won't close the program's new school", () => {

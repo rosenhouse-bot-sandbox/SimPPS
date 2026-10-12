@@ -22,7 +22,7 @@ import {
   type FollowFactors,
   type Mover,
 } from './closures';
-import { gradeOf, M, METERS_PER_MILE, oneKid } from './model';
+import { gradeOf, M, METERS_PER_MILE, oneKid, setModelParams } from './model';
 import { SCHOOL_INFO } from './population';
 import { buildSchools } from './schools';
 import { familiesDecide } from './step';
@@ -145,6 +145,17 @@ describe('closure budget lines', () => {
     expect(amount(computeBudget(base), 'closureOneTime')).toBe(0);
   });
 
+  it('draws the oneTimeFromReserves share of the one-time cost from reserves instead of cutting', () => {
+    const input = { ...base, reserves: 10_000_000, restRevenue: -5_000_000, policy: { ...base.policy, closures: [closure] } };
+    const cut = computeBudget(input);
+    setModelParams({ oneTimeFromReserves: 1 });
+    const drawn = computeBudget(input);
+    expect(drawn.oneTimeDraw).toBeCloseTo(450_000, 0);
+    expect(drawn.reservesAfter).toBeCloseTo(cut.reservesAfter - 450_000, 0);
+    expect(drawn.autoCutPositions).toBe(Math.ceil((-cut.gap - 450_000) / 155_000));
+    expect(drawn.autoCutPositions).toBeLessThan(cut.autoCutPositions);
+  });
+
   it('gives back half the saving in the second year and none from the third', () => {
     const year2 = computeBudget({ ...base, year: 2028, schools: after, closed: [closed(2027)] });
     expect(amount(year2, 'closurePhasing')).toBeCloseTo(-500_000 * costIndex(2028), 0);
@@ -246,6 +257,12 @@ describe('Close & send over the years', () => {
   const movers = next.households.filter((h) => h.movedFrom === 'peninsula');
   const [outcome] = report.closures;
   const mid = (r: { lo: number; hi: number }) => (r.lo + r.hi) / 2;
+
+  it('adds followShift to every kid\'s chance to follow', () => {
+    const followers = (next: GameState) => next.households.filter((h) => h.movedFrom === 'peninsula' && h.school === 'rosa-parks').length;
+    const shifted = endYear(newGame({ seed: 'close', model: { followShift: 0.2 } }), policy).next;
+    expect(followers(shifted)).toBeGreaterThan(followers(next) + 15);
+  });
 
   it('empties the closed school by fall and grows the receiver', () => {
     expect(next.schools.peninsula.enrollment).toBe(0);

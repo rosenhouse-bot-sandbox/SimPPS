@@ -1,5 +1,5 @@
 import { classesFor, cutCreep, stateWeight } from './budget';
-import { gradeOf, M, MAX_GRADE } from './model';
+import { classroomsDial, gradeOf, M, MAX_GRADE } from './model';
 import { SCHOOL_INFO } from './population';
 import { programsAt } from './programs';
 import { newBusRiders, walkK5 } from './walk';
@@ -72,10 +72,16 @@ export function computeDials(state: Pick<GameState, 'households' | 'schools' | '
   let kidsInUrm = 0;
   let k5Kids = 0;
   let k5Rooms = 0;
+  let classrooms = 0;
   for (const s of Object.values(state.schools)) {
     if (s.open) {
-      k5Kids += s.byGrade.slice(0, 6).reduce((a, n) => a + n, 0);
+      const k5 = s.byGrade.slice(0, 6).reduce((a, n) => a + n, 0);
+      const middle = s.byGrade.slice(6).reduce((a, n) => a + n, 0);
+      k5Kids += k5;
       k5Rooms += s.k5Homerooms;
+      // model.classrooms
+      if (k5 >= M.classroomsK5 && s.blendedHomerooms === 0) classrooms += k5;
+      if (middle >= M.classroomsMiddle) classrooms += middle;
     }
     const { isUrm, seismicRetrofitStatus } = SCHOOL_INFO.get(s.id)!.data;
     if (isUrm && seismicRetrofitStatus !== 'full') kidsInUrm += s.enrollment;
@@ -91,6 +97,6 @@ export function computeDials(state: Pick<GameState, 'households' | 'schools' | '
     walkK5: walkK5(state.households),
     newBusRiders: newBusRiders(state.households),
     trust,
-    k5Class: k5Rooms ? k5Kids / k5Rooms : 0,
+    k5Class: classroomsDial() ? classrooms : k5Rooms ? k5Kids / k5Rooms : 0,
   };
 }

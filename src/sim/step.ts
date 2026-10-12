@@ -90,19 +90,19 @@ export function kCaptureTrend(year: number): number {
   return M.kCapture2025 + (M.kCapture2028 - M.kCapture2025) * clamp((year - 2025) / 3, 0, 1);
 }
 
-/** Extra yearly exit from a worse year: class size above 24 and positions cut. At most 1 point. */
+/** model.worseYear: extra yearly exit from class size above the base and positions cut. */
 export function worseYear(classSize: number, positionsCut: number): number {
   return clamp(
-    (classSize - 24) * M.classSizeExitPerKid + (positionsCut / 100) * M.cutsExitPer100Positions,
-    -M.worseYearCap / 2,
+    (classSize - M.baseClassSize) * M.classSizeExitPerKid + (positionsCut / 100) * M.cutsExitPer100Positions,
+    -M.betterYearCap,
     M.worseYearCap,
   );
 }
 
 /** model.movingRoll: the chance a PPS household leaves this fall. */
 export function leaveChance(h: Household, schoolChange: boolean, worse: number): number {
-  const base = schoolChange ? M.grade6Exit : M.leaveRate * (0.7 + 0.6 * h.exitCapacity);
-  return base + worse * (1.25 - 0.5 * h.loyalty);
+  const base = schoolChange ? M.grade6Exit : M.leaveRate * (M.leaveBase + M.leavePerExit * h.exitCapacity);
+  return base + worse * (M.worseBase - M.worsePerLoyalty * h.loyalty);
 }
 
 export interface FamilyYear {
@@ -173,7 +173,7 @@ export function familiesDecide(
     const n = Math.floor(expected) + (draw(seed, year, z, D.EntrantCount) < expected % 1 ? 1 : 0);
     // model.closedZoneCapture
     const closedZoneDrop = closed.has(zone.school) ? closures.cards.closedZoneCaptureDrop : 0;
-    const zoneCapture = clamp(mem.kCapture[z] + capture - M.kCapture2025 - entrantBump - closedZoneDrop, 0, 0.98);
+    const zoneCapture = clamp(mem.kCapture[z] + capture - M.kCapture2025 - entrantBump - closedZoneDrop, 0, M.kCaptureMax);
     for (let k = 0; k < n; k++) {
       const id = nextId++;
       const rand = stream(Math.floor(draw(seed, id, D.EntrantHome) * 0x100000000));
@@ -197,7 +197,7 @@ export function familiesDecide(
         ...(closed.has(zone.school) ? { fundedAs: zone.school } : {}),
         school: joins ? resolve(site && site !== picked ? site : picked === zone.school ? zoneSchool : picked, 0, { id, pos }) : null,
         exitCapacity,
-        loyalty: clamp(mem.zoneKeep[z] + (rand() - 0.5) * 0.2, 0, 1),
+        loyalty: clamp(mem.zoneKeep[z] + (rand() - 0.5) * M.loyaltyNoise, 0, 1),
         voice: voiceFor(exitCapacity, rand()),
         status: joins ? 'stayed' : 'left',
       };
@@ -209,7 +209,7 @@ export function familiesDecide(
 
   // Summer: 8th graders leave. Fall: everyone else may move.
   const bumpK5 = worseYear(classSize, positionsCut);
-  const bumpOther = worseYear(24, positionsCut);
+  const bumpOther = worseYear(M.baseClassSize, positionsCut);
   const flows: Flows = { stayed: 0, movedWithinPps: 0, leftPps: 0, cameBack: 0, enteredK: kEnrolled, graduated: 0 };
   const regions: RegionTally = new Map();
   const movers: Mover[] = [];
@@ -411,14 +411,15 @@ export function stepYear(state: GameState, policy: Policy): { next: GameState; f
     busingLastYear: mem.busing,
   });
   const autoCuts = plan.autoCutPositions;
+  const rehired = plan.rehired ?? 0;
   const position = M.positionCost * index;
-  const classroomShare = -plan.lines.find((l) => l.key === 'homerooms')!.amount / (plan.spending + autoCuts * position);
+  const classroomShare = -plan.lines.find((l) => l.key === 'homerooms')!.amount / (plan.spending + (autoCuts - rehired) * position);
 
   const { households, nextId, kResidents, kEnrolled, graduates, flows, regions, closures, rezoned, conversions, programMoves: programTallies } =
     familiesDecide(mem, state.households, year, policy.k5ClassSize, autoCuts, { closed, cards: mem.cards, converted, programMoves }, zoning);
 
   // October: classes form, short the homerooms that cuts removed.
-  const octoberCut = mem.homeroomsCut + Math.round(autoCuts * classroomShare);
+  const octoberCut = Math.max(0, mem.homeroomsCut + Math.round((autoCuts - rehired) * classroomShare));
   const schools = buildSchools(households, policy.k5ClassSize, octoberCut, closed, converted, programMoves);
   const creep = cutCreep(schools, policy.k5ClassSize, octoberCut);
   let k5Homerooms = 0;
@@ -432,7 +433,7 @@ export function stepYear(state: GameState, policy: Policy): { next: GameState; f
 
   // Winter: below 3% reserves, mid-year cuts save half a year's pay.
   const midYearCuts = plan.midYearCuts;
-  const midYearSavings = (midYearCuts * position) / 2;
+  const midYearSavings = midYearCuts * position * M.midYearPayShare;
   const homeroomsCut = octoberCut + Math.round(midYearCuts * classroomShare);
   const reserves = plan.reservesAfter + midYearSavings;
 
@@ -449,7 +450,7 @@ export function stepYear(state: GameState, policy: Policy): { next: GameState; f
   const levy = levyAfter(mem.levy, year, policy, election?.passed ?? null);
 
   const nextPolicy: Policy = { ...policy, levyRate: levy.rate, levyElection: 'may', reserveDraw: 0, closures: [], boundaryEdits: [], gradeChanges: [], programMoves: [] };
-  const cumulativeCuts = mem.cumulativeCuts + autoCuts + midYearCuts;
+  const cumulativeCuts = mem.cumulativeCuts + autoCuts + midYearCuts - rehired;
   const spending = plan.spending - midYearSavings;
   const busing = -(plan.lines.find((l) => l.key === 'busing')?.amount ?? 0);
   const sim = { ...mem, nextId, k5ClassSize: policy.k5ClassSize, cumulativeCuts, homeroomsCut, spending, closed, converted, programMoves, busing, levy, trust, ghost: undefined };

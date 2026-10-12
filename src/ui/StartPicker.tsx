@@ -1,4 +1,7 @@
+import { useState } from 'preact/hooks';
 import { SCENARIOS, type Start } from '../sim';
+import type { ModelOverrides } from '../sim/types';
+import { ModelParams } from './ModelParams';
 import { ScenarioBadge } from './PlanPanel';
 import { Sourced } from './Sourced';
 import { K } from './sources';
@@ -12,7 +15,22 @@ function blurb(start: Start): string {
   return `Starts with PPS's ${closures.length} proposed closures, ${gradeChanges.length} grade-span changes and ${programMoveCount} program moves.`;
 }
 
-export function StartPicker({ onPick }: { onPick: (s: Start) => void }) {
+interface StartPickerProps {
+  onPick: (s: Start) => void;
+  /** Changed model parameters for the new game. */
+  model?: ModelOverrides;
+  onModel?: (model: ModelOverrides) => void;
+}
+
+export function StartPicker({ onPick, model = {}, onModel = () => {} }: StartPickerProps) {
+  const [advanced, setAdvanced] = useState(false);
+  const changed = Object.keys(model).length;
+  if (advanced)
+    return (
+      <div class="scrim">
+        <ModelParams model={model} onChange={onModel} onClose={() => setAdvanced(false)} />
+      </div>
+    );
   return (
     <div class="scrim">
       <Window title="New game" class="panel sheet start-picker">
@@ -42,6 +60,10 @@ export function StartPicker({ onPick }: { onPick: (s: Start) => void }) {
             </li>
           ))}
         </ul>
+        {changed > 0 && <p class="badge">{`This game changes ${changed} model parameter${changed === 1 ? '' : 's'}.`}</p>}
+        <button type="button" class="btn wide" onClick={() => setAdvanced(true)}>
+          Advanced: model parameters
+        </button>
       </Window>
     </div>
   );

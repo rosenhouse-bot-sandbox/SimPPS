@@ -39,7 +39,7 @@ export interface FollowFactors {
 export function followChance(base: number, f: FollowFactors): number {
   return clamp(
     base -
-      M.followPerMilePastOne * Math.max(0, f.miles - 1) -
+      M.followPerMilePastOne * Math.max(0, f.miles - M.followFreeMiles) -
       (f.barrier ? M.followBarrier : 0) -
       (f.riskier ? M.followRiskier : 0) -
       (f.movedBefore ? M.followMovedTwice : 0) -
@@ -512,7 +512,7 @@ export function decideClosures(args: {
     const serving = servingOpen(closure, gradeOf(next), shut);
     const zoned = serving.some((r) => r.school === next.zoneSchool);
     const target = zoned ? next.zoneSchool : serving.length ? pickShare(serving, draw(seed, year, before.id, D.Receiver)) : m.fallback;
-    const p = followChance(args.followRate + schoolFollowOffset(seed, closure.school), followFactors(before, closure, target));
+    const p = followChance(args.followRate + M.followShift + schoolFollowOffset(seed, closure.school), followFactors(before, closure, target));
     if (draw(seed, year, before.id, D.Follow) >= p) {
       // model.nonFollowers
       const choice = nonFollowerChoice(draw(seed, year, before.id, D.NonFollower));

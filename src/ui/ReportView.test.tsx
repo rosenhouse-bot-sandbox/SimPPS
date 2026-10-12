@@ -7,6 +7,14 @@ import { termsIn } from './terms.testing';
 afterEach(cleanup);
 
 describe('ReportView', () => {
+  it('names changed model parameters, so a screenshot shows them', () => {
+    render(<ReportView report={FIXTURE_REPORT} turn={1} onNext={() => {}} model={{ leaveRate: 0.02 }} />);
+    expect(document.querySelector('.model-changed')!.textContent).toBe('Changed model: leaveRate = 0.02');
+    cleanup();
+    render(<ReportView report={FIXTURE_REPORT} turn={1} onNext={() => {}} />);
+    expect(document.querySelector('.model-changed')).toBeNull();
+  });
+
   it('sorts every kid: those in PPS now add up to Kids, and the rest left', () => {
     render(<ReportView report={FIXTURE_REPORT} turn={1} onNext={() => {}} />);
     for (const [label, n] of [

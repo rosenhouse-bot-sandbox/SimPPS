@@ -24,7 +24,7 @@ export interface Strain {
   calmGain: number;
 }
 
-const over24 = (classSize: number) => Math.max(0, classSize - 24);
+const over24 = (classSize: number) => Math.max(0, classSize - M.baseClassSize);
 
 export function strainFor(classSize: number, lastClassSize: number, positionsCut: number): Strain {
   return {

@@ -1,5 +1,4 @@
 import { SCHOOLS } from '../data';
-import { DEFAULT_POLICY } from '../sim';
 import { CELL_METERS } from '../sim/grid';
 import { M, REVEAL_AFTER_YEARS } from '../sim/model';
 
@@ -7,17 +6,22 @@ const pct = (x: number) => `${Math.round(x * 100)}%`;
 const $k = (n: number) => `$${Math.round(n / 1e3)}K`;
 const miles = (n: number) => `${n} mile${n === 1 ? '' : 's'}`;
 const ORDINALS = ['first', 'second', 'third', 'fourth', 'fifth'];
-const classTarget = DEFAULT_POLICY.k5ClassSize;
 
 /** Plain-language definitions of the game's labels, for parents new to school-district jargon. */
 export const GLOSSARY = {
   // Top bar and gap bar
   Kids: `Students in kindergarten through 8th grade at the ${SCHOOLS.length} PPS schools in this game. High schools are not simulated.`,
   Capture: 'The share of K-8 kids living in the district who attend a PPS school. The rest go to private, charter or other schools.',
-  Reserves: `Money PPS has saved, as a share of last year's spending. PPS aims to keep at least ${pct(M.reservePolicy)}. Below ${pct(M.midYearFloor)}, the game forces mid-year cuts.`,
-  Trust: `How much families trust the district, from 0 to 100. Closures, moving kids twice, staff cuts and K-5 classes above ${classTarget} lower it, and calm years raise it. Higher trust means more yes votes on the levy.`,
+  get Reserves() {
+    return `Money PPS has saved, as a share of last year's spending. PPS aims to keep at least ${pct(M.reservePolicy)}. Below ${pct(M.midYearFloor)}, the game forces mid-year cuts.`;
+  },
+  get Trust() {
+    return `How much families trust the district, from 0 to 100. Closures, moving kids twice, staff cuts and K-5 classes above ${M.baseClassSize} lower it, and calm years raise it. Higher trust means more yes votes on the levy.`;
+  },
   Gap: "Next school year's revenue minus its costs. A negative number is a shortfall the district must close with cuts, reserves or new money.",
-  Surplus: "Money left over after next school year's costs. It goes into reserves.",
+  get Surplus() {
+    return `Money left over after next school year's costs. ${M.surplusRehire ? 'Part of it rehires cut staff, and the rest goes' : 'It goes'} into reserves.`;
+  },
   Cuts: 'Staff positions eliminated to close the gap, in June and in the middle of the year.',
 
   // School sheet
@@ -40,7 +44,9 @@ export const GLOSSARY = {
 
   // Budget
   'K-5 class size': 'The target number of kids in each kindergarten-through-5th-grade class. Smaller classes need more teachers.',
-  Levy: `A local property tax that voters approve for up to ${M.levyYears} years to pay for teachers. The rate is dollars per $1,000 of a property’s assessed value.`,
+  get Levy() {
+    return `A local property tax that voters approve for up to ${M.levyYears} years to pay for teachers. The rate is dollars per $1,000 of a property’s assessed value.`;
+  },
   'Election bill': 'What the county charges PPS to put a measure on the ballot.',
   'Levy ballot': 'The election, in May or November, where voters decide on the levy.',
   'Reserve draw': 'Money taken from reserves to shrink this year’s gap. It helps only once.',
@@ -51,9 +57,15 @@ export const GLOSSARY = {
   Walk: "The change in the average straight-line distance from kids' homes to school.",
   Now: 'Money this change saves (+) or costs (−) in the coming school year, including one-time costs.',
   'At maturity': 'Money this change saves (+) or costs (−) each year once it has fully taken effect.',
-  'Pays off': `A closure saves money only if enough kids stay in PPS, because each kid who leaves PPS costs about ${$k(M.revenueBase)}–${Math.round((M.revenueBase + M.revenuePoverty) / 1e3)}K a year in state money, starting the next year.`,
-  'New bus riders': `Kids who need a bus because a change put their school past walking distance: ${miles(M.walkLimitK5)} for K-5, ${miles(M.walkLimitMiddle)} for 6-8.`,
-  'K-5 walkers': `K-5 kids who live within ${miles(M.walkDialMiles)} of their school, in a straight line.`,
+  get 'Pays off'() {
+    return `A closure saves money only if enough kids stay in PPS, because each kid who leaves PPS costs about ${$k(M.revenueBase)}–${Math.round((M.revenueBase + M.revenuePoverty) / 1e3)}K a year in state money, starting the next year.`;
+  },
+  get 'New bus riders'() {
+    return `Kids who need a bus because a change put their school past walking distance: ${miles(M.walkLimitK5)} for K-5, ${miles(M.walkLimitMiddle)} for 6-8.`;
+  },
+  get 'K-5 walkers'() {
+    return `K-5 kids who live within ${miles(M.walkDialMiles)} of their school, in a straight line.`;
+  },
   Blocks: `The squares the game draws zones with. Each is ${CELL_METERS} m across, about 4 by 4 city blocks.`,
 
   // Close & send
@@ -87,6 +99,7 @@ export const GLOSSARY = {
   'Positions cut': 'Staff positions eliminated by automatic and mid-year cuts this year.',
   'Kids in URM': 'Kids in unreinforced masonry buildings that have not had a full earthquake retrofit.',
   'Avg K-5 class': 'The average number of kids in a K-5 class.',
+  Classrooms: 'K-5 kids at schools big enough for two classes per grade without blending, plus grade 6-8 kids in large middle grades.',
 } satisfies Record<string, string>;
 
 export type GlossaryTerm = keyof typeof GLOSSARY;
