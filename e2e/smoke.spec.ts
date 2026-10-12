@@ -230,11 +230,11 @@ test("moves Scenario A's DLI programs and reports where the kids went", async ({
   test.setTimeout(90_000);
   await page.goto('?seed=p52');
   const starts = page.getByRole('region', { name: 'New game' });
-  await expect(starts).toContainText('14 proposed closures, 7 grade-span changes and 8 program moves');
+  await expect(starts).toContainText('14 proposed closures, 7 grade-span changes and 11 program moves');
   await expect(starts).toContainText('2 program moves and 38 boundary changes');
   await shot(page, 'program-start');
   await starts.getByRole('button', { name: 'PPS Scenario A' }).tap();
-  await expect(page.locator('[data-link="clark>woodstock"]')).toHaveCount(1);
+  await expect(page.locator('[data-link="clark>woodstock"].pps-map-link-program')).toHaveCount(1);
   await expect(page.locator('[data-mark="program"]')).toHaveCount(7);
   await shot(page, 'program-map');
 
@@ -262,7 +262,7 @@ test("moves Scenario A's DLI programs and reports where the kids went", async ({
   await shot(page, 'program-playback');
   await playback.getByRole('button', { name: 'Skip' }).tap();
 
-  const where = page.getByRole('region', { name: 'Where the Spanish DLI kids went' }).first();
+  const where = page.getByRole('region', { name: "Where Beach, James John and Sitton's Spanish DLI kids went" });
   for (const row of ['Spanish DLI from Beach, James John and Sitton', 'César Chávez', 'Left DLI', 'Left PPS']) await expect(where).toContainText(row);
   await where.scrollIntoViewIfNeeded();
   await shot(page, 'program-report');

@@ -81,17 +81,18 @@ function spanMarks(
 }
 
 /** Marks and links for program moves. A school's closing or converting mark wins. */
-function programMarks(marks: Partial<Record<SchoolId, Mark>>, links: [SchoolId, SchoolId][], moves: { from: SchoolId[]; to: SchoolId }[]) {
+function programMarks(marks: Partial<Record<SchoolId, Mark>>, links: Link[], moves: { from: SchoolId[]; to: SchoolId }[]) {
   for (const m of moves) {
     for (const f of m.from) {
       if (marks[f] !== 'closing' && marks[f] !== 'converting') marks[f] = 'program';
-      links.push([f, m.to]);
+      links.push([f, m.to, 'program']);
     }
     marks[m.to] ??= 'receiver';
   }
 }
 
 type SpanDraft = { school: SchoolId; to: SchoolId | null };
+type Link = [SchoolId, SchoolId, 'program'?];
 
 export function App({ sim, seed, start = 'status-quo', onStart, saved, onSave, onNewGame, playbackMs }: AppProps) {
   const reduce = useMemo(() => makeReducer(sim), [sim]);
@@ -300,7 +301,7 @@ export function App({ sim, seed, start = 'status-quo', onStart, saved, onSave, o
             <CloseSendSheet
               draft={drafting}
               candidates={candidates}
-              chipFor={(c) => sim.closureChip(s.game, c, s.draft.closures, s.draft.k5ClassSize, s.draft.gradeChanges)}
+              chipFor={(c) => sim.closureChip(s.game, c, s.draft.closures, s.draft.k5ClassSize, s.draft.gradeChanges, s.draft.programMoves)}
               onChange={setCloseDraft}
               onCommit={commit}
               onClose={() => setCloseDraft(null)}
@@ -413,6 +414,7 @@ export function App({ sim, seed, start = 'status-quo', onStart, saved, onSave, o
             base={s.game.policy}
             budget={plan}
             ballot={ballot}
+            closurePrograms={sim.closureProgramMoves(s.game, s.draft)}
             onBack={() => dispatch({ type: 'back' })}
             onConfirm={() => dispatch({ type: 'confirm' })}
           />

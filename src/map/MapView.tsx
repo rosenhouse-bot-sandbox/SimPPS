@@ -44,7 +44,8 @@ export interface MapViewProps {
   focusAt?: number;
   marks?: Partial<Record<SchoolId, Mark>>;
   /** Closed or closing school to receiver. */
-  links?: [SchoolId, SchoolId][];
+  /** A program link draws apart from closure and grade-span links. */
+  links?: [SchoolId, SchoolId, 'program'?][];
   /** Draws closure movers' trails, growing in over FLOW_MS. */
   flows?: boolean;
   zoneEdit?: ZoneEditProps;
@@ -346,13 +347,13 @@ export function MapView(props: MapViewProps) {
       </svg>
       <canvas ref={canvasRef} class="pps-map-layer pps-map-households" style={{ width: size.w, height: size.h }} />
       <svg class="pps-map-layer" width={size.w} height={size.h} role="img" aria-label="Map of PPS schools">
-        {links.map(([from, to]) => {
+        {links.map(([from, to, kind]) => {
           const a = schoolPos(from);
           const b = schoolPos(to);
           if (!a || !b) return null;
           const [x1, y1] = toScreen(view, a);
           const [x2, y2] = toScreen(view, b);
-          return <line key={`${from}>${to}`} data-link={`${from}>${to}`} class="pps-map-link" x1={x1} y1={y1} x2={x2} y2={y2} />;
+          return <line key={`${from}>${to}`} data-link={`${from}>${to}`} class={kind ? `pps-map-link pps-map-link-${kind}` : 'pps-map-link'} x1={x1} y1={y1} x2={x2} y2={y2} />;
         })}
         {HIGH_SCHOOLS.map((h) => {
           const [x, y] = toScreen(view, [h.x, h.y]);

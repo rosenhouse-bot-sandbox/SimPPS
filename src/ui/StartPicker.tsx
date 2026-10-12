@@ -7,9 +7,9 @@ import { Window } from './Window';
 const STARTS = Object.keys(SCENARIOS) as Start[];
 
 function blurb(start: Start): string {
-  const { closures, gradeChanges, programMoves } = SCENARIOS[start];
+  const { closures, gradeChanges, programMoveCount } = SCENARIOS[start];
   if (!closures.length) return "Today's schools and budget.";
-  return `Starts with PPS's ${closures.length} proposed closures, ${gradeChanges.length} grade-span changes and ${programMoves.length} program moves.`;
+  return `Starts with PPS's ${closures.length} proposed closures, ${gradeChanges.length} grade-span changes and ${programMoveCount} program moves.`;
 }
 
 export function StartPicker({ onPick }: { onPick: (s: Start) => void }) {

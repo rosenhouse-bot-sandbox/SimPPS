@@ -140,7 +140,7 @@ describe('ReportView', () => {
       },
     ];
     render(<ReportView report={{ ...FIXTURE_REPORT, programMoves }} turn={1} onNext={() => {}} />);
-    const section = screen.getByRole('region', { name: 'Where the Spanish DLI kids went' });
+    const section = screen.getByRole('region', { name: "Where Beach, James John and Sitton's Spanish DLI kids went" });
     expect(section.textContent).toContain('Spanish DLI from Beach, James John and Sitton, 330–370~ kids:');
     const rows = [...section.querySelectorAll('.flow')].map((r) => [r.querySelector('dt')!.textContent, r.querySelector('dd')!.textContent]);
     expect(rows).toEqual([

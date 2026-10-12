@@ -388,7 +388,7 @@ export const MODEL_SOURCES: Source[] = [
     key: 'model.programMove',
     label: 'DLI program moves',
     tag: 'M',
-    explain: `A moved Dual Language Immersion program serves its new school from that fall. Each of its kids still in their old school's grades follows it with a ${pct(M.programMoveStay)} chance, ${M.followPerMilePastOne * 100} points less for each mile past 2 from home. Families chose DLI by lottery, so most should keep it when it moves [I]; a closed school's follow rate is lower. Arrivals aren't capped by the receiver's seats. The rest stay at their old school without the program, or choose like its other kids if it closes or changes grades. New DLI kindergartners who would have picked the old school go to the new one.`,
+    explain: `A moved Dual Language Immersion program serves its new school from that fall. Each of its kids still in their old school's grades follows it with a ${pct(M.programMoveStay)} chance, ${M.programStayPerMile * 100} points less for each mile past ${M.programFarMiles} from home. Families chose DLI by lottery, so most should keep it when it moves [I]; a closed school's follow rate is lower. Arrivals aren't capped by the receiver's seats, and busing for moved programs is not modeled yet. A closing school's program moves to its largest receiver, or to the nearest open school serving its grades, unless the plan moves it elsewhere. The rest stay at their old school without the program, or choose like its other kids if it closes or changes grades. New DLI kindergartners who would have picked the old school go to the new one.`,
     links: [DESIGN, RIGHTSIZING],
   },
   {

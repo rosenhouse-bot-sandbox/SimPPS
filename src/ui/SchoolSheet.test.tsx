@@ -19,7 +19,7 @@ describe('SchoolSheet', () => {
     expect(factValue('Built').textContent).toBe('2006');
     expect(factValue('URM').textContent).toBe('No');
     expect(factValue('Direct cert.').textContent).toBe('62.9%');
-    expect(factValue('DLI').textContent).toBe('None');
+    expect(factValue('DLI 25-26').textContent).toBe('None');
     fireEvent.click(screen.getByRole('button', { name: '2006' }));
     expect(screen.getByRole('dialog', { name: 'Year built' })).toBeTruthy();
   });
@@ -108,6 +108,7 @@ describe('SchoolSheet', () => {
   it('says a school lost its DLI, and shows no DLI row at a school that never had it', () => {
     render(<SchoolSheet id="clark" state={FIXTURE_GAME.schools.clark} onClose={() => {}} />);
     expect(factValue('DLI kids').textContent).toBe('None');
+    expect(factValue('DLI 25-26').textContent).toBe('Mandarin');
     cleanup();
     render(<SchoolSheet id="rosa-parks" state={FIXTURE_GAME.schools['rosa-parks']} onClose={() => {}} />);
     expect(screen.queryByText('DLI kids')).toBeNull();

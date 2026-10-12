@@ -135,7 +135,7 @@ const list = (items: string[]) => (items.length < 2 ? items.join('') : `${items.
 function ProgramMoveReport({ m }: { m: ProgramMoveOutcome }) {
   const of = (m.kids.lo + m.kids.hi) / 2;
   return (
-    <section class="closure-report" aria-label={`Where the ${m.program} DLI kids went`}>
+    <section class="closure-report" aria-label={`Where ${list(m.from.map(nameOf))}'s ${m.program} DLI kids went`}>
       <p>
         {m.program} DLI from {list(m.from.map(nameOf))}, <Sourced k={K.programMove}>{fmtRange(m.kids)}</Sourced> kids:
       </p>

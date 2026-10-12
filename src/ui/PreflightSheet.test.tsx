@@ -33,6 +33,22 @@ describe('PreflightSheet', () => {
     expect(onBack).toHaveBeenCalledOnce();
   });
 
+  it("lists the programs the plan's closures carry", () => {
+    render(
+      <PreflightSheet
+        year={2027}
+        draft={DEFAULT_POLICY}
+        base={DEFAULT_POLICY}
+        budget={FIXTURE_GAME.budget}
+        ballot={null}
+        closurePrograms={[{ program: 'Japanese', from: ['richmond'], to: 'glencoe' }]}
+        onBack={() => {}}
+        onConfirm={() => {}}
+      />,
+    );
+    expect(screen.getByRole('button', { name: 'Japanese DLI moves to Glencoe' }).getAttribute('data-source')).toBe('model.programMove');
+  });
+
   it('lists the ballot item with its poll, booked as passing', () => {
     const text = sheet(2030, { rate: 1.99, when: 'may', renewal: true, poll: { lo: 0.72, hi: 0.82 } });
     expect(text).toContain('BallotMay 2030 levy renewal$1.99 per $1K · poll 72–82%~');

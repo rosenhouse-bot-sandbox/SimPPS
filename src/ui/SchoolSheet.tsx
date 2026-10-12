@@ -1,6 +1,6 @@
 import { Fragment, type ComponentChildren } from 'preact';
 import { SCHOOLS, type SchoolData } from '../data';
-import { FATE_DONE, modeledRange } from '../sim';
+import { DLI_PROGRAMS, FATE_DONE, modeledRange } from '../sim';
 import type { Closure, GradeSpanChange, Program, ProgramMove, SchoolId, SchoolState } from '../sim/types';
 import { nameOf } from './closeSend';
 import { closureText, gradeSpanText, programMoveText } from './edits';
@@ -56,7 +56,7 @@ export function schoolFacts(s: SchoolData, converted = false): FactData[] {
     { label: 'URM', column: 'is_urm_building', value: s.isUrm ? 'Yes' : 'No' },
     { label: 'Retrofit left', column: 'retrofit_cost_remaining_usd', value: orNull(s.retrofitRemaining, fmtMoney) },
     { label: 'Direct cert.', column: 'pct_direct_cert', value: orNull(s.pctDirectCert, fmtPct) },
-    { label: 'DLI', column: 'dli_languages', value: s.dliLanguages ?? 'None' },
+    { label: 'DLI 25-26', column: 'dli_languages', value: DLI_PROGRAMS.get(s.id)?.join(', ') ?? 'None' },
   ];
 }
 

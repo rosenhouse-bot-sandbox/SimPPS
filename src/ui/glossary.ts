@@ -29,6 +29,7 @@ export const GLOSSARY = {
   'Direct cert.':
     'Direct certification: the share of students who get free meals automatically because their family gets benefits like food stamps (SNAP) or cash aid (TANF), or they are in foster care. It is a rough sign of deep poverty (2022 data).',
   DLI: 'Dual Language Immersion. Students learn in English and another language, such as Spanish, Mandarin Chinese, Japanese, Russian or Vietnamese.',
+  'DLI 25-26': 'The Dual Language Immersion programs this school had in fall 2025, before any moves.',
   Simulated: 'Numbers the game computes as you play, not real data. A “~” marks a modeled number.',
   Enrollment: 'Students the game expects at this school. It shows a range because family choices involve chance.',
   Homerooms: 'Classes where a group of K-5 kids spends the day with one teacher.',
@@ -77,7 +78,7 @@ export const GLOSSARY = {
   'To high school': '8th graders who moved on to high school, which the game does not simulate.',
   'Other PPS': 'Kids who went to a PPS school other than the one planned for them.',
   'New zone school': 'Re-zoned kids who went to the school their home is now zoned for.',
-  'Left DLI': 'Kids in a moved Dual Language Immersion program who stayed in PPS without it, most at their old school.',
+  'Left DLI': 'Kids in a moved Dual Language Immersion program who stayed at their school without it. Kids whose school closed count with the closure.',
   'Levy vote': 'The election on the levy. It passes when yes votes outnumber no votes.',
   'Do-nothing ghost': 'A copy of the district that changes nothing, played with the same luck as yours. It shows what your choices did.',
   'The Bulletin': 'Headlines written from the game’s totals. They never describe real families.',

@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { DEFAULT_POLICY, newGame, normalizePolicy } from '.';
+import rightsizing from '../data/rightsizing.json';
 import { SCENARIOS } from './scenarios';
 
 describe('scenario starts', () => {
@@ -34,6 +35,13 @@ describe('scenario starts', () => {
     expect(a.households).toEqual(quo.households);
     expect(a.schools).toEqual(quo.schools);
     expect(a.sim).toEqual(quo.sim);
+  });
+
+  it('counts program moves per school left, as PPS does', () => {
+    for (const [start, key] of [['scenario-a', 'A'], ['scenario-b', 'B']] as const) {
+      const unmodeled = Number(/(\d+) program move/.exec(SCENARIOS[start].notModeled!)![1]);
+      expect(SCENARIOS[start].programMoveCount + unmodeled).toBe(rightsizing.scenarios[key].program_moves_count);
+    }
   });
 
   it('names what the scenario changes that the game does not model yet', () => {

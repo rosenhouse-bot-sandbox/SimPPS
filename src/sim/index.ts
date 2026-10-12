@@ -7,20 +7,21 @@ import { generatePopulation } from './population';
 import { headlines, rezoneOutcome, seasonEvents, versusGhost } from './report';
 import { draw, hashString } from './rng';
 import { buildSchools, computeDials } from './schools';
-import { closureChip as chipFor, closureOutcomes, effectiveClosures, normalizeClosures, type ClosureChip } from './closures';
+import { closureChip as chipFor, closureOutcomes, effectiveClosures, normalizeClosures, type ClosureChip as BaseClosureChip } from './closures';
 import { closureRiders, plannedRiders, planZoning } from './boundaries';
 import { defaultZones, normalizeBoundaryEdits } from './zones';
 import { SCENARIOS, type Start } from './scenarios';
-import { conversionOutcomes, convertedIn, effectiveGradeChanges, normalizeGradeChanges, topGrade } from './gradeSpan';
+import { conversionChip as spanChip, conversionOutcomes, convertedIn, effectiveGradeChanges, normalizeGradeChanges, topGrade, type ConversionChip } from './gradeSpan';
 import { familiesDecide, stepYear } from './step';
-import { assignDli, effectiveProgramMoves, normalizeProgramMoves, programMoveOutcomes } from './programs';
-import type { Ballot, Budget, Closure, GameState, GradeSpanChange, Household, Policy, Range, Reveal, SimMemory, YearReport, ZoneMap } from './types';
+import { assignDli, closurePrograms, effectiveProgramMoves, normalizeProgramMoves, programMoveOutcomes, withProgramArrivals } from './programs';
+import { SCHOOL_INFO } from './population';
+import type { Ballot, Budget, Closure, GameState, GradeSpanChange, Household, Policy, ProgramMove, Range, Reveal, SimMemory, YearReport, ZoneMap } from './types';
 
 export * from './types';
 export { modeledRange } from './range';
 export { FIRST_YEAR, legislatureVotes, levyRevenue } from './budget';
-export { canClose, receiverCandidates, type ClosureChip } from './closures';
-export { canConvert, conversionChip, middleSchoolCandidates, middleZoneOf, type ConversionChip } from './gradeSpan';
+export { canClose, receiverCandidates } from './closures';
+export { canConvert, middleSchoolCandidates, middleZoneOf, type ConversionChip } from './gradeSpan';
 export { boundaryChip, sliceEdit, type BoundaryChip } from './boundaries';
 export {
   CELL_METERS,
@@ -39,15 +40,47 @@ export { DLI_PROGRAMS } from './programs';
 export { FATE_DONE } from './report';
 export const MOTHBALL_PER_YEAR = M.mothball;
 
-/** A closure's chip, its new bus riders and the plan's grade-span arrivals included. */
+export interface ClosureChip extends BaseClosureChip {
+  /** The school's DLI programs that move with the closure. */
+  programs: ProgramMove[];
+}
+
+/** Applies the plan's program moves to the schools and drops the kids they move. */
+function withPlannedPrograms(state: GameState, moves: readonly ProgramMove[]): GameState {
+  const planned = effectiveProgramMoves(state.schools, moves);
+  const moving = new Set(planned.flatMap((m) => m.from.map((f) => `${m.program} ${f}`)));
+  return {
+    ...state,
+    schools: withProgramArrivals(state.schools, planned),
+    households: state.households.filter((h) => !moving.has(`${h.program} ${h.school}`)),
+  };
+}
+
+/** A closure's chip, its new bus riders, the plan's grade-span arrivals and program moves included. */
 export function closureChip(
   state: GameState,
   closure: Closure,
   plan: Closure[],
   classSize: number,
   converting: GradeSpanChange[] = [],
+  programMoves: ProgramMove[] = [],
 ): ClosureChip {
-  return chipFor(state, closure, plan, classSize, closureRiders(state, closure, plan), converting);
+  const moved = withPlannedPrograms(state, programMoves);
+  return {
+    ...chipFor(moved, closure, plan, classSize, closureRiders(state, closure, plan), converting),
+    programs: closurePrograms(state.schools, effectiveClosures(state.schools, [closure]), effectiveProgramMoves(state.schools, programMoves)),
+  };
+}
+
+/** A grade-span change's chip, the plan's program moves included. */
+export function conversionChip(state: GameState, change: GradeSpanChange, plan: Policy): ConversionChip {
+  return spanChip(withPlannedPrograms(state, plan.programMoves ?? []), change, plan);
+}
+
+/** The DLI programs the plan's closures carry to new schools. */
+export function closureProgramMoves(state: GameState, policy: Policy): ProgramMove[] {
+  const plan = normalizePolicy(policy);
+  return closurePrograms(state.schools, effectiveClosures(state.schools, plan.closures), effectiveProgramMoves(state.schools, plan.programMoves));
 }
 
 export const DEFAULT_POLICY: Policy = { k5ClassSize: 24, levyRate: 1.99, levyElection: 'may', reserveDraw: 0, closures: [], boundaryEdits: [], gradeChanges: [], programMoves: [] };
@@ -197,12 +230,18 @@ export function ballotPreview(state: GameState, policy: Policy): BallotPreview |
 function novemberTrust(state: GameState, plan: Policy): number {
   const closing = new Set(effectiveClosures(state.schools, plan.closures).map((c) => c.school));
   const converting = new Set(effectiveGradeChanges(state.schools, plan.gradeChanges).map((g) => g.school));
-  const programs = new Set(effectiveProgramMoves(state.schools, plan.programMoves).flatMap((m) => m.from.map((f) => `${m.program} ${f}`)));
+  const k5 = convertedIn(state.schools);
+  const programTo = new Map(effectiveProgramMoves(state.schools, plan.programMoves).flatMap((m) => m.from.map((f) => [`${m.program} ${f}`, m.to])));
+  const followsProgram = (h: Household) => {
+    const to = programTo.get(`${h.program} ${h.school}`);
+    const next = gradeOf(h) + 1;
+    return !!to && next <= topGrade(h.school!, k5) && SCHOOL_INFO.get(to)!.lo <= next && next <= topGrade(to, k5);
+  };
   const moves = (h: Household) =>
     h.school !== null &&
     (closing.has(h.school) ||
       (converting.has(h.school) && gradeOf(h) >= 6 && gradeOf(h) < MAX_GRADE) ||
-      (programs.has(`${h.program} ${h.school}`) && gradeOf(h) < topGrade(h.school, convertedIn(state.schools))));
+      followsProgram(h));
   const moved = state.households.map(({ movedFrom: _, ...h }) => (moves(h) ? { ...h, movedFrom: h.school! } : h));
   const strain = strainFor(plan.k5ClassSize, state.sim!.k5ClassSize, previewBudget(state, plan).autoCutPositions);
   return meanTrust(trustAfterYear(state.sim!.trust, moved, [...closing], strain), state.households);

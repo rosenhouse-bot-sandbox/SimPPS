@@ -14,7 +14,7 @@ import { defaultZones, homesByCell, nextZone, zoningYear, type ZoningYear } from
 import { effectiveGradeChanges, shutTo, topGrade, type ConversionTally } from './gradeSpan';
 import { expectedYes, levyAfter, levyBallot, levyRateFor, passes, voteYes } from './election';
 import { meanTrust, strainFor, trustAfterYear, type Strain, type Trust } from './trust';
-import { dliPathway, effectiveProgramMoves, entrantProgram, programMoveDraw, programStay, programsAt, programSite, type ProgramTally } from './programs';
+import { closurePrograms, dliPathway, effectiveProgramMoves, entrantProgram, entrantSite, programMoveDraw, programStay, programsAt, type ProgramTally } from './programs';
 import { SCHOOL_INFO } from './population';
 import type {
   Ballot,
@@ -151,7 +151,7 @@ export function familiesDecide(
   const programMoves = closures.programMoves ?? [];
   const programTallies: ProgramTally[] = programMoves
     .filter((m) => m.year === year)
-    .map((m) => ({ ...m, kids: 0, arrived: 0, stayers: [] }));
+    .map((m) => ({ ...m, arrived: 0, stayers: [] }));
   const programMoving = new Map(programTallies.flatMap((t) => t.from.map((f) => [`${t.program} ${f}`, t])));
   const offered = programsAt(programMoves);
   const resolve = (school: SchoolId, grade: number, h: Pick<Household, 'id' | 'pos'>) =>
@@ -182,8 +182,9 @@ export function familiesDecide(
       const cell = cellAt(pos, z);
       const zoneSchool = resolve(zoning.zones.elementary[cell], 0, { id, pos });
       const picked = pick(mem.kChoice[z], draw(seed, year, id, D.EntrantSchool));
-      const program = joins ? entrantProgram(seed, year, id, picked) : undefined;
-      const site = program ? programSite(programMoves, picked, program) : picked;
+      const drawn = joins ? entrantProgram(seed, year, id, picked) : undefined;
+      const site = drawn ? entrantSite(programMoves, offered, shut, picked, drawn) : null;
+      const program = site ? drawn : undefined;
       households.push({
         id,
         pos,
@@ -191,7 +192,7 @@ export function familiesDecide(
         kids: oneKid(0),
         zoneSchool,
         ...(closed.has(zone.school) ? { fundedAs: zone.school } : {}),
-        school: joins ? resolve(site !== picked ? site : picked === zone.school ? zoneSchool : picked, 0, { id, pos }) : null,
+        school: joins ? resolve(site && site !== picked ? site : picked === zone.school ? zoneSchool : picked, 0, { id, pos }) : null,
         ...(program ? { program } : {}),
         exitCapacity,
         loyalty: clamp(mem.zoneKeep[z] + (rand() - 0.5) * 0.2, 0, 1),
@@ -231,7 +232,6 @@ export function familiesDecide(
       // model.programMove: the program's kids follow it, or stay without it and choose like their schoolmates.
       const move = h.program && programMoving.get(`${h.program} ${h.school}`);
       if (move && ng <= top && SCHOOL_INFO.get(move.to)!.lo <= ng && ng <= topGrade(move.to, k5)) {
-        move.kids++;
         if (programMoveDraw(seed, year, h.id) < programStay(h.pos, move.to)) {
           Object.assign(next, { school: move.to, status: 'moved', movedFrom: h.school, forcedMoves: (h.forcedMoves ?? 0) + 1 });
           flows.movedWithinPps++;
@@ -363,7 +363,9 @@ export function stepYear(state: GameState, policy: Policy): { next: GameState; f
   const closing = closuresTakingEffect(state.schools, policy.closures, policy.k5ClassSize, year);
   const converting = effectiveGradeChanges(state.schools, policy.gradeChanges).map((g) => ({ ...g, year }));
   const converted = [...mem.converted, ...converting];
-  const programMoving = effectiveProgramMoves(state.schools, policy.programMoves).map((m) => ({ ...m, year }));
+  const plannedPrograms = effectiveProgramMoves(state.schools, policy.programMoves);
+  const k5 = new Set(converted.map((c) => c.school));
+  const programMoving = [...plannedPrograms, ...closurePrograms(state.schools, closing, plannedPrograms, k5)].map((m) => ({ ...m, year }));
   const programMoves = [...mem.programMoves, ...programMoving];
   const planned = planZoning(state, closing, policy.boundaryEdits, converting);
   const { closed, zoning } = planned;

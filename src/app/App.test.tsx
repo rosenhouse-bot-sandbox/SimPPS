@@ -517,7 +517,8 @@ describe('App', () => {
     act(() => {
       vi.advanceTimersByTime(5000);
     });
-    expect(screen.getAllByRole('region', { name: 'Where the Spanish DLI kids went' })).toHaveLength(5);
+    expect(screen.getAllByRole('region', { name: /DLI kids went$/ })).toHaveLength(8);
+    expect(screen.getByRole('region', { name: "Where Clark's Mandarin DLI kids went" })).toBeTruthy();
   });
 
   describe('Send 6–8', { timeout: 30_000 }, () => {

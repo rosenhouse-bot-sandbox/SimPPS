@@ -1,10 +1,23 @@
 import { describe, expect, it } from 'vitest';
 import { SCHOOLS } from '../data';
-import { ballotPreview, DEFAULT_POLICY, endYear, modeledRange, newGame, normalizePolicy, type GameState, type Policy, type ProgramMove } from '.';
+import { ballotPreview, closureChip, DEFAULT_POLICY, endYear, modeledRange, newGame, normalizePolicy, type GameState, type Policy, type ProgramMove } from '.';
 import type { Point } from '../data';
-import { schoolPos } from './closures';
+import { miles, schoolPos } from './closures';
+import { shutTo } from './gradeSpan';
+import { SCHOOL_INFO } from './population';
+import { buildSchools } from './schools';
 import { gradeOf, M, METERS_PER_MILE } from './model';
-import { DLI_PROGRAMS, normalizeProgramMoves, programMoveDraw, programSite, programStay } from './programs';
+import {
+  closurePrograms,
+  DLI_PROGRAMS,
+  entrantSite,
+  normalizeProgramMoves,
+  programMoveDraw,
+  programMoveOutcomes,
+  programsAt,
+  programSite,
+  programStay,
+} from './programs';
 import type { Closure, Household, Program } from './types';
 
 const dliAt = (s: GameState, school: string, program: Program) =>
@@ -220,5 +233,124 @@ describe('PPS Scenario A', () => {
     const ids = new Set(moved.map((h) => h.id));
     const atChavez = next.households.filter((h) => ids.has(h.id) && h.school === 'cesar-chavez' && h.program === 'Spanish').length;
     expect(atChavez / moved.length).toBeGreaterThan(0.75);
+  });
+});
+
+describe('a program with no open home', () => {
+  const none = shutTo(new Set(), new Set());
+  const toKelly = [{ program: 'Mandarin' as const, from: ['clark'], to: 'kelly', year: 2027 }];
+
+  it('enrolls a kindergartner without the program when its site is shut or no longer offers it', () => {
+    expect(entrantSite(toKelly, programsAt(toKelly), none, 'clark', 'Mandarin')).toBe('kelly');
+    expect(entrantSite(toKelly, programsAt(toKelly), shutTo(new Set(['kelly']), new Set()), 'clark', 'Mandarin')).toBeNull();
+    expect(entrantSite(toKelly, programsAt([]), none, 'clark', 'Mandarin')).toBeNull();
+  });
+});
+
+describe('closing a DLI school', () => {
+  const start = newGame({ seed: 'ent' });
+  const close = (school: string, receivers: [string, number][]): Closure => ({
+    school,
+    receivers: receivers.map(([s, share]) => ({ school: s, share })),
+    building: 'mothball',
+  });
+  const moves = (closures: Closure[], programMoves: ProgramMove[] = []) =>
+    endYear(start, { ...DEFAULT_POLICY, closures, programMoves }).report.programMoves.map((m) => `${m.program} ${m.from}>${m.to}`);
+
+  it("moves Richmond's Japanese program with the closure to its largest receiver", () => {
+    const richmond = close('richmond', [['atkinson', 0.4], ['glencoe', 0.6]]);
+    const { next, report } = endYear(start, { ...DEFAULT_POLICY, closures: [richmond] });
+    expect(report.programMoves.map((m) => `${m.program} ${m.from}>${m.to}`)).toEqual(['Japanese richmond>glencoe']);
+    expect(next.schools.glencoe.dli!.Japanese).toBeGreaterThan(300);
+    expect(report.events.map((e) => e.title)).toContain('Japanese DLI moves to Glencoe Elementary School');
+    expect(closurePrograms(start.schools, [richmond], [])).toEqual([{ program: 'Japanese', from: ['richmond'], to: 'glencoe' }]);
+  });
+
+  it('sends it to the nearest open school serving its grades when the largest receiver does not', () => {
+    const chavez = close('cesar-chavez', [['george', 0.6], ['sitton', 0.4]]);
+    const from = schoolPos('cesar-chavez');
+    const k8s = [...SCHOOL_INFO.values()].filter((i) => i.lo === 0 && i.hi === 8 && i.k8 > 0 && i.data.id !== 'cesar-chavez');
+    const [nearest] = k8s.sort((a, b) => miles(from, [a.data.x, a.data.y]) - miles(from, [b.data.x, b.data.y]));
+    expect(moves([chavez])).toEqual([`Spanish cesar-chavez>${nearest.data.id}`]);
+  });
+
+  it('lets the plan move the program elsewhere', () => {
+    expect(moves([close('beach', [['chief-joseph', 1]])], [{ program: 'Spanish', from: ['beach'], to: 'cesar-chavez' }])).toEqual([
+      'Spanish beach>cesar-chavez',
+    ]);
+  });
+
+  it('sends non-followers with the closure, without the program even where the receiver teaches it', () => {
+    const { next } = endYear(start, {
+      ...DEFAULT_POLICY,
+      closures: [close('beach', [['scott', 1]])],
+      programMoves: [{ program: 'Spanish', from: ['beach'], to: 'cesar-chavez' }],
+    });
+    const closureMovers = next.households.filter((h) => h.movedFrom === 'beach' && h.school === 'scott');
+    const wasDli = new Set(start.households.filter((h) => h.school === 'beach' && h.program).map((h) => h.id));
+    expect(closureMovers.filter((h) => wasDli.has(h.id)).length).toBeGreaterThan(0);
+    for (const h of closureMovers) expect(h.program, String(h.id)).toBeUndefined();
+  });
+
+  it("keeps sending kindergartners after the program, to the closed receiver's own receiver", () => {
+    const year1 = endYear(start, { ...DEFAULT_POLICY, programMoves: [{ program: 'Mandarin', from: ['clark'], to: 'woodstock' }] }).next;
+    const { next, report } = endYear(year1, { ...DEFAULT_POLICY, closures: [close('woodstock', [['arleta', 1]])] });
+    expect(report.programMoves.map((m) => `${m.program} ${m.from}>${m.to}`)).toEqual(['Mandarin woodstock>arleta']);
+    const k = next.households.filter((h) => gradeOf(h) === 0 && h.school === 'arleta');
+    expect(k.filter((h) => h.program === 'Mandarin').length).toBeGreaterThan(5);
+  });
+
+  it('shows on the closure chip, which leaves out kids the plan moves with their program', () => {
+    const beach = close('beach', [['chief-joseph', 1]]);
+    const spanish: ProgramMove = { program: 'Spanish', from: ['beach'], to: 'cesar-chavez' };
+    const younger = start.households.filter((h) => h.school === 'beach' && h.program === 'Spanish' && gradeOf(h) < 5).length;
+    const alone = closureChip(start, beach, [beach], 24);
+    const moved = closureChip(start, beach, [beach], 24, [], [spanish]);
+    expect(alone.programs).toEqual([{ program: 'Spanish', from: ['beach'], to: 'chief-joseph' }]);
+    expect(moved.programs).toEqual([]);
+    expect(alone.kidsMoving - moved.kidsMoving).toBe(younger);
+    expect(alone.seats.kids - moved.seats.kids).toBe(start.schools.beach.dli!.Spanish);
+  });
+
+  it("counts program arrivals in the receiver's seats", () => {
+    const peninsula = close('peninsula', [['rosa-parks', 1]]);
+    const into: ProgramMove = { program: 'Mandarin', from: ['clark'], to: 'rosa-parks' };
+    const seats = (programMoves: ProgramMove[]) => closureChip(start, peninsula, [peninsula], 24, [], programMoves).seats.kids;
+    expect(seats([into]) - seats([])).toBe(start.schools.clark.dli!.Mandarin);
+  });
+});
+
+describe('program move report math', () => {
+  const kid = (school: string | null, movedFrom?: string) => ({ school, ...(movedFrom ? { movedFrom } : {}) }) as Household;
+
+  it('counts only non-followers who stayed at their school or left PPS, not those a closure moved', () => {
+    const stayers = [kid('beach'), kid(null), kid('scott', 'beach')];
+    const tally = { program: 'Spanish' as const, from: ['beach'], to: 'cesar-chavez', year: 2027, arrived: 10, stayers };
+    expect(programMoveOutcomes([tally])).toEqual([
+      {
+        program: 'Spanish',
+        from: ['beach'],
+        to: 'cesar-chavez',
+        kids: modeledRange(12),
+        receiver: modeledRange(10),
+        leftDli: modeledRange(1),
+        leftPps: modeledRange(1),
+      },
+    ]);
+  });
+
+  it('counts DLI kids only at open schools', () => {
+    const game = newGame({ seed: 'dli' });
+    const closed = { school: 'clark', receivers: [{ school: 'kelly', share: 1 }], building: 'mothball' as const, year: 2027, saving: 0, staffKept: 0 };
+    expect(buildSchools(game.households, 24, 0, [closed]).clark.dli).toBeUndefined();
+  });
+});
+
+describe("November's poll for a program move", () => {
+  it("stirs no one when the receiver serves none of the kids' grades", () => {
+    const start = newGame({ seed: 'move' });
+    const poll = (programMoves: ProgramMove[]) =>
+      ballotPreview(start, { ...DEFAULT_POLICY, levyRate: 2.5, levyElection: 'november', programMoves })!.poll;
+    expect(poll([{ program: 'Mandarin', from: ['clark'], to: 'harrison-park' }])).toEqual(poll([]));
   });
 });

@@ -119,6 +119,8 @@ export const M = {
   conversionCapacity: (6 + (3 * 24) / 26) / 9,
   // model.programMove
   programMoveStay: 0.85,
+  programFarMiles: 2,
+  programStayPerMile: 0.03,
   // model.walkLimit
   walkLimitK5: 1,
   walkLimitMiddle: 1.5,

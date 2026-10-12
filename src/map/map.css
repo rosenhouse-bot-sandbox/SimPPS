@@ -95,6 +95,11 @@
   pointer-events: none;
 }
 
+.pps-map-link-program {
+  stroke: #c2a5cf;
+  stroke-dasharray: 2 3;
+}
+
 .pps-map-roof {
   fill: #9c4a2c;
 }

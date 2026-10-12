@@ -1,7 +1,6 @@
-import { SCHOOLS } from '../data';
 import { useState } from 'preact/hooks';
 import { fmtCount, fmtMiles, fmtMoney, fmtMoneyRange, fmtRange } from '../format';
-import { modeledRange, MOTHBALL_PER_YEAR, type ClosureChip } from '../sim';
+import { DLI_PROGRAMS, modeledRange, MOTHBALL_PER_YEAR, type ClosureChip } from '../sim';
 import type { BuildingFate, Closure } from '../sim/types';
 import { NEARBY, nameOf, toClosure, toggleReceiver, type Candidate, type CloseDraft } from './closeSend';
 import { Sourced } from './Sourced';
@@ -68,6 +67,11 @@ export function ClosureChipView({ chip }: { chip: ClosureChip }) {
           </>
         )}
       </p>
+      {chip.programs.map((m) => (
+        <p key={m.program} class="programs">
+          <Sourced k={K.programMove} text>{`${m.program} DLI moves to ${nameOf(m.to)}.`}</Sourced>
+        </p>
+      ))}
     </div>
   );
 }
@@ -122,7 +126,7 @@ export function CloseSendSheet({ draft, candidates: all, chipFor, onChange, onCo
   const [guess, setGuess] = useState<number | null>(null);
   const go = (step: CloseDraft['step']) => onChange({ ...draft, step });
   const toggle = (id: string) => onChange(toggleReceiver(draft, id));
-  const dli = SCHOOLS.find((s) => s.id === draft.school)?.dliLanguages;
+  const dli = DLI_PROGRAMS.get(draft.school)?.join(' and ');
 
   return (
     <Window title={`Close ${nameOf(draft.school)}`} onClose={onClose} class="panel sheet closesend">
@@ -132,7 +136,7 @@ export function CloseSendSheet({ draft, candidates: all, chipFor, onChange, onCo
           <p class="note">Pick 1 or 2. Tap the map too.</p>
           {dli && (
             <p class="note">
-              <Sourced k="field.dli_languages" term="DLI" text>{`Its ${dli} dual-language (DLI) program: moves are not modeled yet.`}</Sourced>
+              <Sourced k={K.programMove} term="DLI" text>{`Its ${dli} dual-language (DLI) program moves with it.`}</Sourced>
             </p>
           )}
           <ul class="picks">

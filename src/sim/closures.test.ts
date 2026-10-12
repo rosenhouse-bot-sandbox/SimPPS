@@ -354,8 +354,9 @@ describe('Scenario A over a year', () => {
   const start = newGame({ seed: 'scenario', start: 'scenario-a' });
   const { next, report } = endYear(start, start.policy);
   const closing = new Set(start.policy.closures.map((c) => c.school));
-  // Kids still in a program followed it, not the closure.
-  const movers = next.households.filter((h) => h.movedFrom && closing.has(h.movedFrom) && !h.program);
+  // Program followers keep their program; a closure's movers never have one.
+  const followedProgram = (h: Household) => h.program !== undefined;
+  const movers = next.households.filter((h) => h.movedFrom && closing.has(h.movedFrom) && !followedProgram(h));
 
   it('sends each follower who lives in the closed zone to the receiver its block went to', () => {
     const before = new Map(start.households.map((h) => [h.id, h]));
