@@ -5,6 +5,7 @@ import { FALLBACK_SIZE } from '../map/MapView';
 import * as realSim from '../sim';
 import { getSource } from '../sources/registry';
 import { fmtCount, fmtMoney, fmtPct, fmtRange } from '../format';
+import { PLAY_ARM_MS } from '../ui/PreflightSheet';
 import { App } from './App';
 import type { Sim } from './machine';
 
@@ -18,16 +19,15 @@ afterEach(() => {
   vi.restoreAllMocks();
 });
 
-function hold(name: string) {
-  const b = screen.getByRole('button', { name: `${name} (press and hold)` });
-  fireEvent.pointerDown(b);
-  act(() => {
-    vi.advanceTimersByTime(1000);
-  });
-}
-
 function click(name: string | RegExp) {
   fireEvent.click(screen.getByRole('button', { name }));
+}
+
+function confirmPlay() {
+  act(() => {
+    vi.advanceTimersByTime(PLAY_ARM_MS);
+  });
+  click('Play');
 }
 
 function gapBar() {
@@ -79,8 +79,8 @@ describe('App', () => {
     render(<App sim={realSim} seed="t" playbackMs={5000} onSave={onSave} onNewGame={onNewGame} />);
     click('Budget');
     click('More K-5 class size');
-    hold('End year');
-    hold('Play the year');
+    click('Play the year');
+    confirmPlay();
     expect(onSave).toHaveBeenLastCalledWith([expect.objectContaining({ k5ClassSize: 25 })]);
     act(() => {
       vi.advanceTimersByTime(5000);
@@ -116,11 +116,11 @@ describe('App', () => {
     expect(gapBar()).toContain(`Cuts ${fmtCount(plan.autoCutPositions)}`);
     expect(document.querySelector('.chip')!.textContent).toContain('Now+$3M–$5M~');
 
-    hold('End year');
+    click('Play the year');
     const preflight = screen.getByRole('dialog', { name: 'Play 2027-28?' }).textContent;
     expect(preflight).toContain(`${fmtCount(plan.autoCutPositions)} positions in June`);
     expect(preflight).toContain('At flat state funding. The Legislature votes this spring.');
-    hold('Play the year');
+    confirmPlay();
     expect(screen.getByTestId('playback').textContent).toContain(`remove ${june.toLocaleString('en-US')} positions`);
     expect(topBar()).toContain(`Gap ${fmtMoney(report.budget.gap)}`);
   });
@@ -161,16 +161,16 @@ describe('App', () => {
     expect(screen.queryByRole('region', { name: tool })).toBeNull();
   });
 
-  it('plays a full year: hold End, review, hold to play, report, next January', () => {
+  it('plays a full year: play, review, confirm, report, next January', () => {
     setup();
     click('Budget');
     click('More K-5 class size');
 
-    hold('End year');
+    click('Play the year');
     const pre = screen.getByRole('dialog', { name: 'Play 2027-28?' });
     expect(pre.textContent).toContain('K-5 class size 24 → 25');
 
-    hold('Play the year');
+    confirmPlay();
     expect(screen.getByTestId('playback')).toBeTruthy();
     expect(topBar()).toContain('APR 2027');
     expect((screen.getByRole('button', { name: 'Budget' }) as HTMLButtonElement).disabled).toBe(true);
@@ -200,7 +200,7 @@ describe('App', () => {
     expect(screen.getByText(/Reserves after/).closest('.note')!.textContent).toBe(
       `Reserves after: $37.1M, ${fmtPct(plan.reservePctAfterDraw)}`,
     );
-    hold('End year');
+    click('Play the year');
     const pre = screen.getByRole('dialog', { name: 'Play 2027-28?' });
     const poll = realSim.ballotPreview(start, { ...start.policy, levyRate: 1.89 })!.poll;
     expect(pre.textContent).toContain(`May 2027 levy vote$1.89 per $1K · poll ${Math.round(poll.lo * 100)}–${Math.round(poll.hi * 100)}%~`);
@@ -216,7 +216,7 @@ describe('App', () => {
     const plan = realSim.previewBudget(start, { ...start.policy, reserveDraw: start.budget.reserves });
     expect(plan.midYearCuts).toBeGreaterThan(0);
     expect(gapBar()).toContain(`Cuts ${fmtCount(plan.autoCutPositions + plan.midYearCuts)}`);
-    hold('End year');
+    click('Play the year');
     expect(screen.getByRole('dialog', { name: 'Play 2027-28?' }).textContent).toContain(
       `${fmtCount(plan.midYearCuts)} more mid-year`,
     );
@@ -242,7 +242,7 @@ describe('App', () => {
 
   it('goes back from the pre-flight sheet without playing', () => {
     setup();
-    hold('End year');
+    click('Play the year');
     click('Back');
     expect(screen.queryByRole('dialog', { name: 'Play 2027-28?' })).toBeNull();
     expect(screen.queryByTestId('playback')).toBeNull();
@@ -271,9 +271,9 @@ describe('App', () => {
     click('Plan');
     click('Rosa Parks Elementary School');
     collect();
-    hold('End year');
+    click('Play the year');
     collect();
-    hold('Play the year');
+    confirmPlay();
     for (let i = 0; i < 5; i++) {
       collect();
       act(() => {
@@ -335,9 +335,9 @@ describe('App', () => {
       click('Sitton Elementary School');
       expect(isFocused(badgeAt('sitton'))).toBe(true);
 
-      hold('End year');
+      click('Play the year');
       expect(screen.getByRole('dialog', { name: 'Play 2027-28?' }).textContent).toContain('Close Peninsula → Rosa Parks');
-      hold('Play the year');
+      confirmPlay();
       expect(document.querySelector('[data-link="peninsula>rosa-parks"]')).toBeTruthy();
       act(() => {
         vi.advanceTimersByTime(1000);
@@ -394,8 +394,8 @@ describe('App', () => {
       click('Next >');
       click('Close it');
       click('Skip');
-      hold('End year');
-      hold('Play the year');
+      click('Play the year');
+      confirmPlay();
       act(() => {
         vi.advanceTimersByTime(5000);
       });
@@ -429,8 +429,8 @@ describe('App', () => {
     click('Call it');
     click('Plan');
     collect();
-    hold('End year');
-    hold('Play the year');
+    click('Play the year');
+    confirmPlay();
     act(() => {
       vi.advanceTimersByTime(5000);
     });
@@ -462,12 +462,21 @@ describe('App', () => {
     ]);
   });
 
-  it('drops an unfinished Close & send at End year', () => {
+  it('hands focus back to ▶ when the play sheet closes', () => {
+    setup();
+    const play = screen.getByRole('button', { name: 'Play the year' });
+    play.focus();
+    click('Play the year');
+    click('Back');
+    expect(document.activeElement).toBe(play);
+  });
+
+  it('drops an unfinished Close & send when the play sheet opens', () => {
     setup();
     click('Plan');
     click('Peninsula Elementary School');
     click('Close & send');
-    hold('End year');
+    click('Play the year');
     click('Back');
     expect(screen.queryByRole('region', { name: 'Close Peninsula' })).toBeNull();
   });
@@ -507,8 +516,8 @@ describe('App', () => {
     for (const undo of screen.getAllByRole('button', { name: /^Undo (Close|Send)/ })) fireEvent.click(undo);
     expect(document.querySelectorAll('.edits li')).toHaveLength(8);
     click('Close');
-    hold('End year');
-    hold('Play the year');
+    click('Play the year');
+    confirmPlay();
     act(() => {
       vi.advanceTimersByTime(1000);
     });
@@ -584,8 +593,8 @@ describe('App', () => {
       tapBadge('beaumont');
       click('Send 6–8');
       const playYear = () => {
-        hold('End year');
-        hold('Play the year');
+        click('Play the year');
+        confirmPlay();
         act(() => {
           vi.advanceTimersByTime(6000);
         });
@@ -623,9 +632,9 @@ describe('App', () => {
       expect(screen.getByText(/takes grades/)).toBeTruthy();
       expect(screen.queryByRole('button', { name: 'Close & send' })).toBeNull();
 
-      hold('End year');
+      click('Play the year');
       expect(screen.getByRole('dialog', { name: 'Play 2027-28?' }).textContent).toContain('Send Beverly Cleary 6–8 → Beaumont');
-      hold('Play the year');
+      confirmPlay();
       act(() => {
         vi.advanceTimersByTime(6000);
       });
@@ -709,9 +718,9 @@ describe('App', () => {
       click('Plan');
       expect(screen.getByRole('button', { name: `Undo ${line}` })).toBeTruthy();
 
-      hold('End year');
+      click('Play the year');
       expect(screen.getByRole('dialog', { name: 'Play 2027-28?' }).textContent).toContain(line);
-      hold('Play the year');
+      confirmPlay();
       act(() => {
         vi.advanceTimersByTime(6000);
       });
@@ -748,11 +757,11 @@ describe('App', () => {
       expect(screen.queryByRole('button', { name: 'Send 6–8 to…' })).toBeNull();
     });
 
-    it('drops an unfinished boundary at End year', () => {
+    it('drops an unfinished boundary when the play sheet opens', () => {
       setup();
       openRosaParks();
       tapAt(badgeAt('peninsula'));
-      hold('End year');
+      click('Play the year');
       expect(screen.getByRole('dialog', { name: 'Play 2027-28?' }).textContent).not.toContain('Rezone');
       click('Back');
       expect(zoneSheet()).toBeNull();
