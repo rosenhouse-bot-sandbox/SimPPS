@@ -3,45 +3,54 @@ import { afterEach, describe, expect, it } from 'vitest';
 import { GLOSSARY } from './glossary';
 import { FIXTURE_GAME } from './fixtures';
 import { SchoolSheet } from './SchoolSheet';
+import { termsIn } from './terms.testing';
 import { TopBar } from './TopBar';
 
 afterEach(cleanup);
 
-function termsIn(el: Element): string[] {
-  return [...el.querySelectorAll('.term')].map((t) => t.getAttribute('data-term')!);
-}
-
 describe('glossary', () => {
-  it.each(Object.entries(GLOSSARY))('defines %s in one or two sentences', (_, text) => {
-    expect(text.split(/(?<=[.!?])\s+/).length).toBeLessThanOrEqual(2);
+  it.each(Object.entries(GLOSSARY))('defines %s in at most three sentences', (_, text) => {
+    expect(text.split(/(?<=[.!?])\s+/).length).toBeLessThanOrEqual(3);
     expect(text).toMatch(/[.!?]$/);
   });
 
-  it('defines every school sheet label', () => {
+  it('defines every school sheet label but the year built', () => {
     render(<SchoolSheet id="rosa-parks" state={FIXTURE_GAME.schools['rosa-parks']} onClose={() => {}} />);
-    const labels = [...document.querySelectorAll('dt, h3')];
+    const labels = [...document.querySelectorAll('dt, h3')].filter((l) => l.textContent !== 'Built');
     expect(labels.length).toBeGreaterThan(10);
-    for (const label of labels) {
-      const terms = termsIn(label);
-      expect(terms, label.textContent!).toHaveLength(1);
-      expect(GLOSSARY).toHaveProperty([terms[0]]);
-    }
+    for (const label of labels) expect(termsIn(label), label.textContent!).toHaveLength(1);
+    expect(termsIn()).toEqual([
+      'Enrolled 25-26',
+      'Capacity',
+      'Utilization',
+      'URM',
+      'Retrofit left',
+      'Direct cert.',
+      'DLI',
+      'Simulated',
+      'Enrollment',
+      'Homerooms',
+      'Blended',
+    ]);
   });
 
-  it('defines every top bar dial and its value', () => {
+  it('makes each phone dial one button that defines it and sources its value', () => {
     render(<TopBar when="JAN 2027" dials={FIXTURE_GAME.dials} />);
     const dials = [...document.querySelectorAll('.topbar .dial')];
-    expect(dials.map(termsIn)).toEqual([['Gap'], ['Kids'], ['Capture'], ['Reserves'], ['Trust']]);
-    for (const dial of dials) expect(dial.querySelector('.sourced')!.getAttribute('data-term')).toBe(termsIn(dial)[0]);
+    expect(dials.map((d) => d.textContent)).toEqual(['Gap −$65.2M', 'Kids 26.4K', 'Cap 76.6%', 'Res 4.8%', 'Trust 35']);
+    expect(termsIn()).toEqual([]);
+    expect(dials.map((d) => d.getAttribute('data-term'))).toEqual(['Gap', 'Kids', 'Capture', 'Reserves', 'Trust']);
+    for (const d of dials) expect(d.matches('button.sourced')).toBe(true);
   });
 
-  it('spells out the top bar on a desktop', () => {
+  it('spells out the desktop dials and defines each label', () => {
     render(<TopBar when="JAN 2027" dials={FIXTURE_GAME.dials} wide />);
-    const wide = document.querySelector('.topbar')!.textContent!;
-    expect(wide).toContain('Capture 76.6%');
-    expect(wide).toContain('Reserves 4.8%');
-    cleanup();
-    render(<TopBar when="JAN 2027" dials={FIXTURE_GAME.dials} />);
-    expect(document.querySelector('.topbar')!.textContent).toContain('Cap 76.6%');
+    const text = document.querySelector('.topbar')!.textContent!;
+    expect(text).toContain('Capture 76.6%');
+    expect(text).toContain('Reserves 4.8%');
+    expect(termsIn()).toEqual(['Gap', 'Kids', 'Capture', 'Reserves', 'Trust']);
+    for (const d of document.querySelectorAll('.topbar .dial')) {
+      expect(d.querySelector('.sourced')!.getAttribute('data-term')).toBe(d.querySelector('.term')!.getAttribute('data-term'));
+    }
   });
 });

@@ -8,7 +8,7 @@ import { Sourced } from './Sourced';
 import { K } from './sources';
 import type { GlossaryTerm } from './glossary';
 import { Stepper } from './Stepper';
-import { Term } from './Term';
+import { Term, WithMark } from './Term';
 import { Window } from './Window';
 
 function Seats({ kids, capacity }: { kids: number; capacity: number }) {
@@ -206,8 +206,9 @@ export function CloseSendSheet({ draft, candidates: all, chipFor, onChange, onCo
                   checked={draft.building === f.id}
                   onChange={() => onChange({ ...draft, building: f.id })}
                 />
-                <span class="fate">{f.label}</span>
-                <Term t={f.label} icon />
+                <span class="fate">
+                  <WithMark text={f.label} t={f.label} />
+                </span>
                 <Sourced k={K.buildingFate}>{`${fmtMoney(f.cost)}/yr`}</Sourced>
               </label>
             ))}

@@ -6,6 +6,7 @@ import { closureChip, modeledRange, newGame, receiverCandidates } from '../sim';
 import type { Closure } from '../sim/types';
 import { startDraft, withNames, type CloseDraft } from './closeSend';
 import { CloseSendSheet } from './CloseSendSheet';
+import { termsIn } from './terms.testing';
 
 afterEach(cleanup);
 
@@ -147,5 +148,27 @@ describe('CloseSendSheet', () => {
   it('does not offer schools closing elsewhere in the plan', () => {
     setup('peninsula', [{ school: 'rosa-parks', receivers: [{ school: 'sitton', share: 1 }], building: 'mothball' }]);
     expect(picks()).not.toContain('Rosa Parks');
+  });
+});
+
+describe('CloseSendSheet glossary', () => {
+  it('defines each step, building fate and chip cell', () => {
+    setup();
+    expect(termsIn()).toEqual(['Send kids to']);
+    click(/Rosa Parks/);
+    click('Next >');
+    expect(termsIn()).toEqual(expect.arrayContaining(['Shares', 'Seats', 'Walk', 'Now', 'At maturity', 'Pays off']));
+    click('Next >');
+    expect(termsIn().slice(0, 4)).toEqual(['Building', 'Mothball', 'Lease', 'Sell']);
+    click('Close it');
+    expect(termsIn()).toEqual(['Call it']);
+  });
+
+  it('puts each fate\'s mark next to its name', () => {
+    setup();
+    click(/Rosa Parks/);
+    click('Next >');
+    click('Next >');
+    for (const fate of document.querySelectorAll('.fate')) expect(termsIn(fate)).toEqual([fate.textContent]);
   });
 });

@@ -5,11 +5,11 @@ import { fmtMoney, fmtPct, fmtRange } from '../format';
 import { nameOf } from './closeSend';
 import { Sourced } from './Sourced';
 import { K } from './sources';
-import type { GlossaryTerm } from './glossary';
-import { Term } from './Term';
+import type { GlossaryTerm, PlainLabel } from './glossary';
+import { Label, Term } from './Term';
 import { Window } from './Window';
 
-type FlowRow = { label: GlossaryTerm; n: (f: Flows) => number; k: string; total?: boolean };
+type FlowRow = { label: GlossaryTerm | PlainLabel; n: (f: Flows) => number; k: string; total?: boolean };
 
 const IN_PPS: FlowRow[] = [
   { label: 'Stayed', n: (f) => f.stayed, k: K.flows },
@@ -39,8 +39,10 @@ const DIAL_TERMS: Record<keyof Dials, GlossaryTerm> = {
   k5Class: 'Avg K-5 class',
 };
 
+const SHORT: Partial<Record<keyof Dials, string>> = { kindergartenCapture: 'K capture' };
+
 function DialName({ dial }: { dial: keyof Dials }) {
-  return <Term t={DIAL_TERMS[dial]}>{dial === 'kindergartenCapture' ? 'K capture' : undefined}</Term>;
+  return <Term t={DIAL_TERMS[dial]}>{SHORT[dial]}</Term>;
 }
 
 function exact(n: number): string {
@@ -61,7 +63,7 @@ function WhereKidsWent({ flows }: { flows: Flows }) {
       {FLOW_ROWS.map((r) => (
         <div key={r.label} class={r.total ? 'flow total' : 'flow'}>
           <dt>
-            <Term t={r.label} />
+            <Label t={r.label} />
           </dt>
           <dd>
             <span class="bar" style={{ width: `${(100 * r.n(flows)) / max}%` }} />
@@ -119,7 +121,7 @@ function RezoneReport({ r }: { r: RezoneOutcome }) {
         Re-zoned, <Sourced k={K.sliceStay}>{fmtRange(r.kids)}</Sourced> kids:
       </p>
       <dl class="flows">
-        <OutcomeRow label="New zone school" kids={r.zoneSchool} of={of} k={K.sliceStay} />
+        <OutcomeRow label={<Term t="New zone school" />} kids={r.zoneSchool} of={of} k={K.sliceStay} />
         <OutcomeRow label={<Term t="Other PPS">Other PPS school</Term>} kids={r.otherPps} of={of} k={K.nonFollowers} />
         <OutcomeRow label={<Term t="Left PPS" />} kids={r.leftPps} of={of} k={K.nonFollowers} />
       </dl>

@@ -3,7 +3,7 @@ import { createPortal } from 'preact/compat';
 import { useContext, useEffect, useRef, useState } from 'preact/hooks';
 import { FIRST_YEAR } from '../sim';
 import { getSource, type HiddenCard, type Source, type SourceTag } from '../sources/registry';
-import { define, type GlossaryTerm } from './glossary';
+import { GLOSSARY, type GlossaryTerm } from './glossary';
 import './sources';
 import { trapTab } from './Window';
 
@@ -35,13 +35,14 @@ interface SourcedProps {
   text?: boolean;
   /** The glossary term the value belongs to. Its definition tops the pop-over. */
   term?: GlossaryTerm;
+  class?: string;
   children: ComponentChildren;
 }
 
-export function Sourced({ k, modeled, text, term, children }: SourcedProps) {
+export function Sourced({ k, modeled, text, term, class: extra, children }: SourcedProps) {
   const [open, setOpen] = useState(false);
   const button = useRef<HTMLButtonElement>(null);
-  const cls = ['sourced', modeled && 'modeled', text && 'text'].filter(Boolean).join(' ');
+  const cls = ['sourced', modeled && 'modeled', text && 'text', extra].filter(Boolean).join(' ');
   const close = () => {
     setOpen(false);
     button.current?.focus();
@@ -94,7 +95,7 @@ export function SourcePopover({ k, term, onClose }: { k: string; term?: Glossary
   const revealed = useContext(Revealed);
   return (
     <Popover title={source?.label ?? k} onClose={onClose}>
-      {term && <p class="definition">{define(term)}</p>}
+      {term && <p class="definition">{GLOSSARY[term]}</p>}
       {source ? <SourceBody source={source} drawn={revealed[source.key]} /> : <p>No source yet for “{k}”.</p>}
     </Popover>
   );

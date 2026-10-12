@@ -1,6 +1,7 @@
 import { cleanup, render, screen, within } from '@testing-library/preact';
 import { afterEach, describe, expect, it } from 'vitest';
 import { RevealSheet } from './RevealSheet';
+import { termsIn } from './terms.testing';
 
 afterEach(cleanup);
 
@@ -33,5 +34,12 @@ describe('RevealSheet', () => {
     const heights = [...document.querySelectorAll('[data-outcome] rect')].map((r) => Number(r.getAttribute('height')));
     expect(new Set(heights).size).toBe(1);
     expect(heights[0]).toBeGreaterThan(0);
+  });
+});
+
+describe('RevealSheet glossary', () => {
+  it('defines a hidden card', () => {
+    render(<RevealSheet reveal={{ sourceKey: 'model.followRate', value: 0.8 }} />);
+    expect(termsIn()).toEqual(['Hidden card']);
   });
 });

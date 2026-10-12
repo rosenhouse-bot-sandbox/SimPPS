@@ -40,9 +40,15 @@ export function Stepper({ label, labelNode, sourceKey, term, value, min, max, st
       <button type="button" class="step" aria-label={`Less ${label}`} disabled={value <= min} onClick={down}>
         −
       </button>
-      <output class="num stepper-value">{sourceKey ? <Sourced k={sourceKey} term={term}>
-          {shown}
-        </Sourced> : shown}</output>
+      <output class="num stepper-value">
+        {sourceKey ? (
+          <Sourced k={sourceKey} term={term}>
+            {shown}
+          </Sourced>
+        ) : (
+          shown
+        )}
+      </output>
       <button type="button" class="step" aria-label={`More ${label}`} disabled={value >= max} onClick={up}>
         +
       </button>

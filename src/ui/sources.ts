@@ -27,7 +27,6 @@ export const K = {
   kCapture: 'model.kCapture',
   graduates: 'model.graduates',
   ghost: 'model.ghost',
-  bulletin: 'ui.bulletin',
   capacity: 'field.functional_capacity_model',
   distance: 'ui.distance',
   closureWalk: 'ui.closureWalk',
@@ -81,13 +80,6 @@ const UI_SOURCES: Source[] = [
     label: 'Reserve draw',
     tag: 'M',
     explain: 'Your choice of dollars to spend from reserves this year. A draw helps once.',
-    links: [],
-  },
-  {
-    key: K.bulletin,
-    label: 'The Bulletin',
-    tag: 'M',
-    explain: 'Headlines written from simulated totals. They never describe real families.',
     links: [],
   },
   {

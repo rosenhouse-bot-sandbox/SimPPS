@@ -22,9 +22,7 @@ export function Chip({ chip, sourceKey }: { chip: ChipData; sourceKey: string })
     <dl class="chip">
       {cells.map(([k, v]) => (
         <div key={k}>
-          <dt>
-            <Term t={k} />
-          </dt>
+          <dt>{v === '—' ? k : <Term t={k} />}</dt>
           <dd class="num">
             {v === '—' ? (
               v

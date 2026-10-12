@@ -117,10 +117,10 @@ export function BudgetPanel({ game, draft, plan, ballot, levyThrough, onEdit, on
             <Term t="Reserves">Reserves after</Term>:{' '}
             <Sourced k={K.reservePct} term="Reserves">{`${fmtMoney(plan.reservesAfter)}, ${fmtPct(plan.reservePctAfterDraw)}`}</Sourced>
           </p>
-          {plan.reservePctAfterDraw < 0.05 && (
+          {plan.reservePctAfterDraw < M.reservePolicy && (
             <p class="note warn">
               <Sourced k={K.reservePct} text>
-                Below 5% breaches policy.
+                {`Below ${fmtPct(M.reservePolicy)} breaches policy.`}
               </Sourced>
             </p>
           )}

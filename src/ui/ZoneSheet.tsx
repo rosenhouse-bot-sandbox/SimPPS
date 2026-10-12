@@ -4,7 +4,7 @@ import { BoundaryChipView } from './BoundaryChip';
 import { nameOf } from './closeSend';
 import { Stepper } from './Stepper';
 import { K } from './sources';
-import { Term } from './Term';
+import { Term, WithMark } from './Term';
 import { startZoneDraft, undoStroke, type ZoneDraft } from './zoneEdit';
 import { Window } from './Window';
 
@@ -41,8 +41,9 @@ export function ZoneSheet({ draft, edit, chip, targetsFor, sources, onChange, on
   const grandfather = (
     <label class="row choice">
       <input type="checkbox" checked={draft.grandfather} onChange={() => onChange({ ...draft, grandfather: !draft.grandfather })} />
-      <span>Grandfather current kids</span>
-      <Term t="Grandfather" icon />
+      <span>
+        <WithMark text="Grandfather current kids" t="Grandfather" />
+      </span>
     </label>
   );
   const body = chip && (
@@ -66,7 +67,7 @@ export function ZoneSheet({ draft, edit, chip, targetsFor, sources, onChange, on
       {slice ? (
         <>
           <p class="slice-says">
-            {`Move the ${slice.percent}% of ${nameOf(slice.from)} nearest ${nameOf(draft.to)}`}<Term t="Slice" icon />
+            <WithMark text={`Move the ${slice.percent}% of ${nameOf(slice.from)} nearest ${nameOf(draft.to)}`} t="Slice" />
           </p>
           <Stepper
             label="Share"

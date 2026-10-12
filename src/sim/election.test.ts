@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { DEFAULT_POLICY } from '.';
-import { expectedYes, levyAfter, levyBallot, levyRateFor, pollRange, voteYes } from './election';
+import { expectedYes, levyAfter, levyBallot, levyRateFor, passes, pollRange, voteYes } from './election';
 import { M } from './model';
 import type { Levy, Policy } from './types';
 
@@ -113,5 +113,12 @@ describe('levyAfter', () => {
 
   it('changes nothing without a vote', () => {
     expect(levyAfter(levy, 2027, policy(), null)).toBe(levy);
+  });
+});
+
+describe('passes', () => {
+  it('needs more yes votes than no votes', () => {
+    expect(passes(0.5)).toBe(false);
+    expect(passes(0.5001)).toBe(true);
   });
 });

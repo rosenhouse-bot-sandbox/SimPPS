@@ -2,6 +2,7 @@ import { cleanup, fireEvent, render, screen, within } from '@testing-library/pre
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { FIXTURE_REPORT } from './fixtures';
 import { ReportView } from './ReportView';
+import { termsIn } from './terms.testing';
 
 afterEach(cleanup);
 
@@ -186,5 +187,39 @@ describe('ReportView', () => {
     expect(key('New kindergartners')).toBe('model.kCapture');
     expect(key('To high school')).toBe('model.graduates');
     expect(key('Left PPS')).toBe('model.movingRoll');
+  });
+});
+
+describe('ReportView glossary', () => {
+  it('defines the headings, the flows that need it and the ghost dials', () => {
+    render(<ReportView report={FIXTURE_REPORT} turn={1} onNext={() => {}} />);
+    expect(termsIn()).toEqual([
+      'Where kids went',
+      'Moved in PPS',
+      'Came back',
+      'Left PPS',
+      'To high school',
+      'Do-nothing ghost',
+      'Positions cut',
+      'Kids',
+      'Gap',
+      'The Bulletin',
+    ]);
+  });
+
+  it('defines the closure, re-zoning, walk and levy rows', () => {
+    const range = { lo: 1, hi: 2 };
+    const report = {
+      ...FIXTURE_REPORT,
+      closures: [{ school: 'peninsula', kids: range, receivers: [{ school: 'rosa-parks', kids: range }], otherPps: range, leftPps: range }],
+      rezoned: { kids: range, zoneSchool: range, otherPps: range, leftPps: range },
+      election: { rate: 1.8, when: 'may' as const, renewal: false, yes: 0.6, passed: true },
+      vsGhost: [{ dial: 'kindergartenCapture' as const, you: 0.7, ghost: 0.71, better: false }],
+    };
+    render(<ReportView report={report} turn={1} onNext={() => {}} walk={{ before: 1, after: 2 }} />);
+    expect(termsIn()).toEqual(
+      expect.arrayContaining(['Other PPS', 'Left PPS', 'New zone school', 'K-5 walkers', 'Levy vote', 'Kindergarten capture']),
+    );
+    expect(screen.getByRole('button', { name: 'K capture, what is Kindergarten capture?' })).toBeTruthy();
   });
 });

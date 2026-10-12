@@ -319,9 +319,11 @@ for (const width of [900, 1024, 1440]) {
 
 test('defines jargon on a phone', async ({ page }) => {
   await page.goto('?seed=p52&start=status-quo');
-  await page.getByRole('button', { name: 'What is Capture?' }).tap();
-  await expect(page.getByRole('dialog', { name: 'Capture' })).toContainText('share of K-8 kids');
-  await page.getByRole('dialog', { name: 'Capture' }).getByRole('button', { name: 'Close' }).tap();
+  await page.locator('.topbar').getByRole('button', { name: /^Cap \d/ }).tap();
+  const capture = page.getByRole('dialog', { name: 'Capture' });
+  await expect(capture.locator('.definition')).toContainText('share of K-8 kids');
+  await expect(capture).toContainText('[M] model assumption');
+  await capture.getByRole('button', { name: 'Close' }).tap();
 
   await page.getByRole('button', { name: 'Plan' }).tap();
   await page.getByRole('button', { name: 'Rosa Parks Elementary School' }).tap();
@@ -331,6 +333,18 @@ test('defines jargon on a phone', async ({ page }) => {
   await expect(dialog).toContainText('Unreinforced masonry');
   await expect(dialog).toBeInViewport();
   await shot(page, 'glossary-phone');
+  await dialog.getByRole('button', { name: 'Close' }).tap();
+
+  await page.getByRole('button', { name: 'Edit boundary' }).tap();
+  const grandfather = page.getByRole('checkbox', { name: /Grandfather/ });
+  const text = (await page.getByText('Grandfather current').boundingBox())!;
+  const mark = (await page.getByRole('button', { name: 'What is Grandfather?' }).boundingBox())!;
+  for (const x of [text.x + 4, mark.x - 15]) {
+    const before = await grandfather.isChecked();
+    await page.touchscreen.tap(x, text.y + text.height / 2);
+    await expect(grandfather).toBeChecked({ checked: !before });
+  }
+  await expect(page.getByRole('dialog')).toHaveCount(0);
 });
 
 test.describe('on a desktop', () => {
@@ -342,7 +356,7 @@ test.describe('on a desktop', () => {
     await expect(topbar).toContainText(/Capture \d/);
     await expect(topbar).toContainText(/Reserves \d/);
     await page.getByRole('button', { name: 'What is Reserves?' }).click();
-    await expect(page.getByRole('dialog', { name: 'Reserves' })).toContainText('floor of 5%');
+    await expect(page.getByRole('dialog', { name: 'Reserves' })).toContainText('at least 5%');
     await page.keyboard.press('Escape');
     await page.locator('.topbar [data-source="dial.trust"]').click();
     const trust = page.getByRole('dialog', { name: 'Trust' });

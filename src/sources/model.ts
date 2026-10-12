@@ -226,7 +226,7 @@ export const MODEL_SOURCES: Source[] = [
     key: 'model.election',
     label: 'Levy election',
     tag: 'V',
-    explain: `The yes share starts at ${pct(M.yesBase)}, the election-night count for PPS's May 2024 renewal; the certified share is unverified. The Nov 2019 renewal drew 77% [F]. Each point of family trust above or below 35 moves it ${pts(M.yesPerTrustPoint)} points, each $0.10 above $${M.levyRate} costs ${pts(M.yesPerDime)} and each failure since the last pass costs ${pts(M.yesPerFailure)} [M]. The vote lands within ${pts(M.yesNoise)} points of that, with the same luck for the ghost. The poll shows ±${pts(M.pollSpread)} points; a November poll counts trust after this year's closures, class size change and planned June cuts. The poll reads your January plan, which can't see June state funding. Mid-year cuts come after a November vote. A measure passes at 50%, so a raise after closures that cost trust can fail. Abandoned upgrades are not modeled yet.`,
+    explain: `The yes share starts at ${pct(M.yesBase)}, the election-night count for PPS's May 2024 renewal; the certified share is unverified. The Nov 2019 renewal drew 77% [F]. Each point of family trust above or below 35 moves it ${pts(M.yesPerTrustPoint)} points, each $0.10 above $${M.levyRate} costs ${pts(M.yesPerDime)} and each failure since the last pass costs ${pts(M.yesPerFailure)} [M]. The vote lands within ${pts(M.yesNoise)} points of that, with the same luck for the ghost. The poll shows ±${pts(M.pollSpread)} points; a November poll counts trust after this year's closures, class size change and planned June cuts. The poll reads your January plan, which can't see June state funding. Mid-year cuts come after a November vote. A measure passes when yes votes outnumber no votes, so a raise after closures that cost trust can fail. Abandoned upgrades are not modeled yet.`,
     links: [LEVY_2019, LEVY_2024_COUNTY, DESIGN],
   },
   {
@@ -254,7 +254,7 @@ export const MODEL_SOURCES: Source[] = [
     key: 'model.reserves',
     label: 'Reserves',
     tag: 'I',
-    explain: `PPS holds ${$(M.reserves)} in reserves. Divided by the ${$(M.generalFund)} general fund, that is 4.8%; PPS calls it its 5% floor. Below 5% breaches policy.`,
+    explain: `PPS holds ${$(M.reserves)} in reserves. Divided by the ${$(M.generalFund)} general fund, that is 4.8%; PPS calls it its ${pct(M.reservePolicy)} floor [V]. Below ${pct(M.reservePolicy)} breaches policy [V].`,
     links: [PPS_DATA],
   },
   {
@@ -413,7 +413,7 @@ export const DIAL_SOURCES: Source[] = [
   { key: dialSourceKey('kindergartenCapture'), label: 'Kindergarten capture', tag: 'M', explain: 'Simulated PPS kindergartners over resident kindergartners. It was about 74% in 2025.', links: [PSU] },
   { key: dialSourceKey('gap'), label: 'Gap', tag: 'M', explain: 'Revenue minus costs in the coming year\'s plan, before automatic cuts. It starts at the reported -$65.2M. A surplus goes to reserves; cut positions are not rehired yet.', links: [DESIGN] },
   { key: dialSourceKey('positionsCut'), label: 'Positions cut', tag: 'M', explain: 'Positions removed by automatic and mid-year cuts in the year just played.', links: [DESIGN] },
-  { key: dialSourceKey('reservePct'), label: 'Reserves', tag: 'M', explain: 'Reserves over last year\'s spending. They start at $41.1M, 4.8% of the $862.1M 2026-27 general fund. Below 5% breaches policy; below 3% forces mid-year cuts.', links: [PPS_DATA] },
+  { key: dialSourceKey('reservePct'), label: 'Reserves', tag: 'M', explain: `Reserves over last year's spending. They start at $41.1M, 4.8% of the $862.1M 2026-27 general fund. Below ${pct(M.reservePolicy)} breaches policy [V]; below ${pct(M.midYearFloor)} forces mid-year cuts.`, links: [PPS_DATA] },
   { key: dialSourceKey('walkK5'), label: 'K-5 walkers', tag: 'M', explain: `Simulated PPS K-5 kids within ${M.walkDialMiles} mile of their school, in a straight line.`, links: [DESIGN] },
   { key: dialSourceKey('newBusRiders'), label: 'New bus riders', tag: 'M', explain: 'Simulated PPS kids at their zone school past the walk limit whose zone before any change was within it.', links: [DESIGN] },
   { key: dialSourceKey('k5Class'), label: 'Avg K-5 class', tag: 'M', explain: `Simulated K-5 kids per K-5 homeroom at open schools. Rooms fill to the class size target plus ${M.overload}, and cuts to homerooms make every class larger.`, links: [PPS_DATA] },

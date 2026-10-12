@@ -283,16 +283,14 @@ dl {
   cursor: help;
 }
 
+/* Inline, so it never wraps away from the word before it. */
 .term::after {
   content: '?';
-  display: inline-block;
-  width: 14px;
-  height: 14px;
   margin-left: 3px;
+  padding: 0 4px;
   border: 1px solid currentColor;
-  border-radius: 50%;
-  font: 600 10px/12px var(--body);
-  text-align: center;
+  border-radius: 8px;
+  font: 600 10px/1 var(--body);
   vertical-align: 2px;
   opacity: 0.6;
 }
@@ -301,27 +299,27 @@ dl {
   opacity: 1;
 }
 
-/* A phone's top bar has no room for the marks, so its labels underline like its values. */
-@media (max-width: 899px) {
-  .topbar .term {
-    text-decoration: underline dotted var(--chrome-dim) 1px;
-    text-underline-offset: 3px;
-  }
-
-  .topbar .term::after {
-    content: none;
-  }
-}
-
-/* A tap target of at least 44 by 44 px that doesn't push the layout around. */
+/* At least 44px wide, reaching right, where a later control stacks above it. */
 .term::before {
   content: '';
   position: absolute;
-  left: 50%;
-  top: 50%;
+  left: 0;
+  top: 0;
   width: max(100%, 44px);
-  height: max(100%, 44px);
-  transform: translate(-50%, -50%);
+  height: 100%;
+}
+
+/* 44px tall only in rows at least that tall. */
+.fact .term,
+.stepper .term,
+.choice .term,
+h3 .term,
+legend .term {
+  min-height: 44px;
+}
+
+.nowrap {
+  white-space: nowrap;
 }
 
 .definition {

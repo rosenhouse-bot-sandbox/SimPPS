@@ -80,6 +80,8 @@ export const M = {
   generalFund: 862_100_000,
   // model.reserves
   reserves: 41_100_000,
+  /** PPS's reserve policy floor, as a share of spending [V]. */
+  reservePolicy: 0.05,
   // model.gap2027
   startGap: -65_200_000,
   // model.midYearCuts
