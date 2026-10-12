@@ -128,12 +128,12 @@ export const M = {
   levyThrough: 2029,
   levyYears: 5,
   // model.election
-  yesBase: 0.77,
-  yesPerTrustPoint: 0.004,
+  yesBase: 0.71,
+  yesPerTrustPoint: 0.012,
   /** Per $0.10 per $1,000 above today's rate. */
-  yesPerDime: 0.015,
+  yesPerDime: 0.03,
   yesPerFailure: 0.04,
-  yesNoise: 0.04,
+  yesNoise: 0.06,
   pollSpread: 0.05,
   // model.electionBill
   electionBill: 500_000,
