@@ -1,0 +1,8 @@
+# News sites reject lychee's default user agent.
+user_agent = "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0 Safari/537.36"
+max_retries = 3
+accept = [200, 429]
+cache = true
+max_cache_age = "1d"
+# Substack rejects requests from GitHub runners.
+exclude = ['^https://[^/]+\.substack\.com/']

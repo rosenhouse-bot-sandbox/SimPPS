@@ -9,7 +9,7 @@ import type { Source, SourceLink, SourceTag } from './types';
 export const PPS_DATA: SourceLink = { title: 'meub/pps-data', url: 'https://github.com/meub/pps-data' };
 const PSU: SourceLink = {
   title: 'PSU Population Research Center school forecasts',
-  url: 'https://www.pdx.edu/population-research/school-enrollment-forecasts',
+  url: 'https://pdxscholar.library.pdx.edu/enrollmentforecasts/',
 };
 const OPB_GAP: SourceLink = {
   title: 'OPB, Oct 5 2026',
@@ -20,11 +20,7 @@ const WW_GAP: SourceLink = {
   url: 'https://www.wweek.com/news/schools/2026/04/28/portland-public-schools-faces-56-million-budget-deficit-as-superintendent-proposes-336-layoffs/',
 };
 const RIGHTSIZING: SourceLink = { title: `PPS, ${rightsizing.source.title}`, url: rightsizing.source.url };
-const LEVY_2019: SourceLink = { title: 'Multnomah County, Measure 26-207, Nov 2019', url: 'https://multco.us/elections/measure-26-207-november-2019-special-election' };
-const LEVY_2024: SourceLink = {
-  title: 'PPS, proposed 2024 levy renewal',
-  url: 'https://www.pps.net/about/portland-public-schools-information/proposed-2024-local-option-levy-renewal',
-};
+const LEVY_2019: SourceLink = { title: 'Multnomah County, Measure 26-207, Nov 2019', url: 'https://multco.us/info/measure-26-207-november-2019-special-election' };
 const LEVY_2024_COUNTY: SourceLink = {
   title: 'Multnomah County, Measure 26-246, May 2024',
   url: 'https://multco.us/info/measure-26-246-levy-renewal-maintain-teachers-and-classroom-support-staff',
@@ -264,7 +260,7 @@ export const MODEL_SOURCES: Source[] = [
     get explain() {
       return `Oregon limits an operating levy to ${M.levyYears} years. Voters renewed PPS's levy at $${M.levyRate} in May 2024 (Measure 26-246) for 2025-26 through 2029-30, so the game ends it in June ${M.levyThrough + 1}. A renewal can go on the November ballot before the last year or the May ballot after it. A rate change also needs a vote; a lapse needs none [M].`;
     },
-    links: [LEVY_2024_COUNTY, LEVY_2024],
+    links: [LEVY_2024_COUNTY],
   },
   {
     key: 'model.election',

@@ -320,11 +320,11 @@ It takes four of seven. As of Sept. 1 (Willamette Week's account):
 ### Board direction and rules
 - [Resolution 7296](https://meetings.boardbook.org/Documents/FileViewerOrPublic/915?file=3990244) (Apr. 14, 2026): launches rightsizing
 - [Resolution 7307](https://meetings.boardbook.org/Documents/FileViewerOrPublic/915?file=3997273) (May 26, 2026): guiding principles and work plan
-- [Board Policy 6.10.030-P, School Initiation and Closure](https://www.pps.net/cms/lib/OR01913224/Centricity/Domain/4814/6.10.030-P.pdf)
+- [Board Policy 6.10.030-P, School Initiation and Closure](https://www.pps.net/fs/resource-manager/view/aafbca43-2552-405a-94d7-cb3261a887cf)
 - [Board meeting protocols and public comment](https://www.pps.net/board/board-of-education/meeting-protocols-public-comment)
 
 ### Studies and data
-- [Portland State Population Research Center enrollment forecasts for PPS](https://www.pps.net/Page/1834) (also archived on [PDXScholar](https://pdxscholar.library.pdx.edu/enrollmentforecasts))
+- [Portland State Population Research Center enrollment forecasts for PPS](https://www.pps.net/Page/1834) (also archived on [PDXScholar](https://pdxscholar.library.pdx.edu/enrollmentforecasts/))
 - [Sept. 1 board presentation: well-resourced schools and magnitude of change](https://meetings.boardbook.org/Documents/FileViewerOrPublic/915?file=14357211)
 - [Sept. 15 board presentation: decision framework and indicators](https://meetings.boardbook.org/Documents/FileViewerOrPublic/915?file=14430171)
 - [Aug. 4 rightsizing update memo](https://meetings.boardbook.org/Documents/FileViewerOrPublic/915?file=3997426) and [presentation](https://meetings.boardbook.org/Documents/FileViewerOrPublic/915?file=3997425)

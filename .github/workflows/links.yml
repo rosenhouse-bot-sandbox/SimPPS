@@ -1,0 +1,24 @@
+name: Links
+on:
+  pull_request:
+  push:
+    branches: [main]
+  schedule:
+    - cron: '0 15 * * 1'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  links:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/cache@v4
+        with:
+          path: .lycheecache
+          key: lychee-${{ github.sha }}
+          restore-keys: lychee-
+      - uses: lycheeverse/lychee-action@v2
+        with:
+          lycheeVersion: v0.21.0
+          args: --no-progress 'docs/**/*.md' 'src/**/*' README.md index.html
