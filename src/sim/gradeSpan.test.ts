@@ -17,7 +17,7 @@ import {
 import { rezoneFactors, stayDraw } from './boundaries';
 import { followChance } from './closures';
 import { defaultZones } from './zones';
-import { canConvert, conversionChip, effectiveGradeChanges, middleSchoolCandidates, normalizeGradeChanges } from './gradeSpan';
+import { canConvert, conversionChip, effectiveGradeChanges, middleSchoolCandidates, middleZoneOf, normalizeGradeChanges } from './gradeSpan';
 import { gradeOf, M } from './model';
 import { buildSchools } from './schools';
 import type { Closure } from './types';
@@ -70,6 +70,38 @@ describe('who can change grade span', () => {
         [close('faubion'), close('mt-tabor')],
       ),
     ).toEqual([{ school: 'beverly-cleary', to: 'beaumont' }]);
+  });
+
+  it('keeps only the first change of a K-8', () => {
+    expect(
+      normalizeGradeChanges(
+        [
+          { school: 'beverly-cleary', to: 'beaumont' },
+          { school: 'beverly-cleary', to: 'mt-tabor' },
+        ],
+        [],
+      ),
+    ).toEqual([{ school: 'beverly-cleary', to: 'beaumont' }]);
+  });
+
+  it('drops a change of a K-8 that takes a planned closure\'s grades 6-8, but not one that takes only K-5 kids', () => {
+    const into = (school: string): Closure => ({ school, receivers: [{ school: 'laurelhurst', share: 1 }], building: 'mothball' });
+    const change = [{ school: 'laurelhurst', to: 'beaumont' }];
+    expect(normalizeGradeChanges(change, [into('mt-tabor')])).toEqual([]);
+    expect(normalizeGradeChanges(change, [into('irvington')])).toEqual(change);
+  });
+
+  it("won't convert a K-8 that takes a planned closure's grades 6-8", () => {
+    const into = (school: string): Closure => ({ school, receivers: [{ school: 'laurelhurst', share: 1 }], building: 'mothball' });
+    expect(canConvert(schools, 'laurelhurst', [into('mt-tabor')])).toBe(false);
+    expect(canConvert(schools, 'laurelhurst', [into('irvington')])).toBe(true);
+  });
+
+  it('offers no K-8 the plan converts to a closing school with grades 6-8', () => {
+    const converting = [{ school: 'laurelhurst', to: 'beaumont' }];
+    expect(receiverCandidates(schools, 'mt-tabor', [], converting).map((c) => c.id)).not.toContain('laurelhurst');
+    expect(receiverCandidates(schools, 'mt-tabor', [], []).map((c) => c.id)).toContain('laurelhurst');
+    expect(receiverCandidates(schools, 'irvington', [], converting).map((c) => c.id)).toContain('laurelhurst');
   });
 
   it('is part of a normalized policy', () => {
@@ -161,14 +193,34 @@ describe('Send 6-8 over the years', () => {
     expect(middleGrades(after, 'beverly-cleary')).toBe(0);
   });
 
-  it('sends movers whose block a boundary edit moves to their new zone school', () => {
+  describe('with a 6-8 edit moving half its blocks to Mt Tabor', () => {
     const own = defaultZones().middle.flatMap((s, c) => (s === 'beverly-cleary' ? [c] : []));
     const cells = own.slice(0, Math.ceil(own.length / 2));
-    const edit: BoundaryEdit = { level: 'middle', to: 'mt-tabor', cells, grandfather: false };
-    const both = endYear(start, { ...policy, boundaryEdits: [edit] }).next;
-    const stayed = both.households.filter((h) => h.movedFrom === 'beverly-cleary' && cells.includes(h.cell) && h.school !== null);
-    expect(stayed.length).toBeGreaterThan(5);
-    expect(stayed.filter((h) => h.school === 'mt-tabor').length).toBeGreaterThan(stayed.length / 2);
+    const edit = (grandfather: boolean): BoundaryEdit => ({ level: 'middle', to: 'mt-tabor', cells, grandfather });
+    const stayed = (grandfather: boolean) =>
+      endYear(start, { ...policy, boundaryEdits: [edit(grandfather)] }).next.households.filter(
+        (h) => h.movedFrom === 'beverly-cleary' && cells.includes(h.cell) && h.school !== null,
+      );
+    const share = (kids: ReturnType<typeof stayed>, school: string) => kids.filter((h) => h.school === school).length / kids.length;
+
+    it('sends movers to their new zone school when the edit is not grandfathered', () => {
+      const kids = stayed(false);
+      expect(kids.length).toBeGreaterThan(5);
+      expect(share(kids, 'mt-tabor')).toBeGreaterThan(0.5);
+    });
+
+    it('sends movers to the conversion receiver when the edit is grandfathered', () => {
+      const kids = stayed(true);
+      expect(kids.length).toBeGreaterThan(5);
+      expect(share(kids, 'beaumont')).toBeGreaterThan(0.5);
+    });
+
+    it("counts on the boundary chip only the movers a non-grandfathered edit sends", () => {
+      const moving = (grandfather: boolean) => boundaryChip(start, edit(grandfather), policy).kidsMoving;
+      const rising = start.households.filter((h) => h.school === 'beverly-cleary' && cells.includes(h.cell) && gradeOf(h) >= 6 && gradeOf(h) < 8);
+      expect(moving(false)).toBeGreaterThanOrEqual(rising.length);
+      expect(moving(true)).toBe(0);
+    });
   });
 
   it("drops a boundary chip's 6-8 edit into a K-8 the plan converts", () => {
@@ -179,9 +231,17 @@ describe('Send 6-8 over the years', () => {
   });
 
   it("stirs the movers' regions in November's poll as the year will", () => {
-    const poll = (gradeChanges: Policy['gradeChanges']) =>
-      ballotPreview(start, { ...DEFAULT_POLICY, levyRate: 2.5, levyElection: 'november', gradeChanges })!.poll;
-    expect(poll(policy.gradeChanges).hi).toBeLessThan(poll([]).hi);
+    const poll = (state: GameState, gradeChanges: Policy['gradeChanges']) =>
+      ballotPreview(state, { ...DEFAULT_POLICY, levyRate: 2.5, levyElection: 'november', gradeChanges })!.poll;
+    expect(poll(start, policy.gradeChanges).hi).toBeLessThan(poll(start, []).hi);
+    const graduating = { ...start, households: start.households.filter((h) => h.school !== 'beverly-cleary' || gradeOf(h) === 8) };
+    expect(poll(graduating, policy.gradeChanges)).toEqual(poll(graduating, []));
+  });
+
+  it("names the converted school's middle zone school, which follows a later closure of the receiver", () => {
+    expect(middleZoneOf(next, 'beverly-cleary')).toBe('beaumont');
+    const beaumont: Closure = { school: 'beaumont', receivers: [{ school: 'mt-tabor', share: 1 }], building: 'mothball' };
+    expect(middleZoneOf(endYear(next, { ...DEFAULT_POLICY, closures: [beaumont] }).next, 'beverly-cleary')).toBe('mt-tabor');
   });
 
   it('leaves the ghost alone', () => {
@@ -189,11 +249,11 @@ describe('Send 6-8 over the years', () => {
     expect(middleGrades(next.sim!.ghost!, 'beverly-cleary')).toBeGreaterThan(50);
   });
 
-  it("sends a closing school's middle graders past a receiver that becomes K-5", () => {
+  it("sends a closing school's middle graders past a receiver that became K-5", () => {
     const laurelhurst: Closure = { school: 'laurelhurst', receivers: [{ school: 'beverly-cleary', share: 1 }], building: 'mothball' };
-    const both = endYear(start, { ...policy, closures: [laurelhurst] }).next;
-    expect(both.households.filter((h) => h.movedFrom === 'laurelhurst' && h.school === 'beverly-cleary').length).toBeGreaterThan(50);
-    expect(middleGrades(both, 'beverly-cleary')).toBe(0);
+    const after = endYear(next, { ...DEFAULT_POLICY, closures: [laurelhurst] }).next;
+    expect(after.households.filter((h) => h.movedFrom === 'laurelhurst' && h.school === 'beverly-cleary').length).toBeGreaterThan(50);
+    expect(middleGrades(after, 'beverly-cleary')).toBe(0);
   });
 
   it('offers a converted K-8 as a receiver only for K-5 kids', () => {
@@ -213,6 +273,19 @@ describe('Send 6-8 over the years', () => {
     const s = buildSchools([], 24, 0, [], [{ school: 'vernon', to: 'harriet-tubman', year: 2028 }]);
     expect(s.vernon.converted).toEqual({ year: 2028, to: 'harriet-tubman' });
     expect(s.faubion.converted).toBeUndefined();
+  });
+});
+
+describe('a middle school closed into a K-8 that later converts', () => {
+  const start = newGame({ seed: 'span' });
+  const mtTabor: Closure = { school: 'mt-tabor', receivers: [{ school: 'laurelhurst', share: 1 }], building: 'mothball' };
+  const y1 = endYear(start, { ...DEFAULT_POLICY, closures: [mtTabor] }).next;
+  const y2 = endYear(y1, { ...DEFAULT_POLICY, gradeChanges: [{ school: 'laurelhurst', to: 'beaumont' }] }).next;
+  const y3 = endYear(y2, DEFAULT_POLICY).next;
+
+  it('sends 6th graders who pick the closed school past the K-5', () => {
+    expect(middleGrades(y2, 'laurelhurst')).toBe(0);
+    expect(middleGrades(y3, 'laurelhurst')).toBe(0);
   });
 });
 
@@ -252,6 +325,21 @@ describe('conversionChip', () => {
   const start = newGame({ seed: 'span' });
   const chip = conversionChip(start, { school: 'beverly-cleary', to: 'beaumont' }, DEFAULT_POLICY);
   const at = (grade: number) => start.households.filter((h) => h.school === 'beverly-cleary' && gradeOf(h) === grade).length;
+
+  it("counts exactly the other conversions' rising 6th to 8th graders at the receiver", () => {
+    const rising = (id: string) => start.schools[id].byGrade.slice(5, 8).reduce((a, n) => a + n, 0);
+    const plan = { ...DEFAULT_POLICY, gradeChanges: [{ school: 'laurelhurst', to: 'beaumont' }] };
+    expect(conversionChip(start, { school: 'beverly-cleary', to: 'beaumont' }, plan).seats.kids).toBe(
+      start.schools.beaumont.enrollment + rising('beverly-cleary') + rising('laurelhurst'),
+    );
+  });
+
+  it("shows Sellwood's closure chip the Sunnyside arrivals at Hosford", () => {
+    const rising = start.schools['sunnyside-environmental'].byGrade.slice(5, 8).reduce((a, n) => a + n, 0);
+    const sellwood: Closure = { school: 'sellwood', receivers: [{ school: 'hosford', share: 0.5 }, { school: 'lane', share: 0.5 }], building: 'mothball' };
+    const sunnyside = [{ school: 'sunnyside-environmental', to: 'hosford' }];
+    expect(closureChip(start, sellwood, [sellwood], 24, sunnyside).seats.kids).toBe(closureChip(start, sellwood, [sellwood], 24).seats.kids + rising);
+  });
 
   it('counts the plan\'s other arrivals at the receiver', () => {
     const laurelhurst = { school: 'laurelhurst', to: 'beaumont' };

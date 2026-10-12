@@ -1,7 +1,7 @@
 import type { ComponentChildren } from 'preact';
 import { SCHOOLS, type SchoolData } from '../data';
 import { FATE_DONE, modeledRange } from '../sim';
-import type { Closure, GradeSpanChange, SchoolState } from '../sim/types';
+import type { Closure, GradeSpanChange, SchoolId, SchoolState } from '../sim/types';
 import { nameOf } from './closeSend';
 import { closureText, gradeSpanText } from './edits';
 import { fmtCount, fmtMoney, fmtPct, fmtRange } from '../format';
@@ -66,8 +66,8 @@ interface SchoolSheetProps {
   converting?: GradeSpanChange;
   /** K-8s the plan sends grades 6-8 into this school. */
   gradesFrom?: string[];
-  /** A converted school's 6-8 receiver is still open. */
-  receiverOpen?: boolean;
+  /** Where a converted school's grades 6-8 go. */
+  middleSchool?: SchoolId;
 }
 
 export function SchoolSheet({
@@ -82,7 +82,7 @@ export function SchoolSheet({
   onSendGrades,
   converting,
   gradesFrom = [],
-  receiverOpen = true,
+  middleSchool,
 }: SchoolSheetProps) {
   const school = SCHOOLS.find((s) => s.id === id);
   if (!school) return null;
@@ -96,7 +96,7 @@ export function SchoolSheet({
       {state?.open && state.converted && (
         <p class="note">
           <Sourced k={K.gradeSpan} text>
-            {`K-5 since ${state.converted.year}.${receiverOpen ? ` Grades 6–8 go to ${nameOf(state.converted.to)}.` : ''}`}
+            {`K-5 since ${state.converted.year}.${middleSchool ? ` Grades 6–8 go to ${nameOf(middleSchool)}.` : ''}`}
           </Sourced>
         </p>
       )}

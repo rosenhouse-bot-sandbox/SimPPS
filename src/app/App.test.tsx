@@ -512,6 +512,67 @@ describe('App', () => {
       expect([...document.querySelectorAll('option')].map((o) => o.value)).not.toContain('beverly-cleary');
     });
 
+    function closeAndSend(to: RegExp) {
+      click('Close & send');
+      click(to);
+      click('Next >');
+      click('Next >');
+      click('Close it');
+      click('Call it');
+    }
+
+    it("won't send 6–8 from a K-8 taking a closing school's grades 6–8, nor offer a converting K-8 to one", () => {
+      setup();
+      click('Plan');
+      click('Mt Tabor Middle School');
+      closeAndSend(/Laurelhurst/);
+      click('Plan');
+      click('Laurelhurst Elementary School');
+      expect(screen.queryByRole('button', { name: 'Send 6–8 to…' })).toBeNull();
+
+      click('Plan');
+      click('Beverly Cleary School');
+      click('Send 6–8 to…');
+      tapBadge('beaumont');
+      click('Send 6–8');
+      click('Plan');
+      click('Beaumont Middle School');
+      expect(screen.queryByRole('button', { name: 'Close & send' })).toBeNull();
+      click('Plan');
+      click('Harriet Tubman Middle School');
+      click('Close & send');
+      expect(marked('candidate')).not.toContain('beverly-cleary');
+    });
+
+    it("names a converted school's current middle zone school after its receiver closes", () => {
+      setup();
+      click('Plan');
+      click('Beverly Cleary School');
+      click('Send 6–8 to…');
+      tapBadge('beaumont');
+      click('Send 6–8');
+      const playYear = () => {
+        hold('End year');
+        hold('Play the year');
+        act(() => {
+          vi.advanceTimersByTime(6000);
+        });
+      };
+      playYear();
+      click(/^Plan 20/);
+      click('Plan');
+      click('Beaumont Middle School');
+      closeAndSend(/Mt Tabor/);
+      playYear();
+      click(/^Plan 20/);
+      click('Plan');
+      click('Beverly Cleary School');
+      expect(screen.getByText(/K-5 since 2027/).textContent).toBe('K-5 since 2027. Grades 6–8 go to Mt Tabor.');
+      click('Edit boundary');
+      click('6-8');
+      expect(screen.getByRole('region', { name: 'Zone: Mt Tabor' })).toBeTruthy();
+    });
+
     it("sends a K-8's grades 6-8 through the plan, pre-flight and report", () => {
       setup();
       click('Plan');

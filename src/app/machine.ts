@@ -13,9 +13,11 @@ export interface Sim {
     schools: Record<SchoolId, SchoolState>,
     closing: SchoolId,
     plan: Closure[],
+    converting: GradeSpanChange[],
   ): { id: SchoolId; miles: number; kids: number; capacity: number }[];
-  closureChip(state: GameState, closure: Closure, plan: Closure[], classSize: number): ClosureChip;
-  canConvert(schools: Record<SchoolId, SchoolState>, school: SchoolId): boolean;
+  closureChip(state: GameState, closure: Closure, plan: Closure[], classSize: number, converting: GradeSpanChange[]): ClosureChip;
+  canConvert(schools: Record<SchoolId, SchoolState>, school: SchoolId, closures: Closure[]): boolean;
+  middleZoneOf(state: GameState, school: SchoolId): SchoolId;
   middleSchoolCandidates(
     schools: Record<SchoolId, SchoolState>,
     school: SchoolId,

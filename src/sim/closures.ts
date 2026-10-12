@@ -6,13 +6,14 @@ import { gradeOf, M, METERS_PER_MILE } from './model';
 import { SCHOOL_INFO, type SchoolInfo } from './population';
 import { modeledRange } from './range';
 import { draw, hashString } from './rng';
-import { convertedIn, topGrade, type Shut } from './gradeSpan';
+import { convertedIn, topGrade, withConversions, type Shut } from './gradeSpan';
 import type {
   ClosedSchool,
   Closure,
   ClosureOutcome,
   Flows,
   GameState,
+  GradeSpanChange,
   Household,
   Range,
   SchoolId,
@@ -235,11 +236,15 @@ export function closureChip(
   plan: Closure[],
   classSize: number,
   busRiders = 0,
+  converting: readonly GradeSpanChange[] = [],
 ): ClosureChip {
-  const schools = effectiveClosures(
-    state.schools,
-    plan.filter((c) => c.school !== closure.school),
-  ).reduce(withArrivals, state.schools);
+  const schools = withConversions(
+    effectiveClosures(
+      state.schools,
+      plan.filter((c) => c.school !== closure.school),
+    ).reduce(withArrivals, state.schools),
+    converting,
+  );
   const after = withArrivals(schools, closure);
   const home = schoolPos(closure.school);
   const kids = state.households.filter((h) => h.school === closure.school);
@@ -276,21 +281,27 @@ export function closureChip(
   };
 }
 
-/** Open neighborhood schools that can take the closing school's kids, nearest first. Plan closures can't receive. */
+/**
+ * Open neighborhood schools that can take the closing school's kids, nearest first. Plan closures
+ * can't receive, nor can K-8s the plan converts when the closing school has grades 6-8.
+ */
 export function receiverCandidates(
   schools: Record<SchoolId, SchoolState>,
   closing: SchoolId,
   plan: Closure[],
+  converting: readonly GradeSpanChange[] = [],
 ): { id: SchoolId; miles: number; kids: number; capacity: number }[] {
   const busy = new Set(plan.map((c) => c.school));
   const home = schoolPos(closing);
   const from = SCHOOL_INFO.get(closing)!;
   const converted = convertedIn(schools);
+  const k5 = new Set(topGrade(closing, converted) >= 6 ? converting.map((g) => g.school) : []);
   return ZONED.map((i) => schools[i.data.id])
     .filter(
       (s) =>
         s?.open &&
         !busy.has(s.id) &&
+        !k5.has(s.id) &&
         canReceive(closing, s.id) &&
         SCHOOL_INFO.get(s.id)!.lo <= topGrade(closing, converted) &&
         topGrade(s.id, converted) >= from.lo,

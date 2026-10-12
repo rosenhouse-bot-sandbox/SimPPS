@@ -13,13 +13,13 @@ import { defaultZones, normalizeBoundaryEdits } from './zones';
 import { SCENARIOS, type Start } from './scenarios';
 import { conversionOutcomes, effectiveGradeChanges, normalizeGradeChanges } from './gradeSpan';
 import { familiesDecide, stepYear } from './step';
-import type { Ballot, Budget, Closure, GameState, Household, Policy, Range, Reveal, SimMemory, YearReport, ZoneMap } from './types';
+import type { Ballot, Budget, Closure, GameState, GradeSpanChange, Household, Policy, Range, Reveal, SimMemory, YearReport, ZoneMap } from './types';
 
 export * from './types';
 export { modeledRange } from './range';
 export { FIRST_YEAR, legislatureVotes, levyRevenue } from './budget';
 export { canClose, receiverCandidates, type ClosureChip } from './closures';
-export { canConvert, conversionChip, middleSchoolCandidates, type ConversionChip } from './gradeSpan';
+export { canConvert, conversionChip, middleSchoolCandidates, middleZoneOf, type ConversionChip } from './gradeSpan';
 export { boundaryChip, sliceEdit, type BoundaryChip } from './boundaries';
 export {
   CELL_METERS,
@@ -37,9 +37,15 @@ export { SCENARIOS, type Start } from './scenarios';
 export { FATE_DONE } from './report';
 export const MOTHBALL_PER_YEAR = M.mothball;
 
-/** A closure's chip, its new bus riders included. */
-export function closureChip(state: GameState, closure: Closure, plan: Closure[], classSize: number): ClosureChip {
-  return chipFor(state, closure, plan, classSize, closureRiders(state, closure, plan));
+/** A closure's chip, its new bus riders and the plan's grade-span arrivals included. */
+export function closureChip(
+  state: GameState,
+  closure: Closure,
+  plan: Closure[],
+  classSize: number,
+  converting: GradeSpanChange[] = [],
+): ClosureChip {
+  return chipFor(state, closure, plan, classSize, closureRiders(state, closure, plan), converting);
 }
 
 export const DEFAULT_POLICY: Policy = { k5ClassSize: 24, levyRate: 1.99, levyElection: 'may', reserveDraw: 0, closures: [], boundaryEdits: [], gradeChanges: [] };

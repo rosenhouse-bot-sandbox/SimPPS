@@ -81,7 +81,7 @@ describe('SchoolSheet', () => {
 
   it('says when a K-8 became K-5 and shows its seats', () => {
     const state = { ...FIXTURE_GAME.schools.vernon, capacity: 564.2, converted: { year: 2027, to: 'harriet-tubman' } };
-    render(<SchoolSheet id="vernon" state={state} onClose={() => {}} />);
+    render(<SchoolSheet id="vernon" state={state} onClose={() => {}} middleSchool="harriet-tubman" />);
     expect(factValue('K-5 seats').textContent).toBe('564');
     expect(factValue('Capacity as K-8').textContent).toBe('579');
     expect(screen.getByRole('button', { name: '564' }).getAttribute('data-source')).toBe('model.gradeSpan');
@@ -90,9 +90,9 @@ describe('SchoolSheet', () => {
     );
   });
 
-  it('drops the receiver once it closes, and the K-5 line once the school closes', () => {
+  it('drops the K-5 line once the school closes', () => {
     const state = { ...FIXTURE_GAME.schools.vernon, converted: { year: 2027, to: 'harriet-tubman' } };
-    render(<SchoolSheet id="vernon" state={state} onClose={() => {}} receiverOpen={false} />);
+    render(<SchoolSheet id="vernon" state={state} onClose={() => {}} />);
     expect(screen.getByRole('button', { name: 'K-5 since 2027.' })).toBeTruthy();
     cleanup();
     render(<SchoolSheet id="vernon" state={{ ...state, open: false, closed: { year: 2028, building: 'mothball' } }} onClose={() => {}} />);

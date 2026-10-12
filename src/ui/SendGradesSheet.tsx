@@ -27,7 +27,7 @@ export function SendGradesSheet({ school, candidates, to, chip, onPick, onCommit
   return (
     <Window title={`Send ${nameOf(school)} 6–8`} onClose={onClose} class="panel sheet closesend">
       <h3 class="step-head">Send grades 6–8 to</h3>
-      <p class="note">Pick a middle school. Tap the map too.</p>
+      <p class="note">Pick one here or on the map.</p>
       {chip && (
         <div class="chip closure-chip" data-testid="conversion-chip">
           <dl>

@@ -224,8 +224,8 @@ export function familiesDecide(
       if (conversion && g >= 6) {
         next.school = null;
         next.status = 'moved';
-        // A boundary edit that moved the block sends the kid to its new zone school instead.
-        spanMovers.push({ before: h, next, region, ...(zoning.changed.middle.has(h.cell) ? {} : { target: conversion.to }) });
+        // A non-grandfathered edit that moved the block sends the kid to its new zone school instead.
+        spanMovers.push({ before: h, next, region, ...(zoning.changed.middle.get(h.cell) === false ? {} : { target: conversion.to }) });
         households.push(next);
         continue;
       }
