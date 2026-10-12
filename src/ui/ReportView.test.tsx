@@ -1,12 +1,33 @@
 import { cleanup, fireEvent, render, screen, within } from '@testing-library/preact';
 import { afterEach, describe, expect, it, vi } from 'vitest';
+import { paramInfo } from '../sources/params';
 import { FIXTURE_REPORT } from './fixtures';
-import { ReportView } from './ReportView';
+import { fmtDial, ReportView } from './ReportView';
 import { termsIn } from './terms.testing';
 
 afterEach(cleanup);
 
 describe('ReportView', () => {
+  it('counts changed model parameters, with their labels one tap away', () => {
+    render(<ReportView report={FIXTURE_REPORT} turn={1} onNext={() => {}} model={{ leaveRate: 0.02, 'closureOneTime.lo': 100_000 }} />);
+    const badge = document.querySelector('.model-changed')!;
+    expect(badge.querySelector('summary')!.textContent).toBe('Changed model: 2 parameters');
+    expect([...badge.querySelectorAll('li')].map((li) => li.textContent)).toEqual([
+      `${paramInfo('leaveRate').label}: 0.02, default 0.015`,
+      `${paramInfo('closureOneTime').label} (low): 100000, default 300000`,
+    ]);
+    cleanup();
+    render(<ReportView report={FIXTURE_REPORT} turn={1} onNext={() => {}} model={{ leaveRate: 0.02 }} />);
+    expect(document.querySelector('.model-changed summary')!.textContent).toBe('Changed model: 1 parameter');
+    cleanup();
+    render(<ReportView report={FIXTURE_REPORT} turn={1} onNext={() => {}} />);
+    expect(document.querySelector('.model-changed')).toBeNull();
+  });
+
+  it('gives Classrooms as an exact count of kids', () => {
+    expect(fmtDial('classrooms', 12_345.4)).toBe('12,345');
+  });
+
   it('sorts every kid: those in PPS now add up to Kids, and the rest left', () => {
     render(<ReportView report={FIXTURE_REPORT} turn={1} onNext={() => {}} />);
     for (const [label, n] of [

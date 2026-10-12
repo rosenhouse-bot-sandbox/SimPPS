@@ -28,4 +28,15 @@ describe('StartPicker', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Status quo 2026' }));
     expect(onPick).toHaveBeenLastCalledWith('status-quo');
   });
+
+  it('opens the model parameters and says how many changed', () => {
+    const onModel = vi.fn();
+    const { rerender } = render(<StartPicker onPick={() => {}} model={{}} onModel={onModel} />);
+    fireEvent.click(screen.getByRole('button', { name: 'Advanced: model parameters' }));
+    fireEvent.input(screen.getByLabelText('leaveRate'), { target: { value: '0.02' } });
+    expect(onModel).toHaveBeenLastCalledWith({ leaveRate: 0.02 });
+    rerender(<StartPicker onPick={() => {}} model={{ leaveRate: 0.02 }} onModel={onModel} />);
+    fireEvent.click(screen.getByRole('button', { name: 'Done' }));
+    expect(screen.getByText('This game changes 1 model parameter.')).toBeTruthy();
+  });
 });

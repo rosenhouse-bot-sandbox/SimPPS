@@ -24,13 +24,13 @@ export interface Strain {
   calmGain: number;
 }
 
-const over24 = (classSize: number) => Math.max(0, classSize - 24);
+const overBase = (classSize: number) => Math.max(0, classSize - M.baseClassSize);
 
 export function strainFor(classSize: number, lastClassSize: number, positionsCut: number): Strain {
   return {
     cuts: (positionsCut / 100) * M.trustPer100PositionsCut,
-    classes: (over24(classSize) - over24(lastClassSize)) * M.trustPerKidOver24,
-    calmGain: Math.max(0, M.trustCalmYear - over24(classSize) * M.trustPerKidOver24),
+    classes: (overBase(classSize) - overBase(lastClassSize)) * M.trustPerKidOverBase,
+    calmGain: Math.max(0, M.trustCalmYear - overBase(classSize) * M.trustPerKidOverBase),
   };
 }
 

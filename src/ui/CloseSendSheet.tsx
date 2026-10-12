@@ -1,6 +1,7 @@
 import { useState } from 'preact/hooks';
 import { fmtCount, fmtMiles, fmtMoney, fmtMoneyRange, fmtRange } from '../format';
-import { DLI_PROGRAMS, modeledRange, MOTHBALL_PER_YEAR, type ClosureChip } from '../sim';
+import { DLI_PROGRAMS, modeledRange, type ClosureChip } from '../sim';
+import { M } from '../sim/model';
 import type { BuildingFate, Closure } from '../sim/types';
 import { NEARBY, nameOf, toClosure, toggleReceiver, type Candidate, type CloseDraft } from './closeSend';
 import { Sourced } from './Sourced';
@@ -100,10 +101,10 @@ function StepHead({ title, step }: { title: GlossaryTerm; step?: number }) {
   );
 }
 
-const FATES: { id: BuildingFate; label: GlossaryTerm; cost: number }[] = [
-  { id: 'mothball', label: 'Mothball', cost: MOTHBALL_PER_YEAR },
-  { id: 'lease', label: 'Lease', cost: 0 },
-  { id: 'sell', label: 'Sell', cost: 0 },
+const FATES: { id: BuildingFate; label: GlossaryTerm; cost: () => number }[] = [
+  { id: 'mothball', label: 'Mothball', cost: () => M.mothball },
+  { id: 'lease', label: 'Lease', cost: () => 0 },
+  { id: 'sell', label: 'Sell', cost: () => 0 },
 ];
 
 interface CloseSendProps {
@@ -213,7 +214,7 @@ export function CloseSendSheet({ draft, candidates: all, chipFor, onChange, onCo
                 <span class="fate">
                   <WithMark text={f.label} t={f.label} />
                 </span>
-                <Sourced k={K.buildingFate}>{`${fmtMoney(f.cost)}/yr`}</Sourced>
+                <Sourced k={K.buildingFate}>{`${fmtMoney(f.cost())}/yr`}</Sourced>
               </label>
             ))}
           </fieldset>

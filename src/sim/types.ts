@@ -173,8 +173,12 @@ export interface Budget {
   gap: number;
   /** The draw that applies: no more than the reserves or the shortfall. */
   reserveDraw: number;
+  /** Closures' one-time costs that reserves pay, apart from the draw. */
+  oneTimeDraw?: number;
   /** June cuts: the shortfall left after the draw. */
   autoCutPositions: number;
+  /** Cut positions a surplus brings back. */
+  rehired?: number;
   /** Costs after June cuts. */
   spending: number;
   /** Reserves now, over last year's spending. */
@@ -183,7 +187,7 @@ export interface Budget {
   /** Reserves after the draw, over this year's spending. */
   reservesAfter: number;
   reservePctAfterDraw: number;
-  /** Winter cuts forced when reserves after the draw fall below 3%. */
+  /** Winter cuts forced when reserves after the draw fall below M.midYearFloor. */
   midYearCuts: number;
 }
 
@@ -203,6 +207,8 @@ export interface Dials {
   trust: number;
   /** K-5 kids per K-5 homeroom at open schools. */
   k5Class: number;
+  /** K-5 kids at two-section schools without blending, and grade 6-8 kids in large middle grades. */
+  classrooms: number;
 }
 
 export interface SeasonEvent {
@@ -320,8 +326,13 @@ export interface SchoolChoice {
   cum: number[];
 }
 
+/** Model parameters changed from their defaults, by name; a range's ends as "name.lo" and "name.hi". */
+export type ModelOverrides = Record<string, number>;
+
 export interface SimMemory {
   seedHash: number;
+  /** The game's changed model parameters. */
+  model?: ModelOverrides;
   nextId: number;
   /** Per elementary zone: where its K-5 PPS kids go. */
   kChoice: SchoolChoice[];

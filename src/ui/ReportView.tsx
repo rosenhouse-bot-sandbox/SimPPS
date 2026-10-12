@@ -1,6 +1,8 @@
 import type { ComponentChildren } from 'preact';
-import type { ClosureOutcome, ConversionOutcome, Dials, ElectionOutcome, Flows, ProgramMoveOutcome, Range, RezoneOutcome, YearReport } from '../sim/types';
+import type { ClosureOutcome, ConversionOutcome, Dials, ElectionOutcome, Flows, ModelOverrides, ProgramMoveOutcome, Range, RezoneOutcome, YearReport } from '../sim/types';
 import { RevealSheet } from './RevealSheet';
+import { defaultValue } from '../sim/model';
+import { paramInfo } from '../sources/params';
 import { fmtMoney, fmtPct, fmtRange } from '../format';
 import { nameOf } from './closeSend';
 import { Sourced } from './Sourced';
@@ -37,6 +39,7 @@ const DIAL_TERMS: Record<keyof Dials, GlossaryTerm> = {
   newBusRiders: 'New bus riders',
   trust: 'Trust',
   k5Class: 'Avg K-5 class',
+  classrooms: 'Classrooms',
 };
 
 const SHORT: Partial<Record<keyof Dials, string>> = { kindergartenCapture: 'K capture' };
@@ -200,11 +203,30 @@ interface ReportProps {
   onNext: () => void;
   /** K-5 walkers before and after a year with boundary edits. */
   walk?: { before: number; after: number };
+  /** The game's changed model parameters. */
+  model?: ModelOverrides;
 }
 
-export function ReportView({ report, turn, onNext, walk }: ReportProps) {
+const RANGE_END: Record<string, string> = { lo: ' (low)', hi: ' (high)' };
+
+function paramName(path: string): string {
+  return paramInfo(path).label + (RANGE_END[path.split('.')[1]] ?? '');
+}
+
+export function ReportView({ report, turn, onNext, walk, model = {} }: ReportProps) {
+  const changed = Object.entries(model);
   return (
     <Window title={`DEC ${report.year} · YEAR ${turn}`} class="panel report">
+      {changed.length > 0 && (
+        <details class="badge model-changed">
+          <summary>{`Changed model: ${changed.length} parameter${changed.length === 1 ? '' : 's'}`}</summary>
+          <ul>
+            {changed.map(([path, v]) => (
+              <li key={path}>{`${paramName(path)}: ${v}, default ${defaultValue(path)}`}</li>
+            ))}
+          </ul>
+        </details>
+      )}
       <h3>
         <Term t="Where kids went" />
       </h3>
