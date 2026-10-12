@@ -41,7 +41,7 @@ const facts: YearFacts = {
   grandfathered: 'none',
   rezoned: { kids: 0, zoneSchool: 0, otherPps: 0, left: 0 },
   election: null,
-  trust: { before: 35, after: 37, fell: [], strain: 0 },
+  trust: { before: 35, after: 37, fell: [], strain: { cuts: 0, classes: 0, calmGain: 2 } },
 };
 
 const dials: Dials = {
@@ -168,19 +168,23 @@ describe('trust', () => {
   const event = (trust: YearFacts['trust']) => seasonEvents({ ...facts, trust }).find((e) => e.sourceKey === 'model.trust')!;
 
   it('says in winter where trust fell, by region only', () => {
-    expect(event({ before: 35, after: 18.4, fell: ['Southwest', 'North'], strain: 0 })).toEqual({
+    expect(event({ before: 35, after: 18.4, fell: ['Southwest', 'North'], strain: { cuts: 0, classes: 0, calmGain: 2 } })).toEqual({
       season: 'winter',
       title: 'Family trust falls to 18',
       detail: 'Closures and second moves cost trust in Southwest and North.',
       sourceKey: 'model.trust',
     });
-    expect(event({ before: 35, after: 37, fell: [], strain: 0.3 })).toMatchObject({ title: 'Family trust rises to 37', detail: 'No forced moves cost trust.' });
+    expect(event({ before: 35, after: 37, fell: [], strain: { cuts: 0.3, classes: 0, calmGain: 2 } })).toMatchObject({ title: 'Family trust rises to 37', detail: 'No forced moves cost trust.' });
   });
 
-  it('says what cuts and class sizes cost every region', () => {
-    expect(event({ before: 35, after: 33, fell: [], strain: 3.6 }).detail).toBe('Cuts and class sizes cost every region 4 points.');
-    expect(event({ before: 35, after: 20, fell: ['North'], strain: 1.2 }).detail).toBe(
-      'Cuts and class sizes cost every region 1 point. Closures and second moves cost more in North.',
+  it('names only the causes present', () => {
+    const detail = (strain: YearFacts['trust']['strain'], fell: string[] = []) => event({ before: 35, after: 30, fell, strain }).detail;
+    expect(detail({ cuts: 3.6, classes: 0, calmGain: 2 })).toBe('Cuts cost every region 4 points.');
+    expect(detail({ cuts: 0, classes: 1, calmGain: 1 })).toBe('A larger K-5 class size costs every region 1 point. K-5 classes above 24 hold back the calm-year gain.');
+    expect(detail({ cuts: 0, classes: 0, calmGain: 0 })).toBe('K-5 classes above 24 hold back the calm-year gain.');
+    expect(detail({ cuts: 0, classes: -2, calmGain: 2 })).toBe('A smaller K-5 class size wins back 2 points in every region.');
+    expect(detail({ cuts: 1.2, classes: 0, calmGain: 2 }, ['North'])).toBe(
+      'Cuts cost every region 1 point. Closures and second moves cost trust in North.',
     );
   });
 

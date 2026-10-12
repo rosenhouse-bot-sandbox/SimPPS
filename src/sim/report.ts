@@ -105,16 +105,24 @@ function electionEvent(e: ElectionOutcome): SeasonEvent {
   return { season: e.when === 'may' ? 'spring' : 'winter', title, detail, sourceKey: 'model.election' };
 }
 
+const points = (n: number) => `${n} point${n === 1 ? '' : 's'}`;
+
 /** Names regions only. */
 function trustEvent({ before, after, fell, strain }: YearFacts['trust']): SeasonEvent {
   const to = Math.round(after);
-  const points = Math.round(strain);
-  const strained = points > 0 ? `Cuts and class sizes cost every region ${points} point${points === 1 ? '' : 's'}.` : '';
-  const forced = fell.length ? `Closures and second moves cost ${strained ? 'more' : 'trust'} in ${list(fell)}.` : '';
+  const cuts = Math.round(strain.cuts);
+  const classes = Math.round(strain.classes);
+  const causes = [
+    cuts > 0 && `Cuts cost every region ${points(cuts)}.`,
+    classes > 0 && `A larger K-5 class size costs every region ${points(classes)}.`,
+    classes < 0 && `A smaller K-5 class size wins back ${points(-classes)} in every region.`,
+    strain.calmGain < M.trustCalmYear && 'K-5 classes above 24 hold back the calm-year gain.',
+    fell.length > 0 && `Closures and second moves cost trust in ${list(fell)}.`,
+  ].filter(Boolean);
   return {
     season: 'winter',
     title: to === Math.round(before) ? `Family trust holds at ${to}` : `Family trust ${after < before ? 'falls' : 'rises'} to ${to}`,
-    detail: [strained, forced].filter(Boolean).join(' ') || 'No forced moves cost trust.',
+    detail: causes.join(' ') || 'No forced moves cost trust.',
     sourceKey: 'model.trust',
   };
 }
