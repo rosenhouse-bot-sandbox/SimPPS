@@ -4,3 +4,5 @@ max_retries = 3
 accept = [200, 429]
 cache = true
 max_cache_age = "1d"
+# Substack rejects requests from GitHub runners.
+exclude = ['^https://[^/]+\.substack\.com/']
