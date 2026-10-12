@@ -5,22 +5,34 @@ import type { Closure, SchoolState } from '../sim/types';
 import { nameOf } from './closeSend';
 import { closureText } from './edits';
 import { fmtCount, fmtMoney, fmtPct, fmtRange } from '../format';
+import type { GlossaryTerm } from './glossary';
 import { Sourced } from './Sourced';
 import { K } from './sources';
+import { Term } from './Term';
 import { Window } from './Window';
 
-function Row({ label, children }: { label: string; children: ComponentChildren }) {
+function Row({ label, children }: { label: GlossaryTerm; children: ComponentChildren }) {
   return (
     <div class="row fact">
-      <dt>{label}</dt>
+      <dt>
+        <Term t={label} />
+      </dt>
       <dd>{children}</dd>
     </div>
   );
 }
 
-function Fact({ label, column, value }: { label: string; column: string; value: string | null }) {
+function Fact({ label, column, value }: { label: GlossaryTerm; column: string; value: string | null }) {
   return (
-    <Row label={label}>{value === null ? '—' : <Sourced k={`field.${column}`}>{value}</Sourced>}</Row>
+    <Row label={label}>
+      {value === null ? (
+        '—'
+      ) : (
+        <Sourced k={`field.${column}`} term={label}>
+          {value}
+        </Sourced>
+      )}
+    </Row>
   );
 }
 
@@ -28,7 +40,7 @@ function orNull<T>(v: T | null, f: (v: T) => string): string | null {
   return v === null ? null : f(v);
 }
 
-export function schoolFacts(s: SchoolData) {
+export function schoolFacts(s: SchoolData): { label: GlossaryTerm; column: string; value: string | null }[] {
   return [
     { label: 'Enrolled 25-26', column: 'enrollment_2025_26', value: orNull(s.enrollment, fmtCount) },
     { label: 'Capacity', column: 'functional_capacity_model', value: orNull(s.capacity, fmtCount) },
@@ -102,16 +114,18 @@ export function SchoolSheet({ id, state, onClose, onCloseSend, closing, receives
       </dl>
       {state?.open && (
         <>
-          <h3>Simulated</h3>
+          <h3>
+            <Term t="Simulated" />
+          </h3>
           <dl>
             <Row label="Enrollment">
-              <Sourced k={K.enrollment}>{fmtRange(modeledRange(state.enrollment))}</Sourced>
+              <Sourced k={K.enrollment} term="Enrollment">{fmtRange(modeledRange(state.enrollment))}</Sourced>
             </Row>
             <Row label="Homerooms">
-              <Sourced k={K.homerooms}>{fmtRange(modeledRange(state.homerooms))}</Sourced>
+              <Sourced k={K.homerooms} term="Homerooms">{fmtRange(modeledRange(state.homerooms))}</Sourced>
             </Row>
             <Row label="Blended">
-              <Sourced k={K.blended}>{fmtRange(modeledRange(state.blendedHomerooms))}</Sourced>
+              <Sourced k={K.blended} term="Blended">{fmtRange(modeledRange(state.blendedHomerooms))}</Sourced>
             </Row>
           </dl>
         </>

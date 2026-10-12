@@ -18,7 +18,7 @@ describe('ReportView', () => {
       ['To high school', '3,100~'],
     ]) {
       const row = screen.getByText(label).closest('.flow') as HTMLElement;
-      expect(within(row).getByRole('button').textContent).toBe(n);
+      expect(row.querySelector('[data-source]')!.textContent).toBe(n);
     }
   });
 
@@ -98,8 +98,8 @@ describe('ReportView', () => {
     const where = screen.getByRole('region', { name: 'Where re-zoned kids went' });
     expect(where.textContent).toContain('Re-zoned, 45–55~ kids:');
     const row = (label: string) => screen.getByText(label).closest('.flow') as HTMLElement;
-    expect(within(row('New zone school')).getByRole('button').textContent).toBe('40–48~');
-    expect(within(row('Other PPS school')).getByRole('button').textContent).toBe('1–5~');
+    expect(row('New zone school').querySelector('[data-source]')!.textContent).toBe('40–48~');
+    expect(row('Other PPS school').querySelector('[data-source]')!.textContent).toBe('1–5~');
     expect(within(where).getAllByText('Left PPS')).toHaveLength(1);
     const sources = [...where.querySelectorAll('[data-source]')].map((e) => e.getAttribute('data-source'));
     expect(sources).toEqual(['model.sliceStay', 'model.sliceStay', 'model.nonFollowers', 'model.nonFollowers']);

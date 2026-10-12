@@ -128,7 +128,7 @@ test('closes Peninsula into Rosa Parks and reports where the kids went', async (
   expect(await sheet.evaluate((e) => e.scrollWidth <= e.clientWidth)).toBe(true);
   for (let i = 0; i < 4; i++) await step.tap();
   await shot(page, 'm2-call-it');
-  await sheet.getByRole('button', { name: 'Call it' }).tap();
+  await sheet.getByRole('button', { name: 'Call it', exact: true }).tap();
   await expect(sheet).toBeHidden();
 
   await hold(page, page.getByRole('button', { name: 'End year (press and hold)' }));
@@ -316,3 +316,38 @@ for (const width of [900, 1024, 1440]) {
     });
   });
 }
+
+test('defines jargon on a phone', async ({ page }) => {
+  await page.goto('?seed=p52&start=status-quo');
+  await page.getByRole('button', { name: 'What is Capture?' }).tap();
+  await expect(page.getByRole('dialog', { name: 'Capture' })).toContainText('share of K-8 kids');
+  await page.getByRole('dialog', { name: 'Capture' }).getByRole('button', { name: 'Close' }).tap();
+
+  await page.getByRole('button', { name: 'Plan' }).tap();
+  await page.getByRole('button', { name: 'Rosa Parks Elementary School' }).tap();
+  const urm = (await page.getByRole('button', { name: 'What is URM?' }).boundingBox())!;
+  await page.touchscreen.tap(urm.x + urm.width / 2, urm.y + urm.height / 2 - 20);
+  const dialog = page.getByRole('dialog', { name: 'URM' });
+  await expect(dialog).toContainText('Unreinforced masonry');
+  await expect(dialog).toBeInViewport();
+  await shot(page, 'glossary-phone');
+});
+
+test.describe('on a desktop', () => {
+  test.use({ viewport: { width: 1280, height: 800 }, isMobile: false, hasTouch: false });
+
+  test('spells out the dials and defines them', async ({ page }) => {
+    await page.goto('?seed=p52&start=status-quo');
+    const topbar = page.locator('.topbar');
+    await expect(topbar).toContainText(/Capture \d/);
+    await expect(topbar).toContainText(/Reserves \d/);
+    await page.getByRole('button', { name: 'What is Reserves?' }).click();
+    await expect(page.getByRole('dialog', { name: 'Reserves' })).toContainText('floor of 5%');
+    await page.keyboard.press('Escape');
+    await page.locator('.topbar [data-source="dial.trust"]').click();
+    const trust = page.getByRole('dialog', { name: 'Trust' });
+    await expect(trust.locator('.definition')).toContainText('from 0 to 100');
+    await expect(trust).toContainText('[M] model assumption');
+    await shot(page, 'glossary-desktop');
+  });
+});

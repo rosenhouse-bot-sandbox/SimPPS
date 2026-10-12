@@ -266,6 +266,73 @@ dl {
   vertical-align: top;
 }
 
+/* Positioned so a later button's hit area stacks above an earlier one's. */
+.sourced,
+.term {
+  position: relative;
+}
+
+/* A glossary label: the term with a small "?" that opens its definition. */
+.term {
+  padding: 0;
+  border: 0;
+  background: none;
+  font: inherit;
+  color: inherit;
+  text-align: left;
+  cursor: help;
+}
+
+.term::after {
+  content: '?';
+  display: inline-block;
+  width: 14px;
+  height: 14px;
+  margin-left: 3px;
+  border: 1px solid currentColor;
+  border-radius: 50%;
+  font: 600 10px/12px var(--body);
+  text-align: center;
+  vertical-align: 2px;
+  opacity: 0.6;
+}
+
+.term:hover::after {
+  opacity: 1;
+}
+
+/* A phone's top bar has no room for the marks, so its labels underline like its values. */
+@media (max-width: 899px) {
+  .topbar .term {
+    text-decoration: underline dotted var(--chrome-dim) 1px;
+    text-underline-offset: 3px;
+  }
+
+  .topbar .term::after {
+    content: none;
+  }
+}
+
+/* A tap target of at least 44 by 44 px that doesn't push the layout around. */
+.term::before {
+  content: '';
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: max(100%, 44px);
+  height: max(100%, 44px);
+  transform: translate(-50%, -50%);
+}
+
+.definition {
+  font-size: 17px;
+}
+
+.definition:not(:only-child) {
+  padding-bottom: 12px;
+  border-bottom: 1px solid var(--line);
+}
+
 /* The pixel font's "~" reads like an "N". */
 .tilde {
   font-family: var(--body);

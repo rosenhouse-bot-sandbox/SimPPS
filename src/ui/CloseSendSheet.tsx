@@ -6,7 +6,9 @@ import type { BuildingFate, Closure } from '../sim/types';
 import { NEARBY, nameOf, toClosure, toggleReceiver, type Candidate, type CloseDraft } from './closeSend';
 import { Sourced } from './Sourced';
 import { K } from './sources';
+import type { GlossaryTerm } from './glossary';
 import { Stepper } from './Stepper';
+import { Term } from './Term';
 import { Window } from './Window';
 
 function Seats({ kids, capacity }: { kids: number; capacity: number }) {
@@ -23,37 +25,46 @@ export function ClosureChipView({ chip }: { chip: ClosureChip }) {
     <div class="chip closure-chip" data-testid="closure-chip">
       <dl>
         <div>
-          <dt>Seats</dt>
+          <dt>
+            <Term t="Seats" />
+          </dt>
           <dd class="num">
             <Seats {...chip.seats} />
           </dd>
         </div>
         <div>
-          <dt>Walk</dt>
+          <dt>
+            <Term t="Walk" />
+          </dt>
           <dd class="num">
-            <Sourced k={K.closureWalk}>{`${fmtMiles(chip.walkMiles, true)}~`}</Sourced>
-          </dd>
-        </div>
-        <div>
-          <dt>Now</dt>
-          <dd class="num">
-            <Sourced k={K.closureOneTime}>{fmtMoneyRange(chip.now)}</Sourced>
+            <Sourced k={K.closureWalk} term="Walk">{`${fmtMiles(chip.walkMiles, true)}~`}</Sourced>
           </dd>
         </div>
         <div>
           <dt>
-            At maturity, <Sourced k={K.closurePhasing}>{String(chip.maturesIn)}</Sourced>
+            <Term t="Now" />
           </dt>
           <dd class="num">
-            <Sourced k={K.closureSavings}>{fmtMoneyRange(chip.atMaturity)}</Sourced>
+            <Sourced k={K.closureOneTime} term="Now">{fmtMoneyRange(chip.now)}</Sourced>
+          </dd>
+        </div>
+        <div>
+          <dt>
+            <Term t="At maturity" />, <Sourced k={K.closurePhasing}>{String(chip.maturesIn)}</Sourced>
+          </dt>
+          <dd class="num">
+            <Sourced k={K.closureSavings} term="At maturity">
+              {fmtMoneyRange(chip.atMaturity)}
+            </Sourced>
           </dd>
         </div>
       </dl>
       <p class="pays">
-        Pays off if fewer than <Sourced k={K.paysOff}>{`${fmtCount(chip.paysOffIfFewerThan)}~`}</Sourced> leave PPS
+        <Term t="Pays off" /> if fewer than <Sourced k={K.paysOff} term="Pays off">{`${fmtCount(chip.paysOffIfFewerThan)}~`}</Sourced> leave PPS
         {chip.busRiders > 0 && (
           <>
-            . <Sourced k={K.busing}>{`${fmtCount(chip.busRiders)}~`}</Sourced> new bus riders
+            . <Sourced k={K.busing} term="New bus riders">{`${fmtCount(chip.busRiders)}~`}</Sourced>{' '}
+            <Term t="New bus riders">new bus riders</Term>
           </>
         )}
       </p>
@@ -76,16 +87,16 @@ function Pick({ c, picked, onToggle }: { c: Candidate; picked: boolean; onToggle
   );
 }
 
-function StepHead({ title, step }: { title: string; step?: number }) {
+function StepHead({ title, step }: { title: GlossaryTerm; step?: number }) {
   return (
     <h3 class="step-head">
-      {title}
+      <Term t={title} />
       {step && <span class="steps">{step} of 3</span>}
     </h3>
   );
 }
 
-const FATES: { id: BuildingFate; label: string; cost: number }[] = [
+const FATES: { id: BuildingFate; label: GlossaryTerm; cost: number }[] = [
   { id: 'mothball', label: 'Mothball', cost: MOTHBALL_PER_YEAR },
   { id: 'lease', label: 'Lease', cost: 0 },
   { id: 'sell', label: 'Sell', cost: 0 },
@@ -121,7 +132,7 @@ export function CloseSendSheet({ draft, candidates: all, chipFor, onChange, onCo
           <p class="note">Pick 1 or 2. Tap the map too.</p>
           {dli && (
             <p class="note">
-              <Sourced k="field.dli_languages" text>{`Its ${dli} dual-language (DLI) program: moves are not modeled yet.`}</Sourced>
+              <Sourced k="field.dli_languages" term="DLI" text>{`Its ${dli} dual-language (DLI) program: moves are not modeled yet.`}</Sourced>
             </p>
           )}
           <ul class="picks">
@@ -150,6 +161,7 @@ export function CloseSendSheet({ draft, candidates: all, chipFor, onChange, onCo
               <Stepper
                 label={picked[0].name}
                 sourceKey={K.share}
+                term="Shares"
                 value={draft.firstShare}
                 min={10}
                 max={90}
@@ -159,13 +171,15 @@ export function CloseSendSheet({ draft, candidates: all, chipFor, onChange, onCo
               />
               <div class="row share">
                 <span>{picked[1].name}</span>
-                <Sourced k={K.share}>{`${100 - draft.firstShare}%`}</Sourced>
+                <Sourced k={K.share} term="Shares">{`${100 - draft.firstShare}%`}</Sourced>
               </div>
             </>
           ) : (
             <div class="row share">
               <span>{picked[0].name}</span>
-              <Sourced k={K.share}>100%</Sourced>
+              <Sourced k={K.share} term="Shares">
+                100%
+              </Sourced>
             </div>
           )}
           <ClosureChipView chip={chip} />
@@ -193,6 +207,7 @@ export function CloseSendSheet({ draft, candidates: all, chipFor, onChange, onCo
                   onChange={() => onChange({ ...draft, building: f.id })}
                 />
                 <span class="fate">{f.label}</span>
+                <Term t={f.label} icon />
                 <Sourced k={K.buildingFate}>{`${fmtMoney(f.cost)}/yr`}</Sourced>
               </label>
             ))}
@@ -232,6 +247,7 @@ export function CloseSendSheet({ draft, candidates: all, chipFor, onChange, onCo
           <Stepper
             label="Stay in PPS"
             sourceKey={K.callIt}
+            term="Call it"
             value={guess ?? draft.guess ?? chip.kidsMoving}
             min={0}
             max={chip.kidsMoving}

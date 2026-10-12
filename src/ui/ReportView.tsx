@@ -1,12 +1,15 @@
+import type { ComponentChildren } from 'preact';
 import type { ClosureOutcome, Dials, ElectionOutcome, Flows, Range, RezoneOutcome, YearReport } from '../sim/types';
 import { RevealSheet } from './RevealSheet';
 import { fmtMoney, fmtPct, fmtRange } from '../format';
 import { nameOf } from './closeSend';
 import { Sourced } from './Sourced';
 import { K } from './sources';
+import type { GlossaryTerm } from './glossary';
+import { Term } from './Term';
 import { Window } from './Window';
 
-type FlowRow = { label: string; n: (f: Flows) => number; k: string; total?: boolean };
+type FlowRow = { label: GlossaryTerm; n: (f: Flows) => number; k: string; total?: boolean };
 
 const IN_PPS: FlowRow[] = [
   { label: 'Stayed', n: (f) => f.stayed, k: K.flows },
@@ -22,10 +25,10 @@ const FLOW_ROWS: FlowRow[] = [
   { label: 'To high school', n: (f) => f.graduated, k: K.graduates },
 ];
 
-const DIAL_NAMES: Record<keyof Dials, string> = {
+const DIAL_TERMS: Record<keyof Dials, GlossaryTerm> = {
   kids: 'Kids',
   capture: 'Capture',
-  kindergartenCapture: 'K capture',
+  kindergartenCapture: 'Kindergarten capture',
   gap: 'Gap',
   positionsCut: 'Positions cut',
   reservePct: 'Reserves',
@@ -35,6 +38,10 @@ const DIAL_NAMES: Record<keyof Dials, string> = {
   trust: 'Trust',
   k5Class: 'Avg K-5 class',
 };
+
+function DialName({ dial }: { dial: keyof Dials }) {
+  return <Term t={DIAL_TERMS[dial]}>{dial === 'kindergartenCapture' ? 'K capture' : undefined}</Term>;
+}
 
 function exact(n: number): string {
   return Math.round(n).toLocaleString('en-US');
@@ -53,7 +60,9 @@ function WhereKidsWent({ flows }: { flows: Flows }) {
     <dl class="flows">
       {FLOW_ROWS.map((r) => (
         <div key={r.label} class={r.total ? 'flow total' : 'flow'}>
-          <dt>{r.label}</dt>
+          <dt>
+            <Term t={r.label} />
+          </dt>
           <dd>
             <span class="bar" style={{ width: `${(100 * r.n(flows)) / max}%` }} />
             <Sourced k={r.k} modeled>
@@ -66,7 +75,7 @@ function WhereKidsWent({ flows }: { flows: Flows }) {
   );
 }
 
-function OutcomeRow({ label, kids, of, k }: { label: string; kids: Range; of: number; k: string }) {
+function OutcomeRow({ label, kids, of, k }: { label: ComponentChildren; kids: Range; of: number; k: string }) {
   return (
     <div class="flow">
       <dt>{label}</dt>
@@ -89,8 +98,8 @@ function ClosureReport({ c }: { c: ClosureOutcome }) {
         {c.receivers.map((r) => (
           <OutcomeRow key={r.school} label={nameOf(r.school)} kids={r.kids} of={of} k={K.followRate} />
         ))}
-        <OutcomeRow label="Other PPS" kids={c.otherPps} of={of} k={K.nonFollowers} />
-        <OutcomeRow label="Left PPS" kids={c.leftPps} of={of} k={K.nonFollowers} />
+        <OutcomeRow label={<Term t="Other PPS" />} kids={c.otherPps} of={of} k={K.nonFollowers} />
+        <OutcomeRow label={<Term t="Left PPS" />} kids={c.leftPps} of={of} k={K.nonFollowers} />
       </dl>
       {c.guess && (
         <p class={c.guess.hit ? 'call hit' : 'call'}>
@@ -111,8 +120,8 @@ function RezoneReport({ r }: { r: RezoneOutcome }) {
       </p>
       <dl class="flows">
         <OutcomeRow label="New zone school" kids={r.zoneSchool} of={of} k={K.sliceStay} />
-        <OutcomeRow label="Other PPS school" kids={r.otherPps} of={of} k={K.nonFollowers} />
-        <OutcomeRow label="Left PPS" kids={r.leftPps} of={of} k={K.nonFollowers} />
+        <OutcomeRow label={<Term t="Other PPS">Other PPS school</Term>} kids={r.otherPps} of={of} k={K.nonFollowers} />
+        <OutcomeRow label={<Term t="Left PPS" />} kids={r.leftPps} of={of} k={K.nonFollowers} />
       </dl>
     </section>
   );
@@ -134,7 +143,9 @@ function VoteRow({ who, e }: { who: string; e: ElectionOutcome }) {
 function LevyVote({ you, ghost }: { you?: ElectionOutcome; ghost?: ElectionOutcome }) {
   return (
     <section class="levy-vote" aria-label="Levy vote">
-      <h3>Levy vote</h3>
+      <h3>
+        <Term t="Levy vote" />
+      </h3>
       <ul class="ghost">
         {you ? <VoteRow who="You" e={you} /> : <li>You had no levy vote this year.</li>}
         {ghost && <VoteRow who="Ghost" e={ghost} />}
@@ -157,25 +168,29 @@ interface ReportProps {
 export function ReportView({ report, turn, onNext, walk }: ReportProps) {
   return (
     <Window title={`DEC ${report.year} · YEAR ${turn}`} class="panel report">
-      <h3>Where kids went</h3>
+      <h3>
+        <Term t="Where kids went" />
+      </h3>
       {report.closures.map((c) => (
         <ClosureReport key={c.school} c={c} />
       ))}
       {report.rezoned && <RezoneReport r={report.rezoned} />}
       {walk && (
         <p>
-          {DIAL_NAMES.walkK5}{' '}
+          <DialName dial="walkK5" />{' '}
           <Sourced k={K.walkK5} modeled>{`${exact(walk.before)} → ${exact(walk.after)}`}</Sourced>
         </p>
       )}
       <WhereKidsWent flows={report.flows} />
       {(report.election || report.ghostElection) && <LevyVote you={report.election} ghost={report.ghostElection} />}
-      <h3>Vs. do-nothing ghost</h3>
+      <h3>
+        Vs. <Term t="Do-nothing ghost">do-nothing ghost</Term>
+      </h3>
       {report.vsGhost.length === 0 && <p class="note">No difference yet.</p>}
       <ul class="ghost">
         {report.vsGhost.filter((g, i) => i < 3 || ALWAYS.includes(g.dial)).map((g) => (
           <li key={g.dial}>
-            <span aria-label={g.better ? 'better' : 'worse'}>{g.better ? '▲' : '▼'}</span> {DIAL_NAMES[g.dial]}{' '}
+            <span aria-label={g.better ? 'better' : 'worse'}>{g.better ? '▲' : '▼'}</span> <DialName dial={g.dial} />{' '}
             <Sourced k={K.ghost} modeled>
               {`${fmtDial(g.dial, g.you)} vs ${fmtDial(g.dial, g.ghost)}`}
             </Sourced>
@@ -184,7 +199,7 @@ export function ReportView({ report, turn, onNext, walk }: ReportProps) {
       </ul>
       <section class="bulletin" aria-label="The Bulletin">
         <h3>
-          <Sourced k={K.bulletin}>The Bulletin</Sourced> <span class="stamp">SIMULATION</span>
+          <Term t="The Bulletin" /> <span class="stamp">SIMULATION</span>
         </h3>
         <ul>
           {report.headlines.slice(0, 3).map((h) => (

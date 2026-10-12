@@ -4,6 +4,7 @@ import { BoundaryChipView } from './BoundaryChip';
 import { nameOf } from './closeSend';
 import { Stepper } from './Stepper';
 import { K } from './sources';
+import { Term } from './Term';
 import { startZoneDraft, undoStroke, type ZoneDraft } from './zoneEdit';
 import { Window } from './Window';
 
@@ -41,6 +42,7 @@ export function ZoneSheet({ draft, edit, chip, targetsFor, sources, onChange, on
     <label class="row choice">
       <input type="checkbox" checked={draft.grandfather} onChange={() => onChange({ ...draft, grandfather: !draft.grandfather })} />
       <span>Grandfather current kids</span>
+      <Term t="Grandfather" icon />
     </label>
   );
   const body = chip && (
@@ -63,7 +65,9 @@ export function ZoneSheet({ draft, edit, chip, targetsFor, sources, onChange, on
     <Window title={`Zone: ${nameOf(draft.to)}`} onClose={onClose} class="panel sheet zonesheet">
       {slice ? (
         <>
-          <p class="slice-says">{`Move the ${slice.percent}% of ${nameOf(slice.from)} nearest ${nameOf(draft.to)}`}</p>
+          <p class="slice-says">
+            {`Move the ${slice.percent}% of ${nameOf(slice.from)} nearest ${nameOf(draft.to)}`}<Term t="Slice" icon />
+          </p>
           <Stepper
             label="Share"
             labelNode={
@@ -99,6 +103,7 @@ export function ZoneSheet({ draft, edit, chip, targetsFor, sources, onChange, on
       ) : (
         <>
           <div class="row levels" role="group" aria-label="Level">
+            <Term t="Zone" />
             {LEVELS.map((l) => (
               <button key={l.id} type="button" class="btn" aria-pressed={draft.level === l.id} onClick={() => pickLevel(l.id)}>
                 {l.label}

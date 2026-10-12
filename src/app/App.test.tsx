@@ -568,7 +568,7 @@ describe('App', () => {
       const { next, report } = realSim.endYear(start, { ...start.policy, boundaryEdits: [edit] });
       const where = screen.getByRole('region', { name: 'Where re-zoned kids went' });
       expect(where.textContent).toContain(fmtRange(report.rezoned!.zoneSchool));
-      expect(screen.getByText(/K-5 walkers/).textContent).toContain(`${next.dials.walkK5.toLocaleString('en-US')}`);
+      expect(screen.getByText(/K-5 walkers/).closest('p')!.textContent).toContain(`${next.dials.walkK5.toLocaleString('en-US')}`);
     });
 
     it('offers no closure of a school that blocks re-zone into in the plan', () => {

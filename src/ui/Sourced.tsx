@@ -3,6 +3,7 @@ import { createPortal } from 'preact/compat';
 import { useContext, useEffect, useRef, useState } from 'preact/hooks';
 import { FIRST_YEAR } from '../sim';
 import { getSource, type HiddenCard, type Source, type SourceTag } from '../sources/registry';
+import { define, type GlossaryTerm } from './glossary';
 import './sources';
 import { trapTab } from './Window';
 
@@ -32,10 +33,12 @@ interface SourcedProps {
   modeled?: boolean;
   /** Sets a sentence in the surrounding font instead of the number font. */
   text?: boolean;
+  /** The glossary term the value belongs to. Its definition tops the pop-over. */
+  term?: GlossaryTerm;
   children: ComponentChildren;
 }
 
-export function Sourced({ k, modeled, text, children }: SourcedProps) {
+export function Sourced({ k, modeled, text, term, children }: SourcedProps) {
   const [open, setOpen] = useState(false);
   const button = useRef<HTMLButtonElement>(null);
   const cls = ['sourced', modeled && 'modeled', text && 'text'].filter(Boolean).join(' ');
@@ -45,11 +48,11 @@ export function Sourced({ k, modeled, text, children }: SourcedProps) {
   };
   return (
     <>
-      <button ref={button} type="button" class={cls} data-source={k} onClick={() => setOpen(true)}>
+      <button ref={button} type="button" class={cls} data-source={k} data-term={term} onClick={() => setOpen(true)}>
         {typeof children === 'string' && children.endsWith('~') ? withTilde(children.slice(0, -1)) : children}
         {modeled ? <span class="tilde">~</span> : null}
       </button>
-      {open && createPortal(<SourcePopover k={k} onClose={close} />, document.body)}
+      {open && createPortal(<SourcePopover k={k} term={term} onClose={close} />, document.body)}
     </>
   );
 }
@@ -63,9 +66,7 @@ function withTilde(text: string) {
   );
 }
 
-export function SourcePopover({ k, onClose }: { k: string; onClose: () => void }) {
-  const source = getSource(k);
-  const revealed = useContext(Revealed);
+export function Popover({ title, onClose, children }: { title: string; onClose: () => void; children: ComponentChildren }) {
   const closeButton = useRef<HTMLButtonElement>(null);
   useEffect(() => closeButton.current?.focus(), []);
   useEffect(() => {
@@ -75,23 +76,27 @@ export function SourcePopover({ k, onClose }: { k: string; onClose: () => void }
   }, [onClose]);
   return (
     <div class="scrim" onClick={onClose}>
-      <div
-        class="window popover"
-        role="dialog"
-        aria-modal="true"
-        aria-label={source?.label ?? k}
-        onClick={(e) => e.stopPropagation()}
-        onKeyDown={trapTab}
-      >
+      <div class="window popover" role="dialog" aria-modal="true" aria-label={title} onClick={(e) => e.stopPropagation()} onKeyDown={trapTab}>
         <div class="titlebar">
-          <span>{source?.label ?? k}</span>
+          <span>{title}</span>
           <button ref={closeButton} type="button" class="close" aria-label="Close" onClick={onClose}>
             ×
           </button>
         </div>
-        <div class="window-body">{source ? <SourceBody source={source} drawn={revealed[source.key]} /> : <p>No source yet for “{k}”.</p>}</div>
+        <div class="window-body">{children}</div>
       </div>
     </div>
+  );
+}
+
+export function SourcePopover({ k, term, onClose }: { k: string; term?: GlossaryTerm; onClose: () => void }) {
+  const source = getSource(k);
+  const revealed = useContext(Revealed);
+  return (
+    <Popover title={source?.label ?? k} onClose={onClose}>
+      {term && <p class="definition">{define(term)}</p>}
+      {source ? <SourceBody source={source} drawn={revealed[source.key]} /> : <p>No source yet for “{k}”.</p>}
+    </Popover>
   );
 }
 

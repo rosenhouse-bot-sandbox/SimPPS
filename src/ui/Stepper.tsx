@@ -1,5 +1,6 @@
 import type { ComponentChildren } from 'preact';
 import { clamp } from '../clamp';
+import type { GlossaryTerm } from './glossary';
 import { Sourced } from './Sourced';
 
 interface StepperProps {
@@ -7,6 +8,8 @@ interface StepperProps {
   /** Replaces the plain label, e.g. with a sourced one. */
   labelNode?: ComponentChildren;
   sourceKey?: string;
+  /** The glossary term the value belongs to. */
+  term?: GlossaryTerm;
   value: number;
   min: number;
   max: number;
@@ -22,7 +25,7 @@ function tidy(n: number): number {
   return Math.round(n * 1e6) / 1e6;
 }
 
-export function Stepper({ label, labelNode, sourceKey, value, min, max, step, anchor = min, format, onChange }: StepperProps) {
+export function Stepper({ label, labelNode, sourceKey, term, value, min, max, step, anchor = min, format, onChange }: StepperProps) {
   const k = (value - anchor) / step;
   const set = (n: number) => {
     const next = clamp(tidy(n), min, max);
@@ -37,7 +40,9 @@ export function Stepper({ label, labelNode, sourceKey, value, min, max, step, an
       <button type="button" class="step" aria-label={`Less ${label}`} disabled={value <= min} onClick={down}>
         −
       </button>
-      <output class="num stepper-value">{sourceKey ? <Sourced k={sourceKey}>{shown}</Sourced> : shown}</output>
+      <output class="num stepper-value">{sourceKey ? <Sourced k={sourceKey} term={term}>
+          {shown}
+        </Sourced> : shown}</output>
       <button type="button" class="step" aria-label={`More ${label}`} disabled={value >= max} onClick={up}>
         +
       </button>

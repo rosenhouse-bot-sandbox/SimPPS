@@ -1,6 +1,7 @@
 import type { Reveal } from '../sim/types';
 import { getSource } from '../sources/registry';
 import { drawnLabel, TAG_NAMES } from './Sourced';
+import { Term } from './Term';
 
 const W = 320;
 const BASE = 112;
@@ -28,7 +29,9 @@ export function RevealSheet({ reveal }: { reveal: Reveal }) {
   const bar = Math.min(56, slot * 0.6);
   return (
     <section class="reveal" aria-label={`Revealed: ${source.label}`}>
-      <h3>Hidden card: {source.label}</h3>
+      <h3>
+        <Term t="Hidden card" />: {source.label}
+      </h3>
       <svg class="histogram" viewBox={`0 0 ${W} 136`} role="img" aria-label={summary}>
         <line class="baseline" x1="0" x2={W} y1={BASE} y2={BASE} />
         {card.outcomes.map((o, i) => {
