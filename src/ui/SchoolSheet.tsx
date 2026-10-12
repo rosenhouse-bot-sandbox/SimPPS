@@ -5,22 +5,36 @@ import type { Closure, GradeSpanChange, SchoolId, SchoolState } from '../sim/typ
 import { nameOf } from './closeSend';
 import { closureText, gradeSpanText } from './edits';
 import { fmtCount, fmtMoney, fmtPct, fmtRange } from '../format';
+import { isTerm, type GlossaryTerm, type PlainLabel } from './glossary';
 import { Sourced } from './Sourced';
 import { K } from './sources';
+import { Label, Term } from './Term';
 import { Window } from './Window';
 
-function Row({ label, children }: { label: string; children: ComponentChildren }) {
+function Row({ label, children }: { label: GlossaryTerm | PlainLabel; children: ComponentChildren }) {
   return (
     <div class="row fact">
-      <dt>{label}</dt>
+      <dt>
+        <Label t={label} />
+      </dt>
       <dd>{children}</dd>
     </div>
   );
 }
 
-function Fact({ label, column, value }: { label: string; column: string; value: string | null }) {
+type FactData = { label: GlossaryTerm | PlainLabel; column: string; value: string | null };
+
+function Fact({ label, column, value }: FactData) {
   return (
-    <Row label={label}>{value === null ? '—' : <Sourced k={`field.${column}`}>{value}</Sourced>}</Row>
+    <Row label={label}>
+      {value === null ? (
+        '—'
+      ) : (
+        <Sourced k={`field.${column}`} term={isTerm(label) ? label : undefined}>
+          {value}
+        </Sourced>
+      )}
+    </Row>
   );
 }
 
@@ -29,7 +43,7 @@ function orNull<T>(v: T | null, f: (v: T) => string): string | null {
 }
 
 /** A converted school's capacity fact is its K-8 one; the simulated K-5 seats show apart. */
-export function schoolFacts(s: SchoolData, converted = false) {
+export function schoolFacts(s: SchoolData, converted = false): FactData[] {
   return [
     { label: 'Enrolled 25-26', column: 'enrollment_2025_26', value: orNull(s.enrollment, fmtCount) },
     { label: converted ? 'Capacity as K-8' : 'Capacity', column: 'functional_capacity_model', value: orNull(s.capacity, fmtCount) },
@@ -147,10 +161,12 @@ export function SchoolSheet({
       </dl>
       {state?.open && (
         <>
-          <h3>Simulated</h3>
+          <h3>
+            <Term t="Simulated" />
+          </h3>
           <dl>
             <Row label="Enrollment">
-              <Sourced k={K.enrollment}>{fmtRange(modeledRange(state.enrollment))}</Sourced>
+              <Sourced k={K.enrollment} term="Enrollment">{fmtRange(modeledRange(state.enrollment))}</Sourced>
             </Row>
             {state.converted && (
               <Row label="K-5 seats">
@@ -158,10 +174,10 @@ export function SchoolSheet({
               </Row>
             )}
             <Row label="Homerooms">
-              <Sourced k={K.homerooms}>{fmtRange(modeledRange(state.homerooms))}</Sourced>
+              <Sourced k={K.homerooms} term="Homerooms">{fmtRange(modeledRange(state.homerooms))}</Sourced>
             </Row>
             <Row label="Blended">
-              <Sourced k={K.blended}>{fmtRange(modeledRange(state.blendedHomerooms))}</Sourced>
+              <Sourced k={K.blended} term="Blended">{fmtRange(modeledRange(state.blendedHomerooms))}</Sourced>
             </Row>
           </dl>
         </>

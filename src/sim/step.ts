@@ -12,7 +12,7 @@ import { buildSchools, computeDials } from './schools';
 import { decideRezoned, plannedRiders, planZoning, projectRiders, type RezoneMover, type RezoneTally } from './boundaries';
 import { defaultZones, homesByCell, nextZone, zoningYear, type ZoningYear } from './zones';
 import { effectiveGradeChanges, shutTo, topGrade, type ConversionTally } from './gradeSpan';
-import { expectedYes, levyAfter, levyBallot, levyRateFor, voteYes } from './election';
+import { expectedYes, levyAfter, levyBallot, levyRateFor, passes, voteYes } from './election';
 import { meanTrust, strainFor, trustAfterYear, type Strain, type Trust } from './trust';
 import type {
   Ballot,
@@ -326,7 +326,7 @@ export function stepYear(state: GameState, policy: Policy): { next: GameState; f
   const ballot = levyBallot(mem.levy, year, policy);
   const vote = (b: Ballot, trust: Trust, households: Household[]): ElectionOutcome => {
     const yes = voteYes(mem.seedHash, year, b.when, expectedYes(b, mem.levy.failures, meanTrust(trust, households)));
-    return { ...b, yes, passed: yes >= 0.5 };
+    return { ...b, yes, passed: passes(yes) };
   };
   const may = ballot?.when === 'may' ? vote(ballot, mem.trust, state.households) : null;
 

@@ -128,7 +128,7 @@ test('closes Peninsula into Rosa Parks and reports where the kids went', async (
   expect(await sheet.evaluate((e) => e.scrollWidth <= e.clientWidth)).toBe(true);
   for (let i = 0; i < 4; i++) await step.tap();
   await shot(page, 'm2-call-it');
-  await sheet.getByRole('button', { name: 'Call it' }).tap();
+  await sheet.getByRole('button', { name: 'Call it', exact: true }).tap();
   await expect(sheet).toBeHidden();
 
   await hold(page, page.getByRole('button', { name: 'End year (press and hold)' }));
@@ -343,3 +343,52 @@ for (const width of [900, 1024, 1440]) {
     });
   });
 }
+
+test('defines jargon on a phone', async ({ page }) => {
+  await page.goto('?seed=p52&start=status-quo');
+  await page.locator('.topbar').getByRole('button', { name: /^Cap \d/ }).tap();
+  const capture = page.getByRole('dialog', { name: 'Capture' });
+  await expect(capture.locator('.definition')).toContainText('share of K-8 kids');
+  await expect(capture).toContainText('[M] model assumption');
+  await capture.getByRole('button', { name: 'Close' }).tap();
+
+  await page.getByRole('button', { name: 'Plan' }).tap();
+  await page.getByRole('button', { name: 'Rosa Parks Elementary School' }).tap();
+  const urm = (await page.getByRole('button', { name: 'What is URM?' }).boundingBox())!;
+  await page.touchscreen.tap(urm.x + urm.width / 2, urm.y + urm.height / 2 - 20);
+  const dialog = page.getByRole('dialog', { name: 'URM' });
+  await expect(dialog).toContainText('Unreinforced masonry');
+  await expect(dialog).toBeInViewport();
+  await shot(page, 'glossary-phone');
+  await dialog.getByRole('button', { name: 'Close' }).tap();
+
+  await page.getByRole('button', { name: 'Edit boundary' }).tap();
+  const grandfather = page.getByRole('checkbox', { name: /Grandfather/ });
+  const text = (await page.getByText('Grandfather current').boundingBox())!;
+  const mark = (await page.getByRole('button', { name: 'What is Grandfather?' }).boundingBox())!;
+  for (const x of [text.x + 4, mark.x - 15]) {
+    const before = await grandfather.isChecked();
+    await page.touchscreen.tap(x, text.y + text.height / 2);
+    await expect(grandfather).toBeChecked({ checked: !before });
+  }
+  await expect(page.getByRole('dialog')).toHaveCount(0);
+});
+
+test.describe('on a desktop', () => {
+  test.use({ viewport: { width: 1280, height: 800 }, isMobile: false, hasTouch: false });
+
+  test('spells out the dials and defines them', async ({ page }) => {
+    await page.goto('?seed=p52&start=status-quo');
+    const topbar = page.locator('.topbar');
+    await expect(topbar).toContainText(/Capture \d/);
+    await expect(topbar).toContainText(/Reserves \d/);
+    await page.getByRole('button', { name: 'What is Reserves?' }).click();
+    await expect(page.getByRole('dialog', { name: 'Reserves' })).toContainText('at least 5%');
+    await page.keyboard.press('Escape');
+    await page.locator('.topbar [data-source="dial.trust"]').click();
+    const trust = page.getByRole('dialog', { name: 'Trust' });
+    await expect(trust.locator('.definition')).toContainText('from 0 to 100');
+    await expect(trust).toContainText('[M] model assumption');
+    await shot(page, 'glossary-desktop');
+  });
+});

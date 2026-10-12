@@ -41,6 +41,11 @@ export function voteYes(seedHash: number, year: number, when: ElectionMonth, exp
   return clamp(expected + (2 * u - 1) * M.yesNoise, 0, 1);
 }
 
+/** Oregon passes a measure when yes votes outnumber no votes. */
+export function passes(yes: number): boolean {
+  return yes > 0.5;
+}
+
 /**
  * The levy rate funding the school year from fall `year`. `mayPassed` is null before the May vote,
  * when a May measure is booked as passing.
