@@ -1,3 +1,5 @@
+import { fmtMoney } from '../format';
+import { M } from '../sim/model';
 import { dialSourceKey } from '../sources/model';
 import { registerSources, type Source } from '../sources/registry';
 
@@ -103,7 +105,10 @@ const UI_SOURCES: Source[] = [
     key: K.paysOff,
     label: 'Pays off if',
     tag: 'I',
-    explain: 'The yearly saving at maturity over the revenue one kid brings, $7–13K by need. More leavers than this and lost revenue cancels the saving.',
+    get explain() {
+      const k = (n: number) => fmtMoney(n);
+      return `The yearly saving at maturity over the revenue one kid brings, ${k(M.revenueBase)}–${k(M.revenueBase + M.revenuePoverty)} by need. More leavers than this and lost revenue cancels the saving.`;
+    },
     links: [],
   },
   {

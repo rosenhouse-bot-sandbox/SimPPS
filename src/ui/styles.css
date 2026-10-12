@@ -827,6 +827,101 @@ legend {
   color: var(--accent);
 }
 
+/* Advanced model parameters: name and value on one line, the note under them. */
+.panel.model-params {
+  top: 4px;
+}
+
+.model-params .actions {
+  align-items: center;
+}
+
+.params {
+  list-style: none;
+  padding: 0;
+  max-width: none;
+}
+
+.param {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  align-items: center;
+  gap: 2px 8px;
+  padding: 6px 0 6px 8px;
+  border-bottom: 1px solid var(--line);
+  border-left: 3px solid transparent;
+}
+
+.param.changed {
+  border-left-color: var(--accent);
+  background: var(--accent-soft);
+}
+
+.param-name {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.param-tag {
+  color: var(--muted);
+}
+
+.param-value {
+  width: 10ch;
+  min-height: var(--step);
+  padding: 0 6px;
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+}
+
+input.param-value {
+  border: 1px solid var(--line-strong);
+  border-radius: 6px;
+  background: var(--surface);
+}
+
+span.param-value {
+  width: auto;
+  display: flex;
+  align-items: center;
+}
+
+.param.changed input.param-value {
+  font-weight: 700;
+}
+
+.param input[aria-invalid='true'] {
+  border-color: var(--warn);
+}
+
+.param .note,
+.param-error {
+  grid-column: 1 / -1;
+  margin: 0;
+  font-size: 14px;
+}
+
+.param-error {
+  color: var(--warn);
+}
+
+.model-changed {
+  margin-bottom: 8px;
+}
+
+.model-changed summary {
+  cursor: pointer;
+}
+
+.model-changed[open] {
+  max-width: none;
+}
+
+.model-changed ul {
+  margin: 4px 0 0;
+  padding-left: 18px;
+}
+
 /* Step buttons stay in view while the sheet scrolls. */
 .closesend .actions,
 .zonesheet .actions,

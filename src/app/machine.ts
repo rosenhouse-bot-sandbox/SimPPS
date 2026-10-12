@@ -1,10 +1,10 @@
 import type { BallotPreview, BoundaryChip, ClosureChip, ConversionChip, Start } from '../sim';
-import type { BoundaryEdit, Budget, Closure, GameState, GradeSpanChange, Household, Policy, ProgramMove, SchoolId, SchoolState, Season, YearReport, ZoneLevel, ZoneMap } from '../sim/types';
+import type { BoundaryEdit, Budget, Closure, GameState, GradeSpanChange, Household, ModelOverrides, Policy, ProgramMove, SchoolId, SchoolState, Season, YearReport, ZoneLevel, ZoneMap } from '../sim/types';
 
 export type Phase = 'plan' | 'preflight' | 'playing' | 'report';
 
 export interface Sim {
-  newGame(opts: { seed: string; start?: Start }): GameState;
+  newGame(opts: { seed: string; start?: Start; model?: ModelOverrides }): GameState;
   endYear(state: GameState, policy: Policy): { next: GameState; report: YearReport };
   previewBudget(state: GameState, policy: Policy): Budget;
   normalizePolicy(policy: Policy): Policy;
@@ -69,7 +69,7 @@ export type Action =
   | { type: 'confirm' }
   | { type: 'playbackDone' }
   | { type: 'nextYear' }
-  | { type: 'restart'; start: Start };
+  | { type: 'restart'; start: Start; model?: ModelOverrides };
 
 /** A reserve draw is once, so each plan starts with none. */
 function draftFor(game: GameState): Policy {
@@ -77,8 +77,8 @@ function draftFor(game: GameState): Policy {
 }
 
 /** A new game, or one replayed through the `saved` plans to the January after them. */
-export function initApp(sim: Sim, seed: string, start: Start = 'status-quo', saved: Policy[] = []): AppState {
-  let game = sim.newGame({ seed, start });
+export function initApp(sim: Sim, seed: string, start: Start = 'status-quo', saved: Policy[] = [], model?: ModelOverrides): AppState {
+  let game = sim.newGame({ seed, start, model });
   const history: Turn[] = [];
   for (const policy of saved) {
     const { next, report } = sim.endYear(game, policy);
@@ -125,7 +125,7 @@ export function makeReducer(sim: Sim) {
         return { ...s, phase: 'plan', game: turn.end, draft: draftFor(turn.end) };
       }
       case 'restart':
-        return initApp(sim, s.game.seed, a.start);
+        return initApp(sim, s.game.seed, a.start, [], a.model);
     }
   };
 }

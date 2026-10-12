@@ -2,21 +2,23 @@ import { render } from 'preact';
 import '@fontsource/vt323/400.css';
 import './ui/styles.css';
 import { App } from './app/App';
-import { readUrl, writeUrl } from './app/url';
+import { readModel, readUrl, writeUrl } from './app/url';
 import * as sim from './sim';
-import type { Policy } from './sim/types';
+import type { ModelOverrides, Policy } from './sim/types';
 
 const url = readUrl(location.search);
 const seed = url.seed ?? Math.random().toString(36).slice(2, 8);
 let start = url.start;
-const keep = (s: sim.Start | null) => {
+let model = readModel(location.search);
+const keep = (s: sim.Start | null, m: ModelOverrides) => {
   start = s;
-  history.replaceState(null, '', writeUrl(location.search, seed, s));
+  model = m;
+  history.replaceState(null, '', writeUrl(location.search, seed, s, m));
 };
-keep(url.start);
+keep(url.start, model);
 
-/** Played plans survive a reload, by seed and start. Storage can be missing, so every access may fail. */
-const key = () => `simpps:${seed}:${start}`;
+/** Played plans survive a reload, by seed, start and changed model. Storage can be missing, so every access may fail. */
+const key = () => `simpps:${seed}:${start}${Object.keys(model).length ? `:${JSON.stringify(model)}` : ''}`;
 function load(): Policy[] {
   try {
     return start ? (JSON.parse(localStorage.getItem(key()) ?? '[]') as Policy[]) : [];
@@ -40,7 +42,7 @@ const root = document.getElementById('app')!;
 root.replaceChildren();
 function mount(saved: Policy[]) {
   render(
-    <App sim={sim} seed={seed} start={start} saved={saved} onStart={keep} onSave={save} onNewGame={newGame} />,
+    <App sim={sim} seed={seed} start={start} model={model} saved={saved} onStart={keep} onSave={save} onNewGame={newGame} />,
     root,
   );
 }

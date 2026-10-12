@@ -57,7 +57,7 @@ export function stateWeight(school: SchoolId): number {
 }
 
 /** State dollars per student at fall 2025's mix of schools. */
-export const STATE_PER_STUDENT = (() => {
+export function statePerStudent(): number {
   let kids = 0;
   let dollars = 0;
   for (const s of SCHOOLS) {
@@ -65,7 +65,7 @@ export const STATE_PER_STUDENT = (() => {
     dollars += (s.enrollment ?? 0) * revenuePerStudent(s.pctDirectCert ?? 0);
   }
   return dollars / kids;
-})();
+}
 
 /** Draw key for the state funding card, apart from the household dice. */
 const STATE_FUNDING_DRAW = 20;
@@ -97,11 +97,6 @@ export function levyRevenue(rate: number): number {
 
 export function costIndex(year: number): number {
   return (1 + M.costGrowth) ** (year - FIRST_YEAR);
-}
-
-/** The general fund for the school year starting in fall `year`; $862.1M in 2026-27. */
-export function generalFund(year: number): number {
-  return M.generalFund * costIndex(year + 1);
 }
 
 export const MEDIAN_SQFT = (() => {
@@ -136,7 +131,7 @@ export interface BudgetInput {
 }
 
 /** model.closureOneTime: the budget books the middle of the range. */
-export const CLOSURE_ONE_TIME = (M.closureOneTime.lo + M.closureOneTime.hi) / 2;
+const closureOneTime = () => (M.closureOneTime.lo + M.closureOneTime.hi) / 2;
 
 /** model.closurePhasing: the share of the saving not yet realized `yearsIn` years after a closure. */
 function unrealized(yearsIn: number): number {
@@ -162,7 +157,7 @@ export function computeBudget(input: BudgetInput): Budget {
     staff += otherStaff(s.enrollment);
     plant += (info.data.squareFeet ?? MEDIAN_SQFT) * M.plantPerSqft;
   }
-  const stateCard = (input.stateFunding - 1) * (state + M.otherStudents * STATE_PER_STUDENT);
+  const stateCard = (input.stateFunding - 1) * (state + M.otherStudents * statePerStudent());
   const lines: BudgetLine[] = [
     { key: 'stateK8', label: 'State school fund, K-8', amount: state, sourceKey: 'model.revenuePerStudent' },
     { key: 'stateFunding', label: 'State funding over 2025-27', amount: stateCard, sourceKey: 'model.stateFunding' },
@@ -184,8 +179,9 @@ export function computeBudget(input: BudgetInput): Budget {
   const closed = input.closed.filter((c) => input.year > c.year);
   const closing = effectiveClosures(input.schools, input.policy.closures).length;
   const repaid = busReimbursement(input.busingLastYear ?? 0);
+  const oneTime = closing * closureOneTime() * index;
   const optional: [string, string, number, string][] = [
-    ['closureOneTime', 'Closures, once', -closing * CLOSURE_ONE_TIME * index, 'model.closureOneTime'],
+    ['closureOneTime', 'Closures, once', -oneTime, 'model.closureOneTime'],
     [
       'closurePhasing',
       'Closure savings not yet realized',
@@ -208,20 +204,30 @@ export function computeBudget(input: BudgetInput): Budget {
   const revenue = state + stateCard + levyRevenue(input.levyRate) + input.restRevenue + repaid;
   const position = M.positionCost * index;
   const reserveDraw = clamp(input.policy.reserveDraw, 0, Math.min(input.reserves, Math.max(0, -gap)));
-  const autoCutPositions = Math.ceil(Math.max(0, -gap - reserveDraw) / position);
-  const spending = revenue - gap - autoCutPositions * position;
-  const reservesAfter = input.reserves - reserveDraw + Math.max(0, gap);
+  const oneTimeDraw = Math.max(0, Math.min(M.oneTimeFromReserves * oneTime, input.reserves - reserveDraw, -gap - reserveDraw));
+  const autoCutPositions = Math.ceil(Math.max(0, -gap - reserveDraw - oneTimeDraw) / position);
+  // model.surplus
+  const surplus = Math.max(0, gap);
+  const kept = input.reserves - reserveDraw - oneTimeDraw + surplus;
+  const before = revenue - gap - autoCutPositions * position;
+  // Rehires leave reserves at the policy share of the spending they add to.
+  const aboveFloor = Math.max(0, (kept - M.reservePolicy * before) / (1 + M.reservePolicy));
+  const rehired = Math.min(input.cumulativeCuts, Math.floor(Math.min(surplus * M.surplusRehire, aboveFloor) / position));
+  const spending = before + rehired * position;
+  const reservesAfter = kept - rehired * position;
   const floor = M.midYearFloor * spending;
   return {
     lines,
     gap,
     reserveDraw,
+    oneTimeDraw,
     autoCutPositions,
+    rehired,
     spending,
     reserves: input.reserves,
     reservePct: input.reserves / input.priorSpending,
     reservesAfter,
     reservePctAfterDraw: reservesAfter / spending,
-    midYearCuts: reservesAfter < floor ? Math.ceil((floor - reservesAfter) / (position / 2)) : 0,
+    midYearCuts: reservesAfter < floor ? Math.ceil((floor - reservesAfter) / (position * M.midYearPayShare)) : 0,
   };
 }
