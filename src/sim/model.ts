@@ -111,6 +111,10 @@ export const M = {
   crowdingLine: 1.1,
   // model.sliceStay: the chance a kid re-zoned off its school goes to the new zone school
   sliceStay: 0.97,
+  // model.gradeSpan
+  conversionStay: 0.95,
+  /** A K-5 room seats 24 and a middle-grade room 26, and a third of a K-8's rooms held grades 6-8. */
+  conversionCapacity: (6 + (3 * 24) / 26) / 9,
   // model.walkLimit
   walkLimitK5: 1,
   walkLimitMiddle: 1.5,

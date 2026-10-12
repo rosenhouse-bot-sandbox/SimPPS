@@ -1,6 +1,6 @@
 import { fmtMoney } from '../format';
 import { FATE_DONE } from '../sim';
-import type { BoundaryEdit, Closure, Policy } from '../sim/types';
+import type { BoundaryEdit, Closure, GradeSpanChange, Policy } from '../sim/types';
 import { nameOf } from './closeSend';
 import { K } from './sources';
 
@@ -21,6 +21,10 @@ export function boundaryText(e: BoundaryEdit): string {
   return `Rezone ${blocks} → ${nameOf(e.to)}${e.level === 'middle' ? ' 6-8' : ''}${e.grandfather ? ' · grandfathered' : ''}`;
 }
 
+export function gradeSpanText(g: GradeSpanChange): string {
+  return `Send ${nameOf(g.school)} 6–8 → ${nameOf(g.to)}`;
+}
+
 export function fmtLevy(rate: number): string {
   return rate === 0 ? 'lapse' : `$${rate.toFixed(2)}`;
 }
@@ -32,6 +36,8 @@ export function listEdits(draft: Policy, base: Policy): EditLine[] {
     sourceKey: K.closureSavings,
     undo: { closures: draft.closures.filter((x) => x !== c) },
   }));
+  for (const g of draft.gradeChanges)
+    out.push({ text: gradeSpanText(g), sourceKey: K.gradeSpan, undo: { gradeChanges: draft.gradeChanges.filter((x) => x !== g) } });
   for (const e of draft.boundaryEdits)
     out.push({ text: boundaryText(e), sourceKey: K.zoneGrid, undo: { boundaryEdits: draft.boundaryEdits.filter((x) => x !== e) } });
   if (draft.k5ClassSize !== base.k5ClassSize)

@@ -1,4 +1,4 @@
-import type { ClosureOutcome, Dials, ElectionOutcome, Flows, Range, RezoneOutcome, YearReport } from '../sim/types';
+import type { ClosureOutcome, ConversionOutcome, Dials, ElectionOutcome, Flows, Range, RezoneOutcome, YearReport } from '../sim/types';
 import { RevealSheet } from './RevealSheet';
 import { fmtMoney, fmtPct, fmtRange } from '../format';
 import { nameOf } from './closeSend';
@@ -102,6 +102,23 @@ function ClosureReport({ c }: { c: ClosureOutcome }) {
   );
 }
 
+function ConversionReport({ c }: { c: ConversionOutcome }) {
+  const of = (c.kids.lo + c.kids.hi) / 2;
+  const name = `${nameOf(c.school)} 6–8`;
+  return (
+    <section class="closure-report" aria-label={`Where ${name} went`}>
+      <p>
+        {name}, <Sourced k={K.gradeSpan}>{fmtRange(c.kids)}</Sourced> kids:
+      </p>
+      <dl class="flows">
+        <OutcomeRow label={nameOf(c.to)} kids={c.receiver} of={of} k={K.gradeSpan} />
+        <OutcomeRow label="Other PPS" kids={c.otherPps} of={of} k={K.nonFollowers} />
+        <OutcomeRow label="Left PPS" kids={c.leftPps} of={of} k={K.nonFollowers} />
+      </dl>
+    </section>
+  );
+}
+
 function RezoneReport({ r }: { r: RezoneOutcome }) {
   const of = (r.kids.lo + r.kids.hi) / 2;
   return (
@@ -160,6 +177,9 @@ export function ReportView({ report, turn, onNext, walk }: ReportProps) {
       <h3>Where kids went</h3>
       {report.closures.map((c) => (
         <ClosureReport key={c.school} c={c} />
+      ))}
+      {report.conversions.map((c) => (
+        <ConversionReport key={c.school} c={c} />
       ))}
       {report.rezoned && <RezoneReport r={report.rezoned} />}
       {walk && (

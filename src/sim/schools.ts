@@ -1,8 +1,8 @@
 import { classesFor, cutCreep, stateWeight } from './budget';
-import { gradeOf, MAX_GRADE } from './model';
+import { gradeOf, M, MAX_GRADE } from './model';
 import { SCHOOL_INFO } from './population';
 import { newBusRiders, walkK5 } from './walk';
-import type { ClosedSchool, Dials, GameState, Household, SchoolState } from './types';
+import type { ClosedSchool, ConvertedSchool, Dials, GameState, Household, SchoolState } from './types';
 
 /** Each school's kids and homerooms. Cuts remove `homeroomsCut` homerooms across schools. */
 export function buildSchools(
@@ -10,6 +10,7 @@ export function buildSchools(
   classSize: number,
   homeroomsCut = 0,
   closed: ClosedSchool[] = [],
+  converted: ConvertedSchool[] = [],
 ): Record<string, SchoolState> {
   const schools: Record<string, SchoolState> = {};
   for (const [id, info] of SCHOOL_INFO)
@@ -27,6 +28,11 @@ export function buildSchools(
   // High schoolers at a closed school move to neighborhood high schools, outside the simulation.
   for (const c of closed)
     Object.assign(schools[c.school], { open: false, enrollment: 0, stateRevenue: 0, closed: { year: c.year, building: c.building } });
+  // model.gradeSpan
+  for (const c of converted) {
+    const s = schools[c.school];
+    Object.assign(s, { capacity: s.capacity * M.conversionCapacity, converted: { year: c.year, to: c.to } });
+  }
   for (const h of households) {
     if (h.school === null) continue;
     const s = schools[h.school];

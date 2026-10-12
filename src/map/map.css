@@ -69,6 +69,11 @@
   stroke: #e66101;
 }
 
+.pps-map-mark-converting {
+  stroke: #e66101;
+  stroke-dasharray: 6 2;
+}
+
 .pps-map-mark-receiver {
   stroke: #9fd8ff;
 }

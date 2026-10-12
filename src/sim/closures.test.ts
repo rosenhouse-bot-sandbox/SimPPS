@@ -353,7 +353,8 @@ describe('Close & send over the years', () => {
 describe('Scenario A over a year', () => {
   const start = newGame({ seed: 'scenario', start: 'scenario-a' });
   const { next, report } = endYear(start, start.policy);
-  const movers = next.households.filter((h) => h.movedFrom);
+  const closing = new Set(start.policy.closures.map((c) => c.school));
+  const movers = next.households.filter((h) => h.movedFrom && closing.has(h.movedFrom));
 
   it('sends each follower who lives in the closed zone to the receiver its block went to', () => {
     const before = new Map(start.households.map((h) => [h.id, h]));

@@ -199,6 +199,33 @@ test('slices 30% of Peninsula into Rosa Parks and reports the re-zoned kids', as
   await shot(page, 'm3-report');
 });
 
+test('sends Beverly Cleary 6–8 to Beaumont and reports where they went', async ({ page }) => {
+  test.setTimeout(90_000);
+  await page.goto('?seed=p52&start=status-quo');
+  await page.getByRole('button', { name: 'Plan' }).tap();
+  await page.getByRole('button', { name: 'Beverly Cleary School' }).tap();
+  await page.getByRole('button', { name: 'Send 6–8 to…' }).tap();
+  const sheet = page.getByRole('region', { name: 'Send Beverly Cleary 6–8' });
+  await expect(page.locator('[data-mark="candidate"]')).toHaveCount(5);
+  await sheet.getByRole('button', { name: /Beaumont/ }).tap();
+  await expect(page.locator('[data-link="beverly-cleary>beaumont"]')).toHaveCount(1);
+  await expect(page.getByTestId('conversion-chip')).toContainText('6th and 7th graders must choose');
+  expect(await sheet.evaluate((e) => e.scrollWidth <= e.clientWidth)).toBe(true);
+  await shot(page, 'grade-span-sheet');
+  await sheet.getByRole('button', { name: 'Send 6–8' }).tap();
+  await expect(page.getByText('In the plan:')).toContainText('Send Beverly Cleary 6–8 → Beaumont');
+  await shot(page, 'grade-span-plan');
+
+  await hold(page, page.getByRole('button', { name: 'End year (press and hold)' }));
+  await expect(page.getByRole('dialog', { name: 'Play 2027-28?' })).toContainText('Send Beverly Cleary 6–8 → Beaumont');
+  await hold(page, page.getByRole('button', { name: 'Play the year (press and hold)' }));
+  await page.getByTestId('playback').getByRole('button', { name: 'Skip' }).tap();
+
+  const where = page.getByRole('region', { name: 'Where Beverly Cleary 6–8 went' });
+  for (const row of ['Beaumont', 'Other PPS', 'Left PPS']) await expect(where).toContainText(row);
+  await shot(page, 'grade-span-report');
+});
+
 async function playYear(page: Page, year: number) {
   await hold(page, page.getByRole('button', { name: 'End year (press and hold)' }));
   await hold(page, page.getByRole('button', { name: 'Play the year (press and hold)' }));

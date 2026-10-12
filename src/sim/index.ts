@@ -11,6 +11,7 @@ import { closureChip as chipFor, closureOutcomes, effectiveClosures, normalizeCl
 import { closureRiders, plannedRiders, planZoning } from './boundaries';
 import { defaultZones, normalizeBoundaryEdits } from './zones';
 import { SCENARIOS, type Start } from './scenarios';
+import { conversionOutcomes, effectiveGradeChanges, normalizeGradeChanges } from './gradeSpan';
 import { familiesDecide, stepYear } from './step';
 import type { Ballot, Budget, Closure, GameState, Household, Policy, Range, Reveal, SimMemory, YearReport, ZoneMap } from './types';
 
@@ -18,6 +19,7 @@ export * from './types';
 export { modeledRange } from './range';
 export { FIRST_YEAR, legislatureVotes, levyRevenue } from './budget';
 export { canClose, receiverCandidates, type ClosureChip } from './closures';
+export { canConvert, conversionChip, middleSchoolCandidates, type ConversionChip } from './gradeSpan';
 export { boundaryChip, sliceEdit, type BoundaryChip } from './boundaries';
 export {
   CELL_METERS,
@@ -40,7 +42,7 @@ export function closureChip(state: GameState, closure: Closure, plan: Closure[],
   return chipFor(state, closure, plan, classSize, closureRiders(state, closure, plan));
 }
 
-export const DEFAULT_POLICY: Policy = { k5ClassSize: 24, levyRate: 1.99, levyElection: 'may', reserveDraw: 0, closures: [], boundaryEdits: [] };
+export const DEFAULT_POLICY: Policy = { k5ClassSize: 24, levyRate: 1.99, levyElection: 'may', reserveDraw: 0, closures: [], boundaryEdits: [], gradeChanges: [] };
 
 /** A start loads its closures into the first plan as ordinary edits. */
 export function newGame(opts: { seed: string; start?: Start }): GameState {
@@ -90,6 +92,7 @@ export function newGame(opts: { seed: string; start?: Start }): GameState {
     restRevenue: total + M.startGap - revenue,
     restCost: total - cost,
     closed: [],
+    converted: [],
     busing: 0,
     levy,
     trust: startTrust(seedHash),
@@ -98,7 +101,8 @@ export function newGame(opts: { seed: string; start?: Start }): GameState {
       closedZoneCaptureDrop: CLOSED_ZONE_CAPTURE_DROPS[Math.floor(draw(seedHash, 2) * CLOSED_ZONE_CAPTURE_DROPS.length)],
     },
   };
-  const policy = { ...DEFAULT_POLICY, closures: SCENARIOS[opts.start ?? 'status-quo'].closures };
+  const { closures, gradeChanges } = SCENARIOS[opts.start ?? 'status-quo'];
+  const policy = { ...DEFAULT_POLICY, closures, gradeChanges };
   const budget = computeBudget({ ...input, policy, restRevenue: sim.restRevenue, restCost: sim.restCost });
   return {
     seed: opts.seed,
@@ -120,11 +124,13 @@ function settle(households: Household[]): Household[] {
     .map(({ leftThisYear: _, ...h }) => ({ ...h, status: h.school ? 'stayed' : 'left' }));
 }
 
-/** Clamps K-5 class size to 22-28, keeps the levy rate and reserve draw at or above zero and tidies closures and boundary edits. */
+/** Clamps K-5 class size to 22-28, keeps the levy rate and reserve draw at or above zero and tidies closures, boundary edits and grade-span changes. */
 export function normalizePolicy(p: Policy): Policy {
+  const closures = normalizeClosures(p.closures);
   return {
     ...p,
-    closures: normalizeClosures(p.closures),
+    closures,
+    gradeChanges: normalizeGradeChanges(p.gradeChanges ?? [], closures),
     boundaryEdits: normalizeBoundaryEdits(p.boundaryEdits ?? []),
     k5ClassSize: clamp(Math.round(p.k5ClassSize), 22, 28),
     levyRate: Math.max(0, p.levyRate),
@@ -137,7 +143,7 @@ export function normalizePolicy(p: Policy): Policy {
 export function previewBudget(state: GameState, policy: Policy): Budget {
   const sim = state.sim!;
   const plan = normalizePolicy(policy);
-  const planned = planZoning(state, effectiveClosures(state.schools, plan.closures), plan.boundaryEdits);
+  const planned = planZoning(state, effectiveClosures(state.schools, plan.closures), plan.boundaryEdits, effectiveGradeChanges(state.schools, plan.gradeChanges));
   return computeBudget({
     year: state.year,
     schools: state.schools,
@@ -160,7 +166,8 @@ export function previewBudget(state: GameState, policy: Policy): Budget {
 /** Each cell's zone school next fall under `policy`: its closures, then its boundary edits. */
 export function plannedZones(state: GameState, policy: Policy): ZoneMap {
   const plan = normalizePolicy(policy);
-  return planZoning(state, effectiveClosures(state.schools, plan.closures), plan.boundaryEdits).zoning.zones;
+  return planZoning(state, effectiveClosures(state.schools, plan.closures), plan.boundaryEdits, effectiveGradeChanges(state.schools, plan.gradeChanges))
+    .zoning.zones;
 }
 
 export type BallotPreview = Ballot & { poll: Range };
@@ -214,6 +221,7 @@ export function endYear(state: GameState, policy: Policy): { next: GameState; re
       headlines: headlines(mine.facts, state.dials, next.dials),
       budget: mine.facts.plan,
       closures: closureOutcomes(mine.facts.closures, mine.facts.closing),
+      conversions: conversionOutcomes(mine.facts.conversions),
       ...(mine.facts.rezoned.kids > 0 ? { rezoned: rezoneOutcome(mine.facts.rezoned) } : {}),
       ...(mine.facts.election ? { election: mine.facts.election } : {}),
       ...(ghostYear.facts.election ? { ghostElection: ghostYear.facts.election } : {}),

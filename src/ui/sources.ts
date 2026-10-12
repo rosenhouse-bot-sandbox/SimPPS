@@ -44,6 +44,7 @@ export const K = {
   zoneGrid: 'model.zoneGrid',
   households: 'model.households',
   sliceStay: 'model.sliceStay',
+  gradeSpan: 'model.gradeSpan',
   walkLimit: 'model.walkLimit',
   busing: 'model.busing',
   busReimbursement: 'model.busReimbursement',

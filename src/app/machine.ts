@@ -1,5 +1,5 @@
-import type { BallotPreview, BoundaryChip, ClosureChip, Start } from '../sim';
-import type { BoundaryEdit, Budget, Closure, GameState, Household, Policy, SchoolId, SchoolState, Season, YearReport, ZoneLevel, ZoneMap } from '../sim/types';
+import type { BallotPreview, BoundaryChip, ClosureChip, ConversionChip, Start } from '../sim';
+import type { BoundaryEdit, Budget, Closure, GameState, GradeSpanChange, Household, Policy, SchoolId, SchoolState, Season, YearReport, ZoneLevel, ZoneMap } from '../sim/types';
 
 export type Phase = 'plan' | 'preflight' | 'playing' | 'report';
 
@@ -15,6 +15,12 @@ export interface Sim {
     plan: Closure[],
   ): { id: SchoolId; miles: number; kids: number; capacity: number }[];
   closureChip(state: GameState, closure: Closure, plan: Closure[], classSize: number): ClosureChip;
+  canConvert(schools: Record<SchoolId, SchoolState>, school: SchoolId): boolean;
+  middleSchoolCandidates(
+    schools: Record<SchoolId, SchoolState>,
+    school: SchoolId,
+  ): { id: SchoolId; miles: number; kids: number; capacity: number }[];
+  conversionChip(state: GameState, change: GradeSpanChange): ConversionChip;
   plannedZones(state: GameState, policy: Policy): ZoneMap;
   sliceCells(
     state: { households: Household[]; zones: ZoneMap },

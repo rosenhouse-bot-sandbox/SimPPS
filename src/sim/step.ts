@@ -5,18 +5,20 @@ import { samplePoint } from './geo';
 import { regionOf } from './regions';
 import { cellAt, zoneGrid } from './grid';
 import { gradeOf, M, MAX_GRADE, oneKid } from './model';
-import { CITYWIDE_INTAKE, exitCapacityFor, pick, SCHOOL_INFO, voiceFor } from './population';
+import { CITYWIDE_INTAKE, exitCapacityFor, pick, voiceFor } from './population';
 import { draw, stream } from './rng';
 import { closuresTakingEffect, decideClosures, rezoneDraw, resolveSchool, type ClosureTally, type Mover } from './closures';
 import { buildSchools, computeDials } from './schools';
 import { decideRezoned, plannedRiders, planZoning, projectRiders, type RezoneMover, type RezoneTally } from './boundaries';
 import { defaultZones, homesByCell, nextZone, zoningYear, type ZoningYear } from './zones';
+import { effectiveGradeChanges, shutTo, topGrade, type ConversionTally } from './gradeSpan';
 import { expectedYes, levyAfter, levyBallot, levyRateFor, voteYes } from './election';
 import { meanTrust, trustAfterYear, type Trust } from './trust';
 import type {
   Ballot,
   Budget,
   ClosedSchool,
+  ConvertedSchool,
   ElectionOutcome,
   Flows,
   GameState,
@@ -66,6 +68,9 @@ export interface YearFacts {
   /** Closures that took effect this summer. */
   closing: ClosedSchool[];
   closures: ClosureTally[];
+  /** Grade-span changes that took effect this summer. */
+  converting: ConvertedSchool[];
+  conversions: ConversionTally[];
   /** Cells boundary edits moved this summer, by level, and how many of their edits grandfathered. */
   rezonedCells: Record<ZoneLevel, number>;
   grandfathered: 'all' | 'some' | 'none';
@@ -105,6 +110,7 @@ export interface FamilyYear {
   regions: RegionTally;
   closures: ClosureTally[];
   rezoned: RezoneTally;
+  conversions: ConversionTally[];
 }
 
 /** Closures in force this fall and the hidden cards that steer them. */
@@ -112,6 +118,8 @@ export interface ClosureYear {
   /** Every closure in force, this year's included. */
   closed: ClosedSchool[];
   cards: SimMemory['cards'];
+  /** Every grade-span change in force, this year's included. */
+  converted?: ConvertedSchool[];
 }
 
 /** Spring to fall of `year`: kindergartners choose, 8th graders leave and everyone else may move. */
@@ -128,8 +136,13 @@ export function familiesDecide(
   const closed = new Map(closures.closed.map((c) => [c.school, c]));
   const closing = closures.closed.filter((c) => c.year === year);
   const closingNow = new Set(closing.map((c) => c.school));
+  const converted = closures.converted ?? [];
+  const k5 = new Set(converted.map((c) => c.school));
+  const converting = converted.filter((c) => c.year === year);
+  const convertingNow = new Map(converting.map((c) => [c.school, c]));
+  const shut = shutTo(closed, k5);
   const resolve = (school: SchoolId, grade: number, h: Pick<Household, 'id' | 'pos'>) =>
-    closed.has(school) ? resolveSchool(closed, school, grade, h.pos, rezoneDraw(seed, h.id)) : school;
+    closed.has(school) ? resolveSchool(closed, school, grade, h.pos, rezoneDraw(seed, h.id), shut) : school;
 
   // Spring: kindergarten entrants choose.
   const households: Household[] = [];
@@ -179,6 +192,7 @@ export function familiesDecide(
   const regions: RegionTally = new Map();
   const movers: Mover[] = [];
   const rezoneMovers: RezoneMover[] = [];
+  const spanMovers: RezoneMover[] = [];
   let graduates = 0;
   for (const h of before) {
     if (h.movedAway) continue;
@@ -192,12 +206,13 @@ export function familiesDecide(
     delete next.movedAway;
     delete next.leftThisYear;
     if (next.movedFrom) delete next.movedFrom;
-    const { zone, forced } = nextZone(h, ng, zoning, closed);
+    const { zone, forced } = nextZone(h, ng, zoning, shut);
     const feeder = resolve(zone, ng, h);
     next.zoneSchool = feeder;
     if (h.school !== null) {
       const region = countKid(regions, h.pos);
-      if (closingNow.has(h.school) && ng <= SCHOOL_INFO.get(h.school)!.hi) {
+      const top = topGrade(h.school, k5);
+      if (closingNow.has(h.school) && ng <= top) {
         // Placeholders until decideClosures, so nothing else counts or picks the mover.
         next.school = null;
         next.status = 'moved';
@@ -205,7 +220,15 @@ export function familiesDecide(
         households.push(next);
         continue;
       }
-      const transition = ng > SCHOOL_INFO.get(h.school)!.hi;
+      const conversion = convertingNow.get(h.school);
+      if (conversion && g >= 6) {
+        next.school = null;
+        next.status = 'moved';
+        spanMovers.push({ before: h, next, region, target: conversion.to });
+        households.push(next);
+        continue;
+      }
+      const transition = ng > top;
       if (forced && !transition) {
         next.school = null;
         next.status = 'moved';
@@ -268,9 +291,24 @@ export function familiesDecide(
     movers,
     households,
     flows,
+    shut,
   });
-  const rezoned = decideRezoned({ seed, year, closed, movers: rezoneMovers, households, flows });
-  return { households, nextId, kResidents, kEnrolled, graduates, flows, regions, closures: closureTallies, rezoned };
+  const rezoned = decideRezoned({ seed, year, closed: shut, movers: rezoneMovers, households, flows });
+  // model.gradeSpan
+  const conversions = converting.map((c) => ({
+    school: c.school,
+    to: c.to,
+    ...decideRezoned({
+      seed,
+      year,
+      closed: shut,
+      movers: spanMovers.filter((m) => m.before.school === c.school),
+      households,
+      flows,
+      stay: M.conversionStay,
+    }),
+  }));
+  return { households, nextId, kResidents, kEnrolled, graduates, flows, regions, closures: closureTallies, rezoned, conversions };
 }
 
 export function stepYear(state: GameState, policy: Policy): { next: GameState; facts: YearFacts } {
@@ -278,7 +316,12 @@ export function stepYear(state: GameState, policy: Policy): { next: GameState; f
   const year = state.year;
   const index = costIndex(year);
   const closing = closuresTakingEffect(state.schools, policy.closures, policy.k5ClassSize, year);
-  const planned = planZoning(state, closing, policy.boundaryEdits);
+  const shutting = new Set(closing.map((c) => c.school));
+  const converting = effectiveGradeChanges(state.schools, policy.gradeChanges)
+    .filter((g) => !shutting.has(g.school) && !shutting.has(g.to))
+    .map((g) => ({ ...g, year }));
+  const converted = [...mem.converted, ...converting];
+  const planned = planZoning(state, closing, policy.boundaryEdits, converting);
   const { closed, zoning } = planned;
 
   // May: voters decide a levy measure on the spring ballot.
@@ -311,19 +354,19 @@ export function stepYear(state: GameState, policy: Policy): { next: GameState; f
   const position = M.positionCost * index;
   const classroomShare = -plan.lines.find((l) => l.key === 'homerooms')!.amount / (plan.spending + autoCuts * position);
 
-  const { households, nextId, kResidents, kEnrolled, graduates, flows, regions, closures, rezoned } = familiesDecide(
+  const { households, nextId, kResidents, kEnrolled, graduates, flows, regions, closures, rezoned, conversions } = familiesDecide(
     mem,
     state.households,
     year,
     policy.k5ClassSize,
     autoCuts,
-    { closed, cards: mem.cards },
+    { closed, cards: mem.cards, converted },
     zoning,
   );
 
   // October: classes form, short the homerooms that cuts removed.
   const octoberCut = mem.homeroomsCut + Math.round(autoCuts * classroomShare);
-  const schools = buildSchools(households, policy.k5ClassSize, octoberCut, closed);
+  const schools = buildSchools(households, policy.k5ClassSize, octoberCut, closed, converted);
   const creep = cutCreep(schools, policy.k5ClassSize, octoberCut);
   let k5Homerooms = 0;
   let blended = 0;
@@ -346,11 +389,11 @@ export function stepYear(state: GameState, policy: Policy): { next: GameState; f
   const election = may ?? november;
   const levy = levyAfter(mem.levy, year, policy, election?.passed ?? null);
 
-  const nextPolicy: Policy = { ...policy, levyRate: levy.rate, levyElection: 'may', reserveDraw: 0, closures: [], boundaryEdits: [] };
+  const nextPolicy: Policy = { ...policy, levyRate: levy.rate, levyElection: 'may', reserveDraw: 0, closures: [], boundaryEdits: [], gradeChanges: [] };
   const cumulativeCuts = mem.cumulativeCuts + autoCuts + midYearCuts;
   const spending = plan.spending - midYearSavings;
   const busing = -(plan.lines.find((l) => l.key === 'busing')?.amount ?? 0);
-  const sim = { ...mem, nextId, cumulativeCuts, homeroomsCut, spending, closed, busing, levy, trust, ghost: undefined };
+  const sim = { ...mem, nextId, cumulativeCuts, homeroomsCut, spending, closed, converted, busing, levy, trust, ghost: undefined };
   const { zones } = zoning;
   const budget = computeBudget({
     year: year + 1,
@@ -399,6 +442,8 @@ export function stepYear(state: GameState, policy: Policy): { next: GameState; f
       stateFundingGrowth: legislatureVotes(year) ? stateFundingGrowth(mem.seedHash, year) : null,
       closing,
       closures,
+      converting,
+      conversions,
       rezonedCells: { elementary: zoning.changed.elementary.size, middle: zoning.changed.middle.size },
       grandfathered: grandfathering([...zoning.changed.elementary.values(), ...zoning.changed.middle.values()]),
       rezoned,

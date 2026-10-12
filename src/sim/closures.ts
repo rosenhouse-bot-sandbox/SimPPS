@@ -6,6 +6,7 @@ import { gradeOf, M, METERS_PER_MILE } from './model';
 import { SCHOOL_INFO, type SchoolInfo } from './population';
 import { modeledRange } from './range';
 import { draw, hashString } from './rng';
+import type { Shut } from './gradeSpan';
 import type {
   ClosedSchool,
   Closure,
@@ -69,6 +70,11 @@ export function renormalize(receivers: Closure['receivers']): Closure['receivers
 /** Schools that take neighborhood kids: a zone, not a citywide program. */
 const isZoned = (i: SchoolInfo) => i.elemZone >= 0 || i.middleZone >= 0;
 const ZONED = [...SCHOOL_INFO.values()].filter(isZoned);
+
+/** The last grade a school serves, K-5 once converted. */
+function topOf(schools: Record<SchoolId, SchoolState>, school: SchoolId): number {
+  return schools[school]?.converted ? 5 : SCHOOL_INFO.get(school)!.hi;
+}
 
 /** An open school with K-8 kids. */
 export function canClose(schools: Record<SchoolId, SchoolState>, school: SchoolId): boolean {
@@ -242,7 +248,7 @@ export function closureChip(
   const after = withArrivals(schools, closure);
   const home = schoolPos(closure.school);
   const kids = state.households.filter((h) => h.school === closure.school);
-  const hi = SCHOOL_INFO.get(closure.school)!.hi;
+  const hi = topOf(state.schools, closure.school);
   let walkers = 0;
   let added = 0;
   for (const h of kids) {
@@ -283,8 +289,16 @@ export function receiverCandidates(
 ): { id: SchoolId; miles: number; kids: number; capacity: number }[] {
   const busy = new Set(plan.map((c) => c.school));
   const home = schoolPos(closing);
+  const from = SCHOOL_INFO.get(closing)!;
   return ZONED.map((i) => schools[i.data.id])
-    .filter((s) => s?.open && !busy.has(s.id) && canReceive(closing, s.id))
+    .filter(
+      (s) =>
+        s?.open &&
+        !busy.has(s.id) &&
+        canReceive(closing, s.id) &&
+        SCHOOL_INFO.get(s.id)!.lo <= topOf(schools, closing) &&
+        topOf(schools, s.id) >= from.lo,
+    )
     .map((s) => ({ id: s.id, miles: miles(home, schoolPos(s.id)), kids: s.enrollment, capacity: s.capacity }))
     .sort((a, b) => a.miles - b.miles);
 }
@@ -307,7 +321,7 @@ const D = {
 export function nearestOpen(
   pos: Point,
   grade: number,
-  closed: { has(school: SchoolId): boolean },
+  closed: Shut,
   exclude: ReadonlySet<SchoolId> = new Set(),
   counts?: ReadonlyMap<SchoolId, number>,
 ): SchoolId {
@@ -316,7 +330,7 @@ export function nearestOpen(
     let bestScore = Infinity;
     for (const i of ZONED) {
       const id = i.data.id;
-      if ((!anyGrade && (grade < i.lo || grade > i.hi)) || closed.has(id) || exclude.has(id)) continue;
+      if ((!anyGrade && (grade < i.lo || grade > i.hi)) || closed.has(id, grade) || exclude.has(id)) continue;
       const full = counts !== undefined && (counts.get(id) ?? 0) >= (i.data.capacity ?? 0);
       const score = miles(pos, [i.data.x, i.data.y]) + (full ? 1e6 : 0);
       if (score < bestScore) [best, bestScore] = [id, score];
@@ -332,6 +346,11 @@ function pickShare(receivers: Closure['receivers'], u: number): SchoolId {
   return receivers[receivers.length - 1].school;
 }
 
+/** Receivers open to a grade, shares renormalized. */
+function servingOpen(closure: Pick<Closure, 'receivers'>, grade: number, shut: Shut): Closure['receivers'] {
+  return renormalize(receiversFor(closure, grade).filter((r) => !shut.has(r.school, grade)));
+}
+
 /** Follows closed schools to their receivers, or the nearest open school when none serves the grade. */
 export function resolveSchool(
   closed: ReadonlyMap<SchoolId, ClosedSchool>,
@@ -339,10 +358,11 @@ export function resolveSchool(
   grade: number,
   pos: Point,
   u: number,
+  shut: Shut = closed,
 ): SchoolId {
   while (closed.has(school)) {
-    const serving = receiversFor(closed.get(school)!, grade);
-    school = serving.length ? pickShare(serving, u) : nearestOpen(pos, grade, closed);
+    const serving = servingOpen(closed.get(school)!, grade, shut);
+    school = serving.length ? pickShare(serving, u) : nearestOpen(pos, grade, shut);
   }
   return school;
 }
@@ -448,8 +468,11 @@ export function decideClosures(args: {
   movers: Mover[];
   households: Household[];
   flows: Flows;
+  /** Defaults to `closed`. */
+  shut?: Shut;
 }): ClosureTally[] {
-  const { seed, year, closed, movers, flows } = args;
+  const { seed, year, movers, flows } = args;
+  const shut = args.shut ?? args.closed;
   if (args.closing.length === 0) return [];
   const tallies = new Map(
     args.closing.map((c) => [c.school, { school: c.school, kids: 0, receivers: {}, otherPps: 0, left: 0 } as ClosureTally]),
@@ -463,7 +486,7 @@ export function decideClosures(args: {
     tallies.get(m.closure.school)!.left++;
   };
   const otherPps = (m: Mover, exclude: Set<SchoolId>) => {
-    const school = nearestOpen(m.next.pos, gradeOf(m.next), closed, exclude, counts);
+    const school = nearestOpen(m.next.pos, gradeOf(m.next), shut, exclude, counts);
     m.next.school = school;
     add(school, 1);
     tallies.get(m.closure.school)!.otherPps++;
@@ -477,7 +500,7 @@ export function decideClosures(args: {
     next.movedFrom = closure.school;
     next.forcedMoves = (before.forcedMoves ?? 0) + 1;
     next.fundedAs = before.fundedAs ?? closure.school;
-    const serving = receiversFor(closure, gradeOf(next));
+    const serving = servingOpen(closure, gradeOf(next), shut);
     const zoned = serving.some((r) => r.school === next.zoneSchool);
     const target = zoned ? next.zoneSchool : serving.length ? pickShare(serving, draw(seed, year, before.id, D.Receiver)) : m.fallback;
     const p = followChance(args.followRate + schoolFollowOffset(seed, closure.school), followFactors(before, closure, target));

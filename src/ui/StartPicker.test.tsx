@@ -17,8 +17,8 @@ describe('StartPicker', () => {
   it('offers the three starts, badging what scenarios leave out', () => {
     const onPick = vi.fn();
     render(<StartPicker onPick={onPick} />);
-    expect(screen.getByText('14 closures load as your first plan.')).toBeTruthy();
-    expect(screen.getByText('11 closures load as your first plan.')).toBeTruthy();
+    expect(screen.getByText('14 closures and 7 grade-span changes load as your first plan.')).toBeTruthy();
+    expect(screen.getByText('11 closures and 7 grade-span changes load as your first plan.')).toBeTruthy();
     expect(document.querySelectorAll('.badge')).toHaveLength(2);
     expect(screen.getByText(SCENARIOS['scenario-b'].notModeled!).getAttribute('data-source')).toBe('model.scenarios');
     fireEvent.click(screen.getByRole('button', { name: 'PPS Scenario B' }));

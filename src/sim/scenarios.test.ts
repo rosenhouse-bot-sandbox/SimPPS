@@ -39,10 +39,10 @@ describe('scenario starts', () => {
   it('names what the scenario changes that the game does not model yet', () => {
     expect(SCENARIOS['status-quo'].notModeled).toBeNull();
     expect(SCENARIOS['scenario-a'].notModeled).toBe(
-      'Not modeled yet: 8 grade-span changes, 13 program moves and 38 boundary changes.',
+      'Not modeled yet: 1 grade-span change, 13 program moves and 38 boundary changes.',
     );
     expect(SCENARIOS['scenario-b'].notModeled).toBe(
-      'Not modeled yet: 8 grade-span changes, 12 program moves and 34 boundary changes.',
+      'Not modeled yet: 1 grade-span change, 12 program moves and 34 boundary changes.',
     );
   });
 });
