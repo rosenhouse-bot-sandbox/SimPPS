@@ -25,6 +25,10 @@ const LEVY_2024: SourceLink = {
   title: 'PPS, proposed 2024 levy renewal',
   url: 'https://www.pps.net/about/portland-public-schools-information/proposed-2024-local-option-levy-renewal',
 };
+const LEVY_2024_COUNTY: SourceLink = {
+  title: 'Multnomah County, Measure 26-246, May 2024',
+  url: 'https://multco.us/info/measure-26-246-levy-renewal-maintain-teachers-and-classroom-support-staff',
+};
 const STANFORD: SourceLink = {
   title: 'Pearman, The Fiscal Consequences of School Closures in California (2026)',
   url: 'https://www.gettingdowntofacts.com/sites/default/files/The%20Fiscal%20Consequences%20of%20School%20Closures%20in%20CA%20Evidence%20from%20a%20Statewide%20Synthetic%20Difference-in-Differences%20Design.pdf',
@@ -46,6 +50,8 @@ const ACCESS_INTAKE = CITYWIDE_INTAKE.find((p) => p.school === 'access-academy')
 export function dialSourceKey(dial: keyof Dials): string {
   return `dial.${dial}`;
 }
+
+const TRUST = `Each high school region's families start at ${M.trustStart.lo}-${M.trustStart.hi} on a 0-100 scale. A closure costs ${M.trustClosure} points, split among regions by where its kids live. A region where a kid moves a second time loses ${M.trustMovedTwice}. A region with no forced moves gains ${M.trustCalmYear} a year. Cuts and class sizes don't move family trust yet. The Trust dial averages regions over simulated households. Trust moves levy votes.`;
 
 export const MODEL_SOURCES: Source[] = [
   {
@@ -199,22 +205,29 @@ export const MODEL_SOURCES: Source[] = [
     key: 'model.levy',
     label: 'Local option levy',
     tag: 'F',
-    explain: `At $${M.levyRate} per $1,000 the levy projects ${$(M.levyNet)} for 2026-27, about 686 teachers. At 0 the levy lapses and its revenue is gone. Other rates follow the compression model.`,
+    explain: `At $${M.levyRate} per $1,000 of assessed value the levy projects ${$(M.levyNet)} for 2026-27, about 686 teachers.`,
+    links: [PPS_DATA],
+  },
+  {
+    key: 'model.levyRate',
+    label: 'Levy at a new rate',
+    tag: 'M',
+    explain: `The game prices other rates with its compression model: gross revenue scales with the rate, and Measure 5 compression of ${$(M.compression)} at $${M.levyRate} scales with the rate to the power ${M.compressionPower}. At 0 the levy lapses and its revenue is gone. A new rate assumes the vote passes. Now includes the ${$(M.electionBill)} election bill; a November vote changes revenue from next fall.`,
     links: [PPS_DATA],
   },
   {
     key: 'model.levyTerm',
     label: 'Levy term',
-    tag: 'V',
-    explain: `Oregon limits an operating levy to ${M.levyYears} years [F]. PPS planned a May 2024 vote to renew the levy for 2025-2030, so the game ends it in June ${M.levyThrough + 1}. The 2024 result is unverified. A renewal can go on the November ballot before the last year or the May ballot after it. A rate change also needs a vote; a lapse needs none.`,
-    links: [LEVY_2024],
+    tag: 'F',
+    explain: `Oregon limits an operating levy to ${M.levyYears} years. Voters renewed PPS's levy at $${M.levyRate} in May 2024 (Measure 26-246) for 2025-26 through 2029-30, so the game ends it in June ${M.levyThrough + 1}. A renewal can go on the November ballot before the last year or the May ballot after it. A rate change also needs a vote; a lapse needs none [M].`,
+    links: [LEVY_2024_COUNTY, LEVY_2024],
   },
   {
     key: 'model.election',
     label: 'Levy election',
     tag: 'V',
-    explain: `The yes share starts at ${pct(M.yesBase)}, PPS's Nov 2019 renewal result [F]; the 2024 result is unverified. Each point of family trust above or below 35 moves it ${pts(M.yesPerTrustPoint)} points, each $0.10 above $${M.levyRate} costs ${pts(M.yesPerDime)} and each failure since the last pass costs ${pts(M.yesPerFailure)} [M]. The vote lands within ${pts(M.yesNoise)} points of that, with the same luck for the ghost. The poll shows ±${pts(M.pollSpread)} points. A measure passes at 50%. Abandoned upgrades are not modeled yet.`,
-    links: [LEVY_2019, DESIGN],
+    explain: `The yes share starts at ${pct(M.yesBase)}, PPS's Nov 2019 renewal result [F]. The May 2024 renewal passed; its certified share is unverified. Each point of family trust above or below 35 moves it ${pts(M.yesPerTrustPoint)} points, each $0.10 above $${M.levyRate} costs ${pts(M.yesPerDime)} and each failure since the last pass costs ${pts(M.yesPerFailure)} [M]. The vote lands within ${pts(M.yesNoise)} points of that, with the same luck for the ghost. The poll shows ±${pts(M.pollSpread)} points; a November poll counts trust after this year's closures. A measure passes at 50%. With these numbers no plan can sink the levy yet. Abandoned upgrades are not modeled yet.`,
+    links: [LEVY_2019, LEVY_2024_COUNTY, DESIGN],
   },
   {
     key: 'model.electionBill',
@@ -227,7 +240,7 @@ export const MODEL_SOURCES: Source[] = [
     key: 'model.trust',
     label: 'Family trust',
     tag: 'M',
-    explain: `Each high school region's families start at ${M.trustStart.lo}-${M.trustStart.hi} on a 0-100 scale. A closure costs ${M.trustClosure} points, split among regions by where its kids live. A region where a kid moves a second time loses ${M.trustMovedTwice}. A region with no forced moves gains ${M.trustCalmYear} a year. Trust moves levy votes.`,
+    explain: TRUST,
     links: [DESIGN],
   },
   {
@@ -297,7 +310,7 @@ export const MODEL_SOURCES: Source[] = [
     explain: "How far kindergarten capture falls in a closed school's zone. No study measures it, so the card spans no drop to 5 points. Each game draws one value.",
     links: [DESIGN],
     hidden: {
-      outcomes: CLOSED_ZONE_CAPTURE_DROPS.map((value) => ({ value, label: `-${Math.round(value * 100)} points`, weight: 1 })),
+      outcomes: CLOSED_ZONE_CAPTURE_DROPS.map((value) => ({ value, label: value === 0 ? 'No drop' : `−${Math.round(value * 100)} points`, weight: 1 })),
       revealAfterYears: REVEAL_AFTER_YEARS,
     },
   },
@@ -325,8 +338,8 @@ export const MODEL_SOURCES: Source[] = [
   {
     key: 'model.buildingFate',
     label: 'Closed building',
-    tag: 'F',
-    explain: `An empty, mothballed building costs about ${$k(M.mothball)} a year, as Smith does. A leased building's tenant pays its upkeep [M]. A sold building costs nothing and can't reopen; sale money goes to capital, not the general fund [I].`,
+    tag: 'I',
+    explain: `An empty, mothballed building costs about ${$k(M.mothball)} a year, as the closed Smith building does [V]. A leased building's tenant pays its upkeep; the game assumes a tenant is found at once and ignores lease terms that limit reopening [M]. A sold building costs nothing and can't reopen; sale money goes to capital, not the general fund [I].`,
     links: [DESIGN],
   },
   {
@@ -398,11 +411,12 @@ export const DIAL_SOURCES: Source[] = [
   { key: dialSourceKey('kids'), label: 'Kids', tag: 'M', explain: 'Simulated K-8 enrollment at the 74 in-scope schools. The game ages the fall 2025 count of 26,966 one year to fall 2026. PSU forecast 26,635 for fall 2026, and early counts run about 200 below.', links: [PPS_DATA] },
   { key: dialSourceKey('capture'), label: 'Capture', tag: 'M', explain: 'Simulated PPS K-8 kids over all resident K-8 kids. PPS reports 76.6% for K-12.', links: [DESIGN] },
   { key: dialSourceKey('kindergartenCapture'), label: 'Kindergarten capture', tag: 'M', explain: 'Simulated PPS kindergartners over resident kindergartners. It was about 74% in 2025.', links: [PSU] },
-  { key: dialSourceKey('gap'), label: 'Gap', tag: 'M', explain: 'Revenue minus costs in the coming year\'s plan, before automatic cuts. It starts at the reported -$65.2M.', links: [DESIGN] },
+  { key: dialSourceKey('gap'), label: 'Gap', tag: 'M', explain: 'Revenue minus costs in the coming year\'s plan, before automatic cuts. It starts at the reported -$65.2M. A surplus goes to reserves; cut positions are not rehired yet.', links: [DESIGN] },
   { key: dialSourceKey('positionsCut'), label: 'Positions cut', tag: 'M', explain: 'Positions removed by automatic and mid-year cuts in the year just played.', links: [DESIGN] },
   { key: dialSourceKey('reservePct'), label: 'Reserves', tag: 'M', explain: 'Reserves over last year\'s spending. They start at $41.1M, 4.8% of the $862.1M 2026-27 general fund. Below 5% breaches policy; below 3% forces mid-year cuts.', links: [PPS_DATA] },
   { key: dialSourceKey('walkK5'), label: 'K-5 walkers', tag: 'M', explain: `Simulated PPS K-5 kids within ${M.walkDialMiles} mile of their school, in a straight line.`, links: [DESIGN] },
   { key: dialSourceKey('newBusRiders'), label: 'New bus riders', tag: 'M', explain: 'Simulated PPS kids at their zone school past the walk limit whose zone before any change was within it.', links: [DESIGN] },
-  { key: dialSourceKey('trust'), label: 'Trust', tag: 'M', explain: 'Family trust, 0-100, averaged over simulated households by region. See Family trust.', links: [DESIGN] },
+  { key: dialSourceKey('k5Class'), label: 'Avg K-5 class', tag: 'M', explain: `Simulated K-5 kids per K-5 homeroom at open schools. Rooms fill to the class size target plus ${M.overload}, and cuts to homerooms make every class larger.`, links: [PPS_DATA] },
+  { key: dialSourceKey('trust'), label: 'Trust', tag: 'M', explain: `Family trust, 0-100. ${TRUST}`, links: [DESIGN] },
   { key: dialSourceKey('kidsInUrm'), label: 'Kids in URM buildings', tag: 'M', explain: 'Simulated kids in unreinforced-masonry buildings (Holmes 2024) without a full retrofit. In fall 2025 about 4,500 attended URM buildings with no retrofit yet and 1,400 attended ones with a targeted retrofit.', links: [PPS_DATA] },
 ];

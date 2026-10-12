@@ -71,6 +71,8 @@ export interface YearFacts {
   grandfathered: 'all' | 'some' | 'none';
   rezoned: RezoneTally;
   election: ElectionOutcome | null;
+  /** Mean trust before and after the year, and the regions that lost trust, biggest drop first. */
+  trust: { before: number; after: number; fell: string[] };
 }
 
 /** Kindergarten capture by fall year: 74% in 2025 rising to the 79% PSU assumes by 2028. */
@@ -401,6 +403,13 @@ export function stepYear(state: GameState, policy: Policy): { next: GameState; f
       grandfathered: grandfathering([...zoning.changed.elementary.values(), ...zoning.changed.middle.values()]),
       rezoned,
       election,
+      trust: {
+        before: meanTrust(mem.trust, state.households),
+        after: meanTrust(trust, households),
+        fell: Object.keys(trust)
+          .filter((r) => trust[r] < mem.trust[r])
+          .sort((a, b) => trust[a] - mem.trust[a] - (trust[b] - mem.trust[b])),
+      },
     },
   };
 }

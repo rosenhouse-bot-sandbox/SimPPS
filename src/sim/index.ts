@@ -1,7 +1,7 @@
 import { computeBudget, FIRST_YEAR, generalFund, stateFundingLevel } from './budget';
 import { CLOSED_ZONE_CAPTURE_DROPS, FOLLOW_RATES, gradeOf, HIDDEN_CARDS, M, REVEAL_AFTER_YEARS } from './model';
 import { expectedYes, levyBallot, levyRateFor, pollRange } from './election';
-import { meanTrust, startTrust } from './trust';
+import { meanTrust, startTrust, trustAfterYear } from './trust';
 import { clamp } from '../clamp';
 import { generatePopulation } from './population';
 import { headlines, rezoneOutcome, seasonEvents, versusGhost } from './report';
@@ -168,9 +168,20 @@ export type BallotPreview = Ballot & { poll: Range };
 /** The levy measure `policy` puts on this year's ballot, with a poll of the yes share. */
 export function ballotPreview(state: GameState, policy: Policy): BallotPreview | null {
   const sim = state.sim!;
-  const ballot = levyBallot(sim.levy, state.year, normalizePolicy(policy));
+  const plan = normalizePolicy(policy);
+  const ballot = levyBallot(sim.levy, state.year, plan);
   if (!ballot) return null;
-  return { ...ballot, poll: pollRange(expectedYes(ballot, sim.levy.failures, state.dials.trust)) };
+  const trust = ballot.when === 'november' ? trustAfterClosures(state, plan) : state.dials.trust;
+  return { ...ballot, poll: pollRange(expectedYes(ballot, sim.levy.failures, trust)) };
+}
+
+/** November counts after summer's closures: their current kids stand in for the kids they move. */
+function trustAfterClosures(state: GameState, plan: Policy): number {
+  const closing = new Set(effectiveClosures(state.schools, plan.closures).map((c) => c.school));
+  const moved = state.households.map(({ movedFrom: _, ...h }) =>
+    h.school !== null && closing.has(h.school) ? { ...h, movedFrom: h.school } : h,
+  );
+  return meanTrust(trustAfterYear(state.sim!.trust, moved, [...closing]), state.households);
 }
 
 /** The fall year of the levy's last funded school year. */

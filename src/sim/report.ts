@@ -22,6 +22,9 @@ function list(items: string[]): string {
 /** A closed building's fate, as in "Its building is mothballed". */
 export const FATE_DONE: Record<BuildingFate, string> = { mothball: 'mothballed', lease: 'leased', sell: 'sold' };
 
+/** The playback names this many closed schools before counting the rest. */
+const SHOWN = 3;
+
 /** Summer names the closed buildings. Fall gives no counts: the Bulletin tells no story about a real school's families. */
 function closureEvents(f: YearFacts): SeasonEvent[] {
   if (f.closing.length === 0) return [];
@@ -31,12 +34,15 @@ function closureEvents(f: YearFacts): SeasonEvent[] {
   const buildings =
     fates.size === 1
       ? `${n === 1 ? 'Its building is' : 'Their buildings are'} ${FATE_DONE[f.closing[0].building]}.`
-      : `${list(f.closing.map((c) => `${name(c.school)} is ${FATE_DONE[c.building]}`))}.`;
+      : n > SHOWN
+        ? `Their buildings are ${[...fates].map((x) => FATE_DONE[x]).join(' or ')}.`
+        : `${list(f.closing.map((c) => `${name(c.school)} is ${FATE_DONE[c.building]}`))}.`;
+  const names = f.closing.map((c) => name(c.school));
   return [
     {
       season: 'summer',
       title: `${n} school${n === 1 ? ' closes' : 's close'}`,
-      detail: `${list(f.closing.map((c) => name(c.school)))} ${n === 1 ? 'closes' : 'close'}. ${buildings}`,
+      detail: `${list(n > SHOWN ? [...names.slice(0, SHOWN), `${n - SHOWN} more`] : names)} ${n === 1 ? 'closes' : 'close'}. ${buildings}`,
       sourceKey: 'model.buildingFate',
     },
     {
@@ -99,6 +105,17 @@ function electionEvent(e: ElectionOutcome): SeasonEvent {
   return { season: e.when === 'may' ? 'spring' : 'winter', title, detail, sourceKey: 'model.election' };
 }
 
+/** Names regions only. */
+function trustEvent({ before, after, fell }: YearFacts['trust']): SeasonEvent {
+  const to = Math.round(after);
+  return {
+    season: 'winter',
+    title: to === Math.round(before) ? `Family trust holds at ${to}` : `Family trust ${after < before ? 'falls' : 'rises'} to ${to}`,
+    detail: fell.length ? `Closures and second moves cost trust in ${list(fell)}.` : 'No forced moves cost trust.',
+    sourceKey: 'model.trust',
+  };
+}
+
 export function seasonEvents(f: YearFacts): SeasonEvent[] {
   const cuts = f.autoCuts > 0 ? ` Automatic cuts remove ${count(f.autoCuts)} positions by seniority and spare IEP services.` : '';
   const draw = f.reserveDraw > 0 ? ` Reserves cover ${fmtMoney(f.reserveDraw)}.` : '';
@@ -158,6 +175,7 @@ export function seasonEvents(f: YearFacts): SeasonEvent[] {
       sourceKey: 'model.costGrowth',
     },
   ];
+  events.push(trustEvent(f.trust));
   if (vote?.season === 'winter') events.push(vote);
   if (f.midYearCuts > 0)
     events.push({
@@ -225,6 +243,7 @@ const HIGHER_IS_BETTER: Record<keyof Dials, boolean> = {
   reservePct: true,
   kidsInUrm: false,
   trust: true,
+  k5Class: false,
 };
 
 /** One unit of each dial that counts as a comparable gap. */
@@ -239,6 +258,7 @@ const SCALE: Record<keyof Dials, number> = {
   reservePct: 0.005,
   kidsInUrm: 100,
   trust: 1,
+  k5Class: 0.2,
 };
 
 /** Dials that differ from the ghost by at least half a unit, biggest gap first. */

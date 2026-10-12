@@ -41,6 +41,7 @@ const facts: YearFacts = {
   grandfathered: 'none',
   rezoned: { kids: 0, zoneSchool: 0, otherPps: 0, left: 0 },
   election: null,
+  trust: { before: 35, after: 37, fell: [] },
 };
 
 const dials: Dials = {
@@ -54,6 +55,7 @@ const dials: Dials = {
   walkK5: 9_000,
   newBusRiders: 0,
   trust: 35,
+  k5Class: 24,
 };
 
 const detail = (f: YearFacts, title: string) => seasonEvents(f).find((e) => e.title === title)!.detail;
@@ -135,6 +137,12 @@ describe('seasonEvents', () => {
     expect(detail(mixed, '2 schools close')).toBe(
       'Peninsula Elementary School and Woodmere Elementary School close. Peninsula Elementary School is mothballed and Woodmere Elementary School is sold.',
     );
+    const many = { ...f, closing: ['peninsula', 'woodmere', 'beach', 'lent'].map(closing) };
+    expect(detail(many, '4 schools close')).toBe(
+      'Peninsula Elementary School, Woodmere Elementary School, Beach Elementary School and 1 more close. Their buildings are mothballed.',
+    );
+    const manyMixed = { ...many, closing: [...many.closing.slice(0, 3), { ...closing('lent'), building: 'lease' as const }] };
+    expect(detail(manyMixed, '4 schools close')).toMatch(/and 1 more close\. Their buildings are mothballed or leased\.$/);
   });
 
   it('gives no counts for a closed school\'s families before the report', () => {
@@ -153,6 +161,25 @@ describe('seasonEvents', () => {
     expect(detail({ ...facts, midYearCuts: 40 }, 'Mid-year cuts')).toBe(
       'Reserves fell below 3%, so 40 more positions go.',
     );
+  });
+});
+
+describe('trust', () => {
+  const event = (trust: YearFacts['trust']) => seasonEvents({ ...facts, trust }).find((e) => e.sourceKey === 'model.trust')!;
+
+  it('says in winter where trust fell, by region only', () => {
+    expect(event({ before: 35, after: 18.4, fell: ['Southwest', 'North'] })).toEqual({
+      season: 'winter',
+      title: 'Family trust falls to 18',
+      detail: 'Closures and second moves cost trust in Southwest and North.',
+      sourceKey: 'model.trust',
+    });
+    expect(event({ before: 35, after: 37, fell: [] })).toMatchObject({ title: 'Family trust rises to 37', detail: 'No forced moves cost trust.' });
+  });
+
+  it('comes before a November vote that it moves', () => {
+    const events = seasonEvents({ ...facts, election: { rate: 1.99, when: 'november', renewal: true, yes: 0.7, passed: true } });
+    expect(events.findIndex((e) => e.sourceKey === 'model.trust')).toBeLessThan(events.findIndex((e) => e.sourceKey === 'model.election'));
   });
 });
 

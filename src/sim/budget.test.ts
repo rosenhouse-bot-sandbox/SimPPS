@@ -73,6 +73,7 @@ describe('computeBudget', () => {
     capacity: 594,
     stateRevenue: 144 * revenuePerStudent(0.6294),
     homerooms: 6,
+    k5Homerooms: 0,
     blendedHomerooms: 0,
   };
   const base = {

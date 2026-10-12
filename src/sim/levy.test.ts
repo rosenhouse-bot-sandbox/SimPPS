@@ -86,6 +86,20 @@ describe('the renewal', () => {
   });
 });
 
+describe('a November poll', () => {
+  const scenarioA = newGame({ seed: 'levy', start: 'scenario-a' });
+  const november = { ...scenarioA.policy, levyRate: 1.5, levyElection: 'november' as const };
+
+  it("counts trust after this year's closures, so the vote lands in the poll", () => {
+    const may = ballotPreview(scenarioA, { ...november, levyElection: 'may' })!;
+    const poll = ballotPreview(scenarioA, november)!.poll;
+    expect(poll.hi).toBeLessThan(may.poll.hi - 0.02);
+    const { yes } = endYear(scenarioA, november).report.election!;
+    expect(yes).toBeGreaterThanOrEqual(poll.lo);
+    expect(yes).toBeLessThanOrEqual(poll.hi);
+  });
+});
+
 describe('family trust', () => {
   it('rises in calm years and falls with closures, against the ghost', () => {
     expect(jan2030.dials.trust).toBeCloseTo(start.dials.trust + 3 * M.trustCalmYear, 0);
@@ -93,6 +107,17 @@ describe('family trust', () => {
     const { next } = endYear(scenarioA, scenarioA.policy);
     expect(SCENARIOS['scenario-a'].closures.length).toBeGreaterThan(10);
     expect(next.dials.trust).toBeLessThan(next.sim!.ghost!.dials.trust - 3);
+  });
+
+  it('reports the regions where trust fell', () => {
+    const scenarioA = newGame({ seed: 'levy', start: 'scenario-a' });
+    const { facts, next } = stepYear(scenarioA, scenarioA.policy);
+    expect(facts.trust.before).toBeCloseTo(scenarioA.dials.trust, 6);
+    expect(facts.trust.after).toBeCloseTo(next.dials.trust, 6);
+    expect(facts.trust.fell.length).toBeGreaterThan(0);
+    const drop = (r: string) => scenarioA.sim!.trust[r] - next.sim!.trust[r];
+    expect(facts.trust.fell.map(drop)).toEqual([...facts.trust.fell.map(drop)].sort((a, b) => b - a));
+    expect(facts.trust.fell.every((r) => drop(r) > 0)).toBe(true);
   });
 });
 

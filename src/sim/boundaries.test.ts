@@ -301,6 +301,15 @@ describe('boundaryChip', () => {
     expect(chip.riders.now).toBeLessThan(full.riders.now);
   });
 
+  it('shows seats at maturity, the same whether or not current kids are grandfathered', () => {
+    const chip = boundaryChip(start, nearCreston(true), DEFAULT_POLICY);
+    const full = boundaryChip(start, nearCreston(false), DEFAULT_POLICY);
+    const at = (c: typeof chip, s: string) => c.seats.find((x) => x.school === s)!;
+    expect(at(chip, 'creston').mature.hi).toBeLessThan(at(chip, 'creston').after.lo);
+    expect(at(chip, 'atkinson').mature.lo).toBeGreaterThan(at(chip, 'atkinson').after.hi);
+    expect(chip.seats.map((s) => s.mature)).toEqual(full.seats.map((s) => s.mature));
+  });
+
   it('flags blocks that do not touch the new zone', () => {
     const far = sliceEdit(start, 'elementary', 'forest-park', 'forest-park', 10, false);
     expect(boundaryChip(start, { ...far, to: 'atkinson' }, DEFAULT_POLICY).contiguous).toBe(false);

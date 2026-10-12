@@ -35,6 +35,14 @@ describe('model sources', () => {
     expect(hidden.sort()).toEqual(Object.values(HIDDEN_CARDS).sort());
   });
 
+  it('labels the closed-zone capture card without "-0"', () => {
+    expect(getSource('model.closedZoneCapture')!.hidden!.outcomes.map((o) => o.label)).toEqual(['No drop', '−2 points', '−5 points']);
+  });
+
+  it("explains on the Trust dial what moves trust", () => {
+    expect(getSource(dialSourceKey('trust'))!.explain).toContain(getSource('model.trust')!.explain);
+  });
+
   it('gives every dial a source', () => {
     const dials: (keyof Dials)[] = ['kids', 'capture', 'kindergartenCapture', 'gap', 'positionsCut', 'reservePct', 'kidsInUrm', 'walkK5', 'newBusRiders', 'trust'];
     for (const d of dials) expect(getSource(dialSourceKey(d))).toBeDefined();

@@ -111,6 +111,7 @@ describe('closure budget lines', () => {
     capacity: 500,
     stateRevenue: 0,
     homerooms: 0,
+    k5Homerooms: 0,
     blendedHomerooms: 0,
   });
   const base = {

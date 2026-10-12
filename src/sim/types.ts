@@ -119,6 +119,7 @@ export interface SchoolState {
   /** State K-8 revenue its kids bring, by each kid's funding weight. */
   stateRevenue: number;
   homerooms: number;
+  k5Homerooms: number;
   blendedHomerooms: number;
   /** Set when a closure has emptied the building. */
   closed?: { year: number; building: BuildingFate };
@@ -166,6 +167,8 @@ export interface Dials {
   newBusRiders: number;
   /** Family trust, 0-100, averaged over households. */
   trust: number;
+  /** K-5 kids per K-5 homeroom at open schools. */
+  k5Class: number;
 }
 
 export interface SeasonEvent {

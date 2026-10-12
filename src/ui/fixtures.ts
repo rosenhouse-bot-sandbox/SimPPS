@@ -30,6 +30,7 @@ export const FIXTURE_GAME: GameState = {
     walkK5: 9_000,
     newBusRiders: 0,
     trust: 35,
+    k5Class: 24,
   },
   policy: DEFAULT_POLICY,
   zones: defaultZones(),

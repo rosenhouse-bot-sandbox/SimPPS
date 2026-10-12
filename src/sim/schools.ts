@@ -21,6 +21,7 @@ export function buildSchools(
       capacity: info.data.capacity ?? 0,
       stateRevenue: info.highSchoolers * stateWeight(id),
       homerooms: 0,
+      k5Homerooms: 0,
       blendedHomerooms: 0,
     };
   // High schoolers at a closed school move to neighborhood high schools, outside the simulation.
@@ -37,6 +38,7 @@ export function buildSchools(
   for (const s of Object.values(schools)) {
     const c = classesFor(s.byGrade, classSize, creep);
     s.homerooms = c.homerooms;
+    s.k5Homerooms = classesFor(s.byGrade.slice(0, 6), classSize, creep).homerooms;
     s.blendedHomerooms = c.blended;
   }
   return schools;
@@ -57,7 +59,13 @@ export function computeDials(state: Pick<GameState, 'households' | 'schools' | '
     if (k) kInPps++;
   }
   let kidsInUrm = 0;
+  let k5Kids = 0;
+  let k5Rooms = 0;
   for (const s of Object.values(state.schools)) {
+    if (s.open) {
+      k5Kids += s.byGrade.slice(0, 6).reduce((a, n) => a + n, 0);
+      k5Rooms += s.k5Homerooms;
+    }
     const { isUrm, seismicRetrofitStatus } = SCHOOL_INFO.get(s.id)!.data;
     if (isUrm && seismicRetrofitStatus !== 'full') kidsInUrm += s.enrollment;
   }
@@ -72,5 +80,6 @@ export function computeDials(state: Pick<GameState, 'households' | 'schools' | '
     walkK5: walkK5(state.households),
     newBusRiders: newBusRiders(state.households),
     trust,
+    k5Class: k5Rooms ? k5Kids / k5Rooms : 0,
   };
 }
