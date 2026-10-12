@@ -226,7 +226,7 @@ export const MODEL_SOURCES: Source[] = [
     key: 'model.election',
     label: 'Levy election',
     tag: 'V',
-    explain: `The yes share starts at ${pct(M.yesBase)}, PPS's Nov 2019 renewal result [F]. The May 2024 renewal passed; its certified share is unverified. Each point of family trust above or below 35 moves it ${pts(M.yesPerTrustPoint)} points, each $0.10 above $${M.levyRate} costs ${pts(M.yesPerDime)} and each failure since the last pass costs ${pts(M.yesPerFailure)} [M]. The vote lands within ${pts(M.yesNoise)} points of that, with the same luck for the ghost. The poll shows ±${pts(M.pollSpread)} points; a November poll counts trust after this year's closures. A measure passes at 50%. With these numbers no plan can sink the levy yet. Abandoned upgrades are not modeled yet.`,
+    explain: `The yes share starts at ${pct(M.yesBase)}, the election-night count for PPS's May 2024 renewal; the certified share is unverified. The Nov 2019 renewal drew 77% [F]. Each point of family trust above or below 35 moves it ${pts(M.yesPerTrustPoint)} points, each $0.10 above $${M.levyRate} costs ${pts(M.yesPerDime)} and each failure since the last pass costs ${pts(M.yesPerFailure)} [M]. The vote lands within ${pts(M.yesNoise)} points of that, with the same luck for the ghost. The poll shows ±${pts(M.pollSpread)} points; a November poll counts trust after this year's closures. A measure passes at 50%, so a raise after closures that cost trust can fail. Abandoned upgrades are not modeled yet.`,
     links: [LEVY_2019, LEVY_2024_COUNTY, DESIGN],
   },
   {

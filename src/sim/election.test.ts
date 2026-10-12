@@ -50,6 +50,11 @@ describe('expectedYes', () => {
     expect(expectedYes(may, 0, 35) - expectedYes(may, 2, 35)).toBeCloseTo(2 * M.yesPerFailure);
   });
 
+  it('can fail a raise when trust is low, and passes today\'s levy at middling trust', () => {
+    expect(expectedYes({ ...may, rate: 2 }, 1, 15) + M.yesNoise).toBeLessThan(0.5);
+    expect(expectedYes(may, 0, 35) - M.yesNoise).toBeGreaterThan(0.5);
+  });
+
   it('stays a share', () => {
     expect(expectedYes(may, 30, 0)).toBe(0);
   });
