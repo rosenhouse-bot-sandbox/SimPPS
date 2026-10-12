@@ -63,8 +63,6 @@ select {
 
 /* The pixel font is a SimCity nod for dials and stamps. */
 .num,
-.topbar,
-.gapbar,
 .stamp,
 .tag {
   font-family: var(--pixel);
@@ -87,9 +85,14 @@ select {
   color: var(--chrome-text);
 }
 
+.topbar,
+.gapbar {
+  font-variant-numeric: tabular-nums;
+}
+
 .topbar {
   padding: 2px 10px;
-  font-size: 22px;
+  font-size: 17px;
   line-height: 1.1;
   border-bottom: 1px solid var(--chrome-line);
 }
@@ -103,7 +106,7 @@ select {
 
 @media (max-width: 379px) {
   .topbar {
-    font-size: 19px;
+    font-size: 15px;
   }
 }
 
@@ -393,7 +396,7 @@ legend .term {
   align-items: center;
   min-height: 36px;
   padding: 0 10px;
-  font-size: 22px;
+  font-size: 17px;
   border-top: 1px solid var(--chrome-line);
 }
 
