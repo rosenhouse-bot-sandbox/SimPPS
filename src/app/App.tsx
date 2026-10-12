@@ -263,7 +263,7 @@ export function App({ sim, seed, start = 'status-quo', onStart, saved, onSave, o
             links={links}
             flows={flows}
           />
-          <p class="side-hint">To plan, pick a school or the $ button. To play the year, press ▶.</p>
+          <p class="side-hint">To plan, pick a school or the $ button. To play the year, press ▶︎.</p>
           {planning && tool === 'budget' && (
             <BudgetPanel
               game={s.game}
@@ -397,6 +397,7 @@ export function App({ sim, seed, start = 'status-quo', onStart, saved, onSave, o
             dispatch({ type: 'preflight' });
           }}
           disabled={s.phase !== 'plan'}
+          canPlay={planning}
         />
         {picking && (
           <StartPicker

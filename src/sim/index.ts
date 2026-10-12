@@ -194,7 +194,7 @@ export function normalizePolicy(p: Policy): Policy {
   };
 }
 
-/** The coming year's budget if the player commits `policy`. Use it to preview edits before End Year. */
+/** The coming year's budget if the player commits `policy`. Use it to preview edits before the year plays. */
 export function previewBudget(state: GameState, policy: Policy): Budget {
   const sim = state.sim!;
   const plan = normalizePolicy(policy);

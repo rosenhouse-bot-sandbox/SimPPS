@@ -61,6 +61,17 @@ test('plays a status-quo year on a phone', async ({ page }) => {
   await expect(page.locator('.topbar')).toContainText('JAN 2028');
 });
 
+test('asks before playing even when ▶ is double-tapped', async ({ page }) => {
+  await page.goto('?seed=smoke&start=status-quo');
+  const play = (await page.getByRole('button', { name: 'Play the year' }).boundingBox())!;
+  const [x, y] = [play.x + play.width / 2, play.y + play.height / 2];
+  await page.touchscreen.tap(x, y);
+  await page.waitForTimeout(150);
+  await page.touchscreen.tap(x, y);
+  await expect(page.getByRole('dialog', { name: 'Play 2027-28?' })).toBeVisible();
+  await expect(page.getByTestId('playback')).toHaveCount(0);
+});
+
 test('fits a small phone: one-line dials, a pausable playback and pop-overs on screen', async ({ page }) => {
   test.setTimeout(90_000);
   await page.setViewportSize({ width: 360, height: 640 });

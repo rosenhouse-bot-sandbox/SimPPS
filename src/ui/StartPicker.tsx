@@ -22,7 +22,7 @@ export function StartPicker({ onPick }: { onPick: (s: Start) => void }) {
           year and see how families respond.
         </p>
         <p class="intro">There is no score to win. Each year-end report compares your district with one where nothing changed.</p>
-        <p class="intro">To plan, pick a school or the $ button. To play the year, press ▶.</p>
+        <p class="intro">To plan, pick a school or the $ button. To play the year, press ▶︎.</p>
         <ul class="starts">
           {STARTS.map((s) => (
             <li key={s}>

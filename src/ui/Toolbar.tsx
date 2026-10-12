@@ -11,12 +11,12 @@ const TOOLS: { id: Tool; text: string; label: string }[] = [
 interface ToolbarProps {
   active: Tool;
   onPick: (t: Tool) => void;
-  /** Opens the preflight sheet, which asks to confirm. */
   onPlay: () => void;
   disabled: boolean;
+  canPlay: boolean;
 }
 
-export function Toolbar({ active, onPick, onPlay, disabled }: ToolbarProps) {
+export function Toolbar({ active, onPick, onPlay, disabled, canPlay }: ToolbarProps) {
   return (
     <nav class="toolbar" aria-label="Tools">
       {TOOLS.map((t) => (
@@ -32,8 +32,8 @@ export function Toolbar({ active, onPick, onPlay, disabled }: ToolbarProps) {
           {t.text}
         </button>
       ))}
-      <button type="button" class="tool play" aria-label="Play the year" disabled={disabled} onClick={onPlay}>
-        ▶
+      <button type="button" class="tool play" aria-label="Play the year" disabled={!canPlay} onClick={onPlay}>
+        ▶︎
       </button>
     </nav>
   );

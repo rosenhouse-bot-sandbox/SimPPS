@@ -1,3 +1,4 @@
+import { useEffect, useState } from 'preact/hooks';
 import { fmtCount, fmtMoney } from '../format';
 import { legislatureVotes } from '../sim/budget';
 import type { BallotPreview } from '../sim';
@@ -9,6 +10,9 @@ import { Sourced } from './Sourced';
 import { K } from './sources';
 import { Term } from './Term';
 import { Window } from './Window';
+
+/** On a phone, Play opens under ▶, so a double-tap on ▶ would otherwise skip the review. */
+export const PLAY_ARM_MS = 500;
 
 interface PreflightProps {
   year: number;
@@ -42,6 +46,11 @@ function List({ items, empty }: { items: EditLine[]; empty: string }) {
 export function PreflightSheet({ year, draft, base, budget, ballot, closurePrograms = [], onBack, onConfirm }: PreflightProps) {
   const applied = { ...draft, reserveDraw: budget.reserveDraw };
   const { autoCutPositions: june, midYearCuts: winter } = budget;
+  const [armed, setArmed] = useState(false);
+  useEffect(() => {
+    const t = setTimeout(() => setArmed(true), PLAY_ARM_MS);
+    return () => clearTimeout(t);
+  }, []);
   return (
     <div class="scrim">
       <Window title={`Play ${year}-${String(year + 1).slice(2)}?`} class="panel sheet" onClose={onBack} dialog>
@@ -105,7 +114,7 @@ export function PreflightSheet({ year, draft, base, budget, ballot, closureProgr
           <button type="button" class="btn" onClick={onBack}>
             Back
           </button>
-          <button type="button" class="btn primary" onClick={onConfirm}>
+          <button type="button" class="btn primary" disabled={!armed} onClick={() => armed && onConfirm()}>
             Play
           </button>
         </div>

@@ -7,13 +7,18 @@ afterEach(cleanup);
 describe('Toolbar', () => {
   it('asks to play the year on one click', () => {
     const onPlay = vi.fn();
-    render(<Toolbar active="map" onPick={() => {}} onPlay={onPlay} disabled={false} />);
+    render(<Toolbar active="map" onPick={() => {}} onPlay={onPlay} disabled={false} canPlay />);
     fireEvent.click(screen.getByRole('button', { name: 'Play the year' }));
     expect(onPlay).toHaveBeenCalledOnce();
   });
 
-  it('disables play outside planning', () => {
-    render(<Toolbar active="map" onPick={() => {}} onPlay={() => {}} disabled />);
+  it('keeps play enabled while the other tools are disabled', () => {
+    render(<Toolbar active="map" onPick={() => {}} onPlay={() => {}} disabled canPlay />);
+    expect(screen.getByRole('button', { name: 'Play the year' })).toHaveProperty('disabled', false);
+  });
+
+  it('disables play when it cannot play', () => {
+    render(<Toolbar active="map" onPick={() => {}} onPlay={() => {}} disabled canPlay={false} />);
     expect(screen.getByRole('button', { name: 'Play the year' })).toHaveProperty('disabled', true);
   });
 });

@@ -5,6 +5,7 @@ import { FALLBACK_SIZE } from '../map/MapView';
 import * as realSim from '../sim';
 import { getSource } from '../sources/registry';
 import { fmtCount, fmtMoney, fmtPct, fmtRange } from '../format';
+import { PLAY_ARM_MS } from '../ui/PreflightSheet';
 import { App } from './App';
 import type { Sim } from './machine';
 
@@ -20,6 +21,13 @@ afterEach(() => {
 
 function click(name: string | RegExp) {
   fireEvent.click(screen.getByRole('button', { name }));
+}
+
+function confirmPlay() {
+  act(() => {
+    vi.advanceTimersByTime(PLAY_ARM_MS);
+  });
+  click('Play');
 }
 
 function gapBar() {
@@ -72,7 +80,7 @@ describe('App', () => {
     click('Budget');
     click('More K-5 class size');
     click('Play the year');
-    click('Play');
+    confirmPlay();
     expect(onSave).toHaveBeenLastCalledWith([expect.objectContaining({ k5ClassSize: 25 })]);
     act(() => {
       vi.advanceTimersByTime(5000);
@@ -112,7 +120,7 @@ describe('App', () => {
     const preflight = screen.getByRole('dialog', { name: 'Play 2027-28?' }).textContent;
     expect(preflight).toContain(`${fmtCount(plan.autoCutPositions)} positions in June`);
     expect(preflight).toContain('At flat state funding. The Legislature votes this spring.');
-    click('Play');
+    confirmPlay();
     expect(screen.getByTestId('playback').textContent).toContain(`remove ${june.toLocaleString('en-US')} positions`);
     expect(topBar()).toContain(`Gap ${fmtMoney(report.budget.gap)}`);
   });
@@ -162,7 +170,7 @@ describe('App', () => {
     const pre = screen.getByRole('dialog', { name: 'Play 2027-28?' });
     expect(pre.textContent).toContain('K-5 class size 24 → 25');
 
-    click('Play');
+    confirmPlay();
     expect(screen.getByTestId('playback')).toBeTruthy();
     expect(topBar()).toContain('APR 2027');
     expect((screen.getByRole('button', { name: 'Budget' }) as HTMLButtonElement).disabled).toBe(true);
@@ -265,7 +273,7 @@ describe('App', () => {
     collect();
     click('Play the year');
     collect();
-    click('Play');
+    confirmPlay();
     for (let i = 0; i < 5; i++) {
       collect();
       act(() => {
@@ -329,7 +337,7 @@ describe('App', () => {
 
       click('Play the year');
       expect(screen.getByRole('dialog', { name: 'Play 2027-28?' }).textContent).toContain('Close Peninsula → Rosa Parks');
-      click('Play');
+      confirmPlay();
       expect(document.querySelector('[data-link="peninsula>rosa-parks"]')).toBeTruthy();
       act(() => {
         vi.advanceTimersByTime(1000);
@@ -387,7 +395,7 @@ describe('App', () => {
       click('Close it');
       click('Skip');
       click('Play the year');
-      click('Play');
+      confirmPlay();
       act(() => {
         vi.advanceTimersByTime(5000);
       });
@@ -422,7 +430,7 @@ describe('App', () => {
     click('Plan');
     collect();
     click('Play the year');
-    click('Play');
+    confirmPlay();
     act(() => {
       vi.advanceTimersByTime(5000);
     });
@@ -454,7 +462,16 @@ describe('App', () => {
     ]);
   });
 
-  it('drops an unfinished Close & send on Play', () => {
+  it('hands focus back to ▶ when the play sheet closes', () => {
+    setup();
+    const play = screen.getByRole('button', { name: 'Play the year' });
+    play.focus();
+    click('Play the year');
+    click('Back');
+    expect(document.activeElement).toBe(play);
+  });
+
+  it('drops an unfinished Close & send when the play sheet opens', () => {
     setup();
     click('Plan');
     click('Peninsula Elementary School');
@@ -500,7 +517,7 @@ describe('App', () => {
     expect(document.querySelectorAll('.edits li')).toHaveLength(8);
     click('Close');
     click('Play the year');
-    click('Play');
+    confirmPlay();
     act(() => {
       vi.advanceTimersByTime(1000);
     });
@@ -577,7 +594,7 @@ describe('App', () => {
       click('Send 6–8');
       const playYear = () => {
         click('Play the year');
-        click('Play');
+        confirmPlay();
         act(() => {
           vi.advanceTimersByTime(6000);
         });
@@ -617,7 +634,7 @@ describe('App', () => {
 
       click('Play the year');
       expect(screen.getByRole('dialog', { name: 'Play 2027-28?' }).textContent).toContain('Send Beverly Cleary 6–8 → Beaumont');
-      click('Play');
+      confirmPlay();
       act(() => {
         vi.advanceTimersByTime(6000);
       });
@@ -703,7 +720,7 @@ describe('App', () => {
 
       click('Play the year');
       expect(screen.getByRole('dialog', { name: 'Play 2027-28?' }).textContent).toContain(line);
-      click('Play');
+      confirmPlay();
       act(() => {
         vi.advanceTimersByTime(6000);
       });
@@ -740,7 +757,7 @@ describe('App', () => {
       expect(screen.queryByRole('button', { name: 'Send 6–8 to…' })).toBeNull();
     });
 
-    it('drops an unfinished boundary on Play', () => {
+    it('drops an unfinished boundary when the play sheet opens', () => {
       setup();
       openRosaParks();
       tapAt(badgeAt('peninsula'));
