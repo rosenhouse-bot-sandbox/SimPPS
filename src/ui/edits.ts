@@ -41,14 +41,8 @@ export function listEdits(draft: Policy, base: Policy): EditLine[] {
       undo: { k5ClassSize: base.k5ClassSize },
     });
   if (draft.levyRate !== base.levyRate)
-    out.push({ text: `Levy ${fmtLevy(base.levyRate)} → ${fmtLevy(draft.levyRate)}`, sourceKey: K.levy, undo: { levyRate: base.levyRate } });
+    out.push({ text: `Levy ${fmtLevy(base.levyRate)} → ${fmtLevy(draft.levyRate)}`, sourceKey: K.levyRate, undo: { levyRate: base.levyRate } });
   if (draft.reserveDraw > 0)
     out.push({ text: `Draw ${fmtMoney(draft.reserveDraw)} from reserves`, sourceKey: K.reserveDraw, undo: { reserveDraw: 0 } });
   return out;
-}
-
-/** A new levy rate goes to voters in May. Until elections exist, it passes. A lapse needs no vote. */
-export function ballotItems(draft: Policy, base: Policy): EditLine[] {
-  if (draft.levyRate === base.levyRate || draft.levyRate === 0) return [];
-  return [{ text: `May: levy at ${fmtLevy(draft.levyRate)} per $1,000, assumed to pass`, sourceKey: K.levy }];
 }

@@ -5,7 +5,7 @@ import { dialSourceKey } from '../sources/model';
 import type { YearFacts } from './step';
 import type { RezoneTally } from './boundaries';
 import { modeledRange } from './range';
-import type { BuildingFate, Dials, Headline, RezoneOutcome, SeasonEvent, YearReport } from './types';
+import type { BuildingFate, Dials, ElectionOutcome, Headline, RezoneOutcome, SeasonEvent, YearReport } from './types';
 
 function count(n: number): string {
   return Math.round(n).toLocaleString('en-US');
@@ -22,6 +22,9 @@ function list(items: string[]): string {
 /** A closed building's fate, as in "Its building is mothballed". */
 export const FATE_DONE: Record<BuildingFate, string> = { mothball: 'mothballed', lease: 'leased', sell: 'sold' };
 
+/** The playback names this many closed schools before counting the rest. */
+const SHOWN = 3;
+
 /** Summer names the closed buildings. Fall gives no counts: the Bulletin tells no story about a real school's families. */
 function closureEvents(f: YearFacts): SeasonEvent[] {
   if (f.closing.length === 0) return [];
@@ -31,12 +34,15 @@ function closureEvents(f: YearFacts): SeasonEvent[] {
   const buildings =
     fates.size === 1
       ? `${n === 1 ? 'Its building is' : 'Their buildings are'} ${FATE_DONE[f.closing[0].building]}.`
-      : `${list(f.closing.map((c) => `${name(c.school)} is ${FATE_DONE[c.building]}`))}.`;
+      : n > SHOWN
+        ? `Their buildings are ${[...fates].map((x) => FATE_DONE[x]).join(' or ')}.`
+        : `${list(f.closing.map((c) => `${name(c.school)} is ${FATE_DONE[c.building]}`))}.`;
+  const names = f.closing.map((c) => name(c.school));
   return [
     {
       season: 'summer',
       title: `${n} school${n === 1 ? ' closes' : 's close'}`,
-      detail: `${list(f.closing.map((c) => name(c.school)))} ${n === 1 ? 'closes' : 'close'}. ${buildings}`,
+      detail: `${list(n > SHOWN ? [...names.slice(0, SHOWN), `${n - SHOWN} more`] : names)} ${n === 1 ? 'closes' : 'close'}. ${buildings}`,
       sourceKey: 'model.buildingFate',
     },
     {
@@ -79,11 +85,43 @@ function boundaryEvents(f: YearFacts): SeasonEvent[] {
   ];
 }
 
+const yesPct = (e: ElectionOutcome) => pct(e.yes);
+
+/** The vote's citywide total. It names no school. */
+function electionEvent(e: ElectionOutcome): SeasonEvent {
+  const title = e.passed
+    ? e.renewal && e.rate === M.levyRate
+      ? `Voters renew the levy: ${yesPct(e)} yes`
+      : `Voters approve a $${e.rate.toFixed(2)} levy: ${yesPct(e)} yes`
+    : `Levy fails: ${yesPct(e)} yes`;
+  const from = e.when === 'may' ? 'this fall' : 'next fall';
+  const detail = e.passed
+    ? `It runs ${M.levyYears} years from ${from}.`
+    : e.when === 'november'
+      ? 'It can run again in May.'
+      : e.renewal
+        ? 'The levy expires, so the June budget loses its revenue.'
+        : "Today's levy stays in force.";
+  return { season: e.when === 'may' ? 'spring' : 'winter', title, detail, sourceKey: 'model.election' };
+}
+
+/** Names regions only. */
+function trustEvent({ before, after, fell }: YearFacts['trust']): SeasonEvent {
+  const to = Math.round(after);
+  return {
+    season: 'winter',
+    title: to === Math.round(before) ? `Family trust holds at ${to}` : `Family trust ${after < before ? 'falls' : 'rises'} to ${to}`,
+    detail: fell.length ? `Closures and second moves cost trust in ${list(fell)}.` : 'No forced moves cost trust.',
+    sourceKey: 'model.trust',
+  };
+}
+
 export function seasonEvents(f: YearFacts): SeasonEvent[] {
   const cuts = f.autoCuts > 0 ? ` Automatic cuts remove ${count(f.autoCuts)} positions by seniority and spare IEP services.` : '';
   const draw = f.reserveDraw > 0 ? ` Reserves cover ${fmtMoney(f.reserveDraw)}.` : '';
   const [closes, decide] = closureEvents(f);
   const [rezone, rezonedDecide] = boundaryEvents(f);
+  const vote = f.election ? electionEvent(f.election) : null;
   const events: SeasonEvent[] = [
     {
       season: 'spring',
@@ -101,6 +139,7 @@ export function seasonEvents(f: YearFacts): SeasonEvent[] {
             sourceKey: 'model.stateFunding',
           },
         ]),
+    ...(vote?.season === 'spring' ? [vote] : []),
     {
       season: 'spring',
       title: f.autoCuts > 0 ? 'June budget closes with cuts' : 'June budget closes',
@@ -136,6 +175,8 @@ export function seasonEvents(f: YearFacts): SeasonEvent[] {
       sourceKey: 'model.costGrowth',
     },
   ];
+  events.push(trustEvent(f.trust));
+  if (vote?.season === 'winter') events.push(vote);
   if (f.midYearCuts > 0)
     events.push({
       season: 'winter',
@@ -168,7 +209,17 @@ export function headlines(f: YearFacts, before: Dials, after: Dials): Headline[]
     text: region && rate ? `Leavers run highest in ${region}: ~${(rate * 100).toFixed(1)}%` : 'No region loses kids',
     sourceKey: 'model.movingRoll',
   };
-  return [money, kids, where];
+  const vote: Headline[] = f.election
+    ? [
+        {
+          text: f.election.passed
+            ? `Voters ${f.election.renewal && f.election.rate === M.levyRate ? 'renew the levy' : `approve a $${f.election.rate.toFixed(2)} levy`} with ${yesPct(f.election)} yes`
+            : `Levy fails with ${yesPct(f.election)} yes`,
+          sourceKey: 'model.election',
+        },
+      ]
+    : [];
+  return [...vote, money, kids, where];
 }
 
 /** The report's "where kids went" for kids a boundary change moved, as ranges. */
@@ -191,6 +242,8 @@ const HIGHER_IS_BETTER: Record<keyof Dials, boolean> = {
   positionsCut: false,
   reservePct: true,
   kidsInUrm: false,
+  trust: true,
+  k5Class: false,
 };
 
 /** One unit of each dial that counts as a comparable gap. */
@@ -204,6 +257,8 @@ const SCALE: Record<keyof Dials, number> = {
   positionsCut: 10,
   reservePct: 0.005,
   kidsInUrm: 100,
+  trust: 1,
+  k5Class: 0.2,
 };
 
 /** Dials that differ from the ghost by at least half a unit, biggest gap first. */

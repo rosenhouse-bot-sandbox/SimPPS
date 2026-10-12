@@ -37,6 +37,16 @@ const chip = () => screen.getByTestId('closure-chip');
 const picks = () => [...document.querySelectorAll('.pick-name')].map((b) => b.textContent!.slice(1));
 
 describe('CloseSendSheet', () => {
+  it('says a dual-language program will not move with the kids', () => {
+    setup('james-john');
+    const note = screen.getByText(/DLI/);
+    expect(note.textContent).toBe('Its Spanish dual-language (DLI) program: moves are not modeled yet.');
+    expect(note.closest('[data-source]')!.getAttribute('data-source')).toBe('field.dli_languages');
+    cleanup();
+    setup('peninsula');
+    expect(screen.queryByText(/DLI/)).toBeNull();
+  });
+
   it('lists the nearest open schools first, with sourced distance and seats', () => {
     setup();
     expect(picks()[0]).toBe('Rosa Parks');

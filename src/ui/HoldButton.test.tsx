@@ -66,6 +66,22 @@ describe('HoldButton', () => {
     expect(onConfirm).not.toHaveBeenCalled();
   });
 
+  it('keeps a finger hold when focus moves elsewhere', () => {
+    const { onConfirm, button } = setup();
+    fireEvent.pointerDown(button);
+    fireEvent.blur(button);
+    vi.advanceTimersByTime(1000);
+    expect(onConfirm).toHaveBeenCalledOnce();
+  });
+
+  it('cancels a key hold when focus moves elsewhere', () => {
+    const { onConfirm, button } = setup();
+    fireEvent.keyDown(button, { key: ' ' });
+    fireEvent.blur(button);
+    vi.advanceTimersByTime(1000);
+    expect(onConfirm).not.toHaveBeenCalled();
+  });
+
   it('confirms when Space is held for a second', () => {
     const { onConfirm, button } = setup();
     fireEvent.keyDown(button, { key: ' ' });

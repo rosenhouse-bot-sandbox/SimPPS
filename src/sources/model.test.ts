@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { getSource } from './registry';
 import { dialSourceKey, MODEL_SOURCES } from './model';
 import type { Dials } from '../sim';
+import { HIDDEN_CARDS } from '../sim/model';
 
 const simFiles = import.meta.glob(['../sim/*.ts', '!../sim/*.test.ts'], {
   query: '?raw',
@@ -29,8 +30,21 @@ describe('model sources', () => {
     expect(getSource('model.closedZoneCapture')!.hidden!.outcomes.map((o) => o.value)).toEqual([0, 0.02, 0.05]);
   });
 
+  it('draws a card for every hidden source and hides every card', () => {
+    const hidden = MODEL_SOURCES.filter((s) => s.hidden).map((s) => s.key);
+    expect(hidden.sort()).toEqual(Object.values(HIDDEN_CARDS).sort());
+  });
+
+  it('labels the closed-zone capture card without "-0"', () => {
+    expect(getSource('model.closedZoneCapture')!.hidden!.outcomes.map((o) => o.label)).toEqual(['No drop', '−2 points', '−5 points']);
+  });
+
+  it("explains on the Trust dial what moves trust", () => {
+    expect(getSource(dialSourceKey('trust'))!.explain).toContain(getSource('model.trust')!.explain);
+  });
+
   it('gives every dial a source', () => {
-    const dials: (keyof Dials)[] = ['kids', 'capture', 'kindergartenCapture', 'gap', 'positionsCut', 'reservePct', 'kidsInUrm', 'walkK5', 'newBusRiders'];
+    const dials: (keyof Dials)[] = ['kids', 'capture', 'kindergartenCapture', 'gap', 'positionsCut', 'reservePct', 'kidsInUrm', 'walkK5', 'newBusRiders', 'trust'];
     for (const d of dials) expect(getSource(dialSourceKey(d))).toBeDefined();
   });
 });

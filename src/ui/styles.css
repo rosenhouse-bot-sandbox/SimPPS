@@ -29,6 +29,8 @@ body {
   color: var(--ink);
   font: 16px/1.35 var(--body);
   -webkit-text-size-adjust: 100%;
+  /* A stray pull-to-refresh would reload the game. */
+  overscroll-behavior: none;
 }
 
 #app {
@@ -93,6 +95,13 @@ h3,
   display: flex;
   justify-content: space-between;
   gap: 8px;
+  white-space: nowrap;
+}
+
+@media (max-width: 379px) {
+  .topbar {
+    font-size: 19px;
+  }
 }
 
 .stage {
@@ -375,14 +384,20 @@ dl {
   background: rgb(0 0 0 / 0.35);
 }
 
+/* Low on the screen for thumbs, and scrolls when taller than the screen. */
 .popover {
   position: absolute;
   left: 16px;
   right: 16px;
-  top: 20%;
+  bottom: 16px;
   max-width: 448px;
+  max-height: calc(100% - 32px);
   margin: 0 auto;
   font-family: var(--body);
+}
+
+.popover .window-body {
+  min-height: 0;
 }
 
 .tag {
@@ -438,6 +453,7 @@ legend {
 
 .playback-stage {
   flex: 1;
+  min-height: 96px;
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -464,6 +480,12 @@ legend {
 
 .skip {
   align-self: flex-end;
+}
+
+/* Long seasons scroll, so Pause stays on screen. */
+.ticker {
+  max-height: 45%;
+  min-height: 0;
 }
 
 .flow {
@@ -778,4 +800,116 @@ legend {
 
 .zonesheet .actions .btn {
   padding: 0 10px;
+}
+
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+}
+
+/* The calendar strip: what's coming, soonest first. */
+.calendar {
+  display: flex;
+  gap: 4px;
+  margin: 0 0 8px;
+  padding: 0;
+  list-style: none;
+}
+
+.calendar li {
+  flex: 1 1 0;
+  min-width: 0;
+  padding: 4px;
+  border: 2px solid;
+  border-color: var(--shade) var(--light) var(--light) var(--shade);
+  font-size: 14px;
+  line-height: 1.2;
+}
+
+.calendar .when {
+  display: block;
+  font-size: 18px;
+  color: var(--title);
+}
+
+.ballot {
+  margin: 4px 0;
+}
+
+.levy-ballot .row {
+  display: inline-flex;
+  margin-right: 16px;
+}
+
+.levy-vote .stamp,
+.levy-vote .call .stamp {
+  transform: none;
+  font-size: 16px;
+}
+
+.reveal {
+  margin: 12px 0;
+  padding: 8px;
+  border: 2px solid var(--title);
+  background: var(--light);
+}
+
+.reveal h3 {
+  margin-top: 0;
+}
+
+.histogram {
+  display: block;
+  width: 100%;
+  max-width: 360px;
+  height: auto;
+}
+
+.histogram rect {
+  fill: var(--shade);
+}
+
+.histogram .drawn rect {
+  fill: var(--title);
+}
+
+.histogram text {
+  font: 16px var(--pixel);
+  fill: var(--ink);
+}
+
+.histogram .drawn text {
+  fill: var(--title);
+}
+
+.histogram .baseline {
+  stroke: var(--ink);
+  stroke-width: 1;
+}
+
+.reveal p {
+  max-width: 28ch;
+}
+
+.ballot .line {
+  display: block;
+}
+
+/* The pre-flight's buttons stay in view on short screens. */
+.sheet .actions {
+  position: sticky;
+  bottom: -12px;
+  margin: 12px -12px -12px;
+  padding: 8px 12px 12px;
+  background: var(--face);
+}
+
+.calendar li .sourced {
+  display: block;
+  width: 100%;
+  min-height: 32px;
 }

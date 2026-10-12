@@ -29,6 +29,8 @@ export const FIXTURE_GAME: GameState = {
     kidsInUrm: 4_500,
     walkK5: 9_000,
     newBusRiders: 0,
+    trust: 35,
+    k5Class: 24,
   },
   policy: DEFAULT_POLICY,
   zones: defaultZones(),
@@ -59,4 +61,5 @@ export const FIXTURE_REPORT: YearReport = {
   ],
   budget: FIXTURE_GAME.budget,
   closures: [],
+  reveals: [],
 };

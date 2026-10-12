@@ -36,6 +36,21 @@ describe('app state machine', () => {
     expect(s.draft.closures.map((c) => c.school)).toEqual(sim.SCENARIOS['scenario-b'].closures.map((c) => c.school));
   });
 
+  it('replays saved plans to the same January, history included', () => {
+    const played = run([
+      { type: 'edit', policy: { k5ClassSize: 26 } },
+      { type: 'preflight' },
+      { type: 'confirm' },
+      { type: 'playbackDone' },
+      { type: 'nextYear' },
+    ]);
+    const replayed = initApp(sim, 'test', 'status-quo', played.history.map((t) => t.policy));
+    expect(replayed.phase).toBe('plan');
+    expect(replayed.game).toEqual(played.game);
+    expect(replayed.draft).toEqual(played.draft);
+    expect(replayed.history.map((t) => t.report)).toEqual(played.history.map((t) => t.report));
+  });
+
   it('goes back from pre-flight to plan', () => {
     expect(run([{ type: 'preflight' }, { type: 'back' }]).phase).toBe('plan');
   });

@@ -49,12 +49,31 @@ export interface ZoneMap {
   middle: SchoolId[];
 }
 
+export type ElectionMonth = 'may' | 'november';
+
+/** The voter-approved levy. It funds school years through fall `through`. */
+export interface Levy {
+  rate: number;
+  through: number;
+  /** Failed measures since the last one passed. */
+  failures: number;
+}
+
+/** A levy measure on this year's ballot. A renewal asks to continue an expiring levy. */
+export interface Ballot {
+  rate: number;
+  when: ElectionMonth;
+  renewal: boolean;
+}
+
 /** The player's edits for the coming year. */
 export interface Policy {
   /** K-5 class size target, 22–28. Today it is 24. */
   k5ClassSize: number;
-  /** Local-option levy, in dollars per $1,000 of assessed value. 0 lets it lapse. */
+  /** Local-option levy, in dollars per $1,000 of assessed value. 0 lets it lapse. A new rate needs a vote. */
   levyRate: number;
+  /** The ballot for a levy measure. November renews ahead of expiry or moves a rate change to next year. */
+  levyElection: ElectionMonth;
   /** Dollars drawn from reserves this year. */
   reserveDraw: number;
   closures: Closure[];
@@ -100,6 +119,7 @@ export interface SchoolState {
   /** State K-8 revenue its kids bring, by each kid's funding weight. */
   stateRevenue: number;
   homerooms: number;
+  k5Homerooms: number;
   blendedHomerooms: number;
   /** Set when a closure has emptied the building. */
   closed?: { year: number; building: BuildingFate };
@@ -145,6 +165,10 @@ export interface Dials {
   walkK5: number;
   /** PPS kids riding a bus only because a zone changed. */
   newBusRiders: number;
+  /** Family trust, 0-100, averaged over households. */
+  trust: number;
+  /** K-5 kids per K-5 homeroom at open schools. */
+  k5Class: number;
 }
 
 export interface SeasonEvent {
@@ -188,6 +212,18 @@ export interface RezoneOutcome {
   leftPps: Range;
 }
 
+/** A levy vote. Yes is a share of votes. */
+export interface ElectionOutcome extends Ballot {
+  yes: number;
+  passed: boolean;
+}
+
+/** A hidden card this report reveals, with the value this game drew. */
+export interface Reveal {
+  sourceKey: string;
+  value: number;
+}
+
 export interface YearReport {
   /** Fall year of the school year that just played (2027 = 2027-28). */
   year: number;
@@ -201,6 +237,11 @@ export interface YearReport {
   closures: ClosureOutcome[];
   /** Present when boundary edits moved kids off their zone school. */
   rezoned?: RezoneOutcome;
+  /** Present when a levy measure went to voters. */
+  election?: ElectionOutcome;
+  /** The ghost's own levy vote, if it had one. */
+  ghostElection?: ElectionOutcome;
+  reveals: Reveal[];
 }
 
 export interface GameState {
@@ -250,6 +291,9 @@ export interface SimMemory {
   closed: ClosedSchool[];
   /** Busing dollars booked this year, which the state repays next year. */
   busing: number;
+  levy: Levy;
+  /** model.trust: family trust by region. */
+  trust: Record<string, number>;
   /** Hidden cards drawn for this game. */
   cards: { followRate: number; closedZoneCaptureDrop: number };
   /** The do-nothing ghost: same luck, DEFAULT_POLICY every year. */

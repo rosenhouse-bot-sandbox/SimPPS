@@ -1,5 +1,8 @@
 import { fmtMoney, fmtPct } from '../format';
-import type { Budget, GameState, Policy } from '../sim/types';
+import { M } from '../sim/model';
+import type { BallotPreview } from '../sim';
+import type { Budget, ElectionMonth, GameState, Policy } from '../sim/types';
+import { BallotItem } from './Ballot';
 import { Chip } from './Chip';
 import { fmtLevy } from './edits';
 import { CLASS_SIZE, classSizeChip, LEVY, levyChip, RESERVE_STEP, reserveChip } from './levers';
@@ -13,12 +16,30 @@ interface BudgetPanelProps {
   draft: Policy;
   /** The sim's plan for the draft. */
   plan: Budget;
+  /** The levy measure the draft puts to voters. */
+  ballot: BallotPreview | null;
+  /** The fall year of the levy's last funded school year. */
+  levyThrough: number;
   onEdit: (p: Partial<Policy>) => void;
   onClose: () => void;
 }
 
-export function BudgetPanel({ game, draft, plan, onEdit, onClose }: BudgetPanelProps) {
+const MONTHS: { id: ElectionMonth; label: string }[] = [
+  { id: 'may', label: 'May' },
+  { id: 'november', label: 'November' },
+];
+
+/** In January of `year`: the levy's last June has passed once `through + 1 < year`. */
+function levyTermText(through: number, year: number, rate: number): string {
+  if (through + 1 < year) return `Levy expired June ${through + 1}`;
+  if (rate === 0) return `Levy lapses after June ${year}`;
+  return `Levy ${through + 1 === year ? 'expires' : 'runs through'} June ${through + 1}`;
+}
+
+export function BudgetPanel({ game, draft, plan, ballot, levyThrough, onEdit, onClose }: BudgetPanelProps) {
   const base = game.policy;
+  const bill = -(plan.lines.find((l) => l.key === 'election')?.amount ?? 0);
+  const renewable = levyThrough === game.year && draft.levyRate > 0;
   const drawMax = Math.min(plan.reserves, Math.max(0, -plan.gap));
   return (
     <Window title="Budget" onClose={onClose} class="panel">
@@ -40,11 +61,38 @@ export function BudgetPanel({ game, draft, plan, onEdit, onClose }: BudgetPanelP
         sourceKey={K.levy}
         value={draft.levyRate}
         {...LEVY}
-        anchor={base.levyRate}
+        anchor={base.levyRate || M.levyRate}
         format={fmtLevy}
         onChange={(levyRate) => onEdit({ levyRate })}
       />
-      {draft.levyRate !== base.levyRate && <Chip chip={levyChip(draft.levyRate, base.levyRate)} sourceKey={K.levy} />}
+      {draft.levyRate !== base.levyRate && <Chip chip={levyChip(draft.levyRate, base.levyRate, bill, ballot?.when)} sourceKey={K.levyRate} />}
+      {bill > 0 && (
+        <p class="note">
+          Election bill: <Sourced k={K.electionBill}>{fmtMoney(-bill)}</Sourced>
+        </p>
+      )}
+      <p class="note">
+        <Sourced k={K.levyTerm} text>
+          {levyTermText(levyThrough, game.year, draft.levyRate)}
+        </Sourced>
+      </p>
+      {(ballot || renewable) && (
+        <fieldset class="levy-ballot">
+          <legend>Levy ballot</legend>
+          {MONTHS.map((m) => (
+            <label key={m.id} class="row choice">
+              <input
+                type="radio"
+                name="levy-ballot"
+                checked={draft.levyElection === m.id}
+                onChange={() => onEdit({ levyElection: m.id })}
+              />
+              {m.label}
+            </label>
+          ))}
+          <p class="ballot">{ballot ? <BallotItem ballot={ballot} year={game.year} /> : 'No vote this year.'}</p>
+        </fieldset>
+      )}
       <Stepper
         label="Reserve draw"
         labelNode={<Sourced k={K.reserveDraw}>Reserve draw</Sourced>}

@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import { richLevy } from './fixtures';
 import { closureChip, DEFAULT_POLICY, endYear, modeledRange, newGame, normalizePolicy, previewBudget } from '.';
 import { boundaryChip, decideRezoned, planZoning, projectRiders, rezoneFactors, sliceEdit } from './boundaries';
 import { costIndex } from './budget';
@@ -227,8 +228,8 @@ describe('walk and buses', () => {
 
   it("counts the state's repayment as revenue, so it doesn't lower spending", () => {
     const noCuts = { ...DEFAULT_POLICY, levyRate: 5 };
-    const repaid = previewBudget({ ...start, sim: { ...start.sim!, busing: 1_000_000 } }, noCuts);
-    const none = previewBudget(start, noCuts);
+    const repaid = previewBudget(richLevy({ ...start, sim: { ...start.sim!, busing: 1_000_000 } }), noCuts);
+    const none = previewBudget(richLevy(start), noCuts);
     expect(repaid.autoCutPositions + none.autoCutPositions).toBe(0);
     expect(line(repaid, 'busReimbursement')).toBe(800_000);
     expect(repaid.spending).toBeCloseTo(none.spending, 0);
@@ -298,6 +299,15 @@ describe('boundaryChip', () => {
     expect(chip.walk).toBe(full.walk);
     expect(chip.walk).toBeLessThan(0);
     expect(chip.riders.now).toBeLessThan(full.riders.now);
+  });
+
+  it('shows seats at maturity, the same whether or not current kids are grandfathered', () => {
+    const chip = boundaryChip(start, nearCreston(true), DEFAULT_POLICY);
+    const full = boundaryChip(start, nearCreston(false), DEFAULT_POLICY);
+    const at = (c: typeof chip, s: string) => c.seats.find((x) => x.school === s)!;
+    expect(at(chip, 'creston').mature.hi).toBeLessThan(at(chip, 'creston').after.lo);
+    expect(at(chip, 'atkinson').mature.lo).toBeGreaterThan(at(chip, 'atkinson').after.hi);
+    expect(chip.seats.map((s) => s.mature)).toEqual(full.seats.map((s) => s.mature));
   });
 
   it('flags blocks that do not touch the new zone', () => {

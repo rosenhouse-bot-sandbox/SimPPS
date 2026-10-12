@@ -8,7 +8,7 @@ export function GapBar({ budget }: { budget: Budget }) {
   return (
     <div class="gapbar" data-testid="gapbar">
       <span>
-        Gap <Sourced k={K.gap}>{fmtMoney(budget.gap)}</Sourced>
+        {budget.gap > 0 ? 'Surplus' : 'Gap'} <Sourced k={K.gap}>{fmtMoney(budget.gap)}</Sourced>
       </span>
       <span>
         Cuts <Sourced k={K.autoCuts}>{fmtCount(budget.autoCutPositions + budget.midYearCuts)}</Sourced>

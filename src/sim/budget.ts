@@ -112,7 +112,11 @@ export const MEDIAN_SQFT = (() => {
 export interface BudgetInput {
   year: number;
   schools: Record<string, SchoolState>;
-  policy: Policy;
+  policy: Pick<Policy, 'k5ClassSize' | 'reserveDraw' | 'closures'>;
+  /** The levy rate funding this school year, after any vote. */
+  levyRate: number;
+  /** A levy measure goes to voters this year. */
+  election?: boolean;
   reserves: number;
   /** Last year's spending. */
   priorSpending: number;
@@ -162,7 +166,7 @@ export function computeBudget(input: BudgetInput): Budget {
   const lines: BudgetLine[] = [
     { key: 'stateK8', label: 'State school fund, K-8', amount: state, sourceKey: 'model.revenuePerStudent' },
     { key: 'stateFunding', label: 'State funding over 2025-27', amount: stateCard, sourceKey: 'model.stateFunding' },
-    { key: 'levy', label: 'Local option levy, net', amount: levyRevenue(input.policy.levyRate), sourceKey: 'model.levy' },
+    { key: 'levy', label: 'Local option levy, net', amount: levyRevenue(input.levyRate), sourceKey: 'model.levy' },
     { key: 'restRevenue', label: 'Rest of district revenue', amount: input.restRevenue, sourceKey: 'model.restOfDistrict' },
     { key: 'homerooms', label: 'K-8 homeroom teachers', amount: -homerooms * M.homeroomCost * index, sourceKey: 'model.homerooms' },
     { key: 'staff', label: 'Other school staff', amount: -staff * M.positionCost * index, sourceKey: 'model.staffSteps' },
@@ -196,11 +200,12 @@ export function computeBudget(input: BudgetInput): Budget {
     ],
     ['busing', 'New bus riders', -busingCost(input.busRiders ?? 0) * index, 'model.busing'],
     ['busReimbursement', "State's busing repayment", repaid, 'model.busReimbursement'],
+    ['election', 'Election bill', input.election ? -M.electionBill * index : 0, 'model.electionBill'],
     ['mothball', 'Mothballed buildings', -closed.filter((c) => c.building === 'mothball').length * M.mothball * index, 'model.buildingFate'],
   ];
   for (const [key, label, amount, sourceKey] of optional) if (amount !== 0) lines.push({ key, label, amount, sourceKey });
   const gap = lines.reduce((sum, l) => sum + l.amount, 0);
-  const revenue = state + stateCard + levyRevenue(input.policy.levyRate) + input.restRevenue + repaid;
+  const revenue = state + stateCard + levyRevenue(input.levyRate) + input.restRevenue + repaid;
   const position = M.positionCost * index;
   const reserveDraw = clamp(input.policy.reserveDraw, 0, Math.min(input.reserves, Math.max(0, -gap)));
   const autoCutPositions = Math.ceil(Math.max(0, -gap - reserveDraw) / position);

@@ -2,6 +2,7 @@ import { cleanup, fireEvent, render, screen } from '@testing-library/preact';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { DEFAULT_POLICY, SCENARIOS } from '../sim';
 import type { Closure } from '../sim/types';
+import { calendarItems } from './calendar';
 import { PlanPanel } from './PlanPanel';
 
 afterEach(cleanup);
@@ -19,6 +20,9 @@ function setup(start: 'status-quo' | 'scenario-a' = 'status-quo', onEditBoundary
       onEdit={onEdit}
       onSelectSchool={() => {}}
       onEditBoundary={onEditBoundary}
+      calendar={calendarItems(2027, 2029)}
+      ballot={{ rate: 1.8, when: 'may', renewal: false, poll: { lo: 0.62, hi: 0.72 } }}
+      year={2027}
       onClose={() => {}}
     />,
   );
@@ -26,6 +30,27 @@ function setup(start: 'status-quo' | 'scenario-a' = 'status-quo', onEditBoundary
 }
 
 describe('PlanPanel', () => {
+  it('shows the calendar strip, each item sourced', () => {
+    setup();
+    const strip = screen.getByRole('list', { name: 'Calendar' });
+    const items = [...strip.querySelectorAll('li')];
+    expect(items.map((li) => li.textContent)).toEqual([
+      'JAN 2027Teacher bargaining opens',
+      'SPR 2027Legislature sets the 2027-29 budget',
+      'JUN 2030Levy expires',
+    ]);
+    expect(items.map((li) => li.querySelector('[data-source]')!.getAttribute('data-source'))).toEqual([
+      'ui.bargaining',
+      'model.stateFunding',
+      'model.levyTerm',
+    ]);
+  });
+
+  it('shows the ballot item with its poll', () => {
+    setup();
+    expect(document.querySelector('.ballot')!.textContent).toBe('May 2027 levy vote$1.80 per $1K · poll 62–72%~');
+  });
+
   it('lists each edit as sourced text with an Undo', () => {
     const onEdit = setup();
     const items = [...document.querySelectorAll('.edits li')];

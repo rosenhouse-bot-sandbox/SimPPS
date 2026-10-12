@@ -1,8 +1,10 @@
-import type { ComponentChildren } from 'preact';
+import { createContext, type ComponentChildren } from 'preact';
 import { createPortal } from 'preact/compat';
-import { useEffect, useRef, useState } from 'preact/hooks';
-import { getSource, type Source, type SourceTag } from '../sources/registry';
+import { useContext, useEffect, useRef, useState } from 'preact/hooks';
+import { FIRST_YEAR } from '../sim';
+import { getSource, type HiddenCard, type Source, type SourceTag } from '../sources/registry';
 import './sources';
+import { trapTab } from './Window';
 
 export const TAG_NAMES: Record<SourceTag, string> = {
   F: 'public source',
@@ -11,6 +13,18 @@ export const TAG_NAMES: Record<SourceTag, string> = {
   M: 'model assumption',
   V: 'to verify',
 };
+
+/** Hidden cards revealed so far: the value this game drew, by source key. */
+export const Revealed = createContext<Record<string, number>>({});
+
+/** The fall year whose December report reveals the card. */
+export function revealYear(card: HiddenCard): number {
+  return FIRST_YEAR + card.revealAfterYears - 1;
+}
+
+export function drawnLabel(card: HiddenCard, value: number): string {
+  return card.outcomes.find((o) => o.value === value)?.label ?? String(value);
+}
 
 interface SourcedProps {
   k: string;
@@ -51,6 +65,7 @@ function withTilde(text: string) {
 
 export function SourcePopover({ k, onClose }: { k: string; onClose: () => void }) {
   const source = getSource(k);
+  const revealed = useContext(Revealed);
   const closeButton = useRef<HTMLButtonElement>(null);
   useEffect(() => closeButton.current?.focus(), []);
   useEffect(() => {
@@ -63,8 +78,10 @@ export function SourcePopover({ k, onClose }: { k: string; onClose: () => void }
       <div
         class="window popover"
         role="dialog"
+        aria-modal="true"
         aria-label={source?.label ?? k}
         onClick={(e) => e.stopPropagation()}
+        onKeyDown={trapTab}
       >
         <div class="titlebar">
           <span>{source?.label ?? k}</span>
@@ -72,20 +89,26 @@ export function SourcePopover({ k, onClose }: { k: string; onClose: () => void }
             ×
           </button>
         </div>
-        <div class="window-body">{source ? <SourceBody source={source} /> : <p>No source yet for “{k}”.</p>}</div>
+        <div class="window-body">{source ? <SourceBody source={source} drawn={revealed[source.key]} /> : <p>No source yet for “{k}”.</p>}</div>
       </div>
     </div>
   );
 }
 
-function SourceBody({ source }: { source: Source }) {
+function SourceBody({ source, drawn }: { source: Source; drawn?: number }) {
   return (
     <>
       <p class="tag">
         [{source.tag}] {TAG_NAMES[source.tag]}
       </p>
       <p>{source.explain}</p>
-      {source.hidden && <p class="hidden-card">Hidden until year {source.hidden.revealAfterYears}.</p>}
+      {source.hidden && (
+        <p class="hidden-card">
+          {drawn === undefined
+            ? `Hidden until the December ${revealYear(source.hidden)} report.`
+            : `Revealed: this game drew ${drawnLabel(source.hidden, drawn)}.`}
+        </p>
+      )}
       {source.links.length > 0 && (
         <ul class="links">
           {source.links.map((l) => (

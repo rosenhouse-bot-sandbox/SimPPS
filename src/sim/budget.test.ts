@@ -73,12 +73,14 @@ describe('computeBudget', () => {
     capacity: 594,
     stateRevenue: 144 * revenuePerStudent(0.6294),
     homerooms: 6,
+    k5Homerooms: 0,
     blendedHomerooms: 0,
   };
   const base = {
     year: 2028,
     schools: { 'rosa-parks': rosaParks },
-    policy: { k5ClassSize: 24, levyRate: 0, reserveDraw: 5_000_000, closures: [], boundaryEdits: [] },
+    policy: { k5ClassSize: 24, reserveDraw: 5_000_000, closures: [] },
+    levyRate: 0,
     reserves: 20_000_000,
     priorSpending: 800_000_000,
     cumulativeCuts: 0,
@@ -122,6 +124,12 @@ describe('computeBudget', () => {
     expect(amount(up, 'stateFunding')).toBeCloseTo(0.05 * stateRevenue, 0);
     expect(up.gap - flat.gap).toBeCloseTo(0.05 * stateRevenue, 0);
     expect(up.spending).toBeCloseTo(flat.spending - (up.autoCutPositions - flat.autoCutPositions) * 155_000 * 1.035, 0);
+  });
+
+  it('books the levy rate in force and a bill for a measure on the ballot', () => {
+    expect(amount(computeBudget({ ...base, levyRate: 1.99 }), 'levy')).toBeCloseTo(levyRevenue(1.99), 0);
+    expect(amount(computeBudget(base), 'election')).toBeUndefined();
+    expect(amount(computeBudget({ ...base, election: true }), 'election')).toBeCloseTo(-M.electionBill * 1.035, 0);
   });
 
   it('cuts positions for the shortfall left after the reserve draw', () => {

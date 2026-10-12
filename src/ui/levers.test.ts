@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { DEFAULT_POLICY, newGame, previewBudget, type Policy } from '../sim';
+import { DEFAULT_POLICY, levyRevenue, newGame, previewBudget, type Policy } from '../sim';
 import { M } from '../sim/model';
 import { classSizeChip, levyChip, reserveChip } from './levers';
 
@@ -34,10 +34,22 @@ describe('lever chips against the sim', () => {
     expect(sim).toBeLessThanOrEqual(chip.hi + lumps);
   });
 
-  it.each([0, 0.5, 1, 1.89, 2])('matches the sim for a levy of $%d', (rate) => {
-    const chip = levyChip(rate, 1.99).now;
-    expect(chip.lo).toBe(chip.hi);
-    expect(chip.lo).toBeCloseTo(delta({ levyRate: rate }), 0);
+  it.each([0, 0.5, 1, 1.89, 2])('matches the sim for a levy of $%d, election bill included', (rate) => {
+    const plan = previewBudget(game, { ...DEFAULT_POLICY, levyRate: rate });
+    const bill = -(plan.lines.find((l) => l.key === 'election')?.amount ?? 0);
+    expect(bill > 0).toBe(rate > 0);
+    const chip = levyChip(rate, 1.99, bill);
+    expect(chip.now.lo).toBe(chip.now.hi);
+    expect(chip.now.lo).toBeCloseTo(delta({ levyRate: rate }), 0);
+    expect(chip.atMaturity.lo).toBeCloseTo(chip.now.lo + bill, 0);
+  });
+
+  it.each([0.5, 1.49, 2])('moves only the election bill now for a November vote on $%d', (rate) => {
+    const policy = { levyRate: rate, levyElection: 'november' as const };
+    const bill = -(previewBudget(game, { ...DEFAULT_POLICY, ...policy }).lines.find((l) => l.key === 'election')?.amount ?? 0);
+    const chip = levyChip(rate, 1.99, bill, 'november');
+    expect(chip.now.lo).toBeCloseTo(delta(policy), 0);
+    expect(chip.atMaturity.lo).toBeCloseTo(levyRevenue(rate) - levyRevenue(1.99), 0);
   });
 
   it('agrees on the positions a reserve draw saves', () => {

@@ -1,7 +1,7 @@
 import { cleanup, fireEvent, render, screen } from '@testing-library/preact';
 import { afterEach, describe, expect, it } from 'vitest';
 import { registerSources } from '../sources/registry';
-import { Sourced } from './Sourced';
+import { Revealed, Sourced } from './Sourced';
 
 afterEach(cleanup);
 
@@ -34,6 +34,17 @@ describe('Sourced', () => {
     expect(document.activeElement).toBe(screen.getByRole('button', { name: '−$65M' }));
   });
 
+  it('is modal and keeps Tab inside', () => {
+    render(<Sourced k="field.year_built">1952</Sourced>);
+    fireEvent.click(screen.getByRole('button', { name: '1952' }));
+    const dialog = screen.getByRole('dialog');
+    expect(dialog.getAttribute('aria-modal')).toBe('true');
+    const link = dialog.querySelector('a')!;
+    link.focus();
+    fireEvent.keyDown(dialog, { key: 'Tab' });
+    expect(document.activeElement).toBe(screen.getByRole('button', { name: 'Close' }));
+  });
+
   it('keeps hidden cards hidden', () => {
     registerSources([
       {
@@ -48,7 +59,19 @@ describe('Sourced', () => {
     render(<Sourced k="test.hidden">?</Sourced>);
     fireEvent.click(screen.getByRole('button', { name: '?' }));
     const text = screen.getByRole('dialog').textContent!;
-    expect(text).toContain('Hidden until year 3');
+    expect(text).toContain('Hidden until the December 2029 report.');
     expect(text).not.toContain('95%');
+  });
+
+  it('shows the value this game drew once revealed', () => {
+    render(
+      <Revealed.Provider value={{ 'model.followRate': 0.8 }}>
+        <Sourced k="model.followRate">?</Sourced>
+      </Revealed.Provider>,
+    );
+    fireEvent.click(screen.getByRole('button', { name: '?' }));
+    const text = screen.getByRole('dialog').textContent!;
+    expect(text).toContain('Revealed: this game drew 80%.');
+    expect(text).not.toContain('Hidden until');
   });
 });

@@ -95,8 +95,8 @@ export function projectRiders(
 
 /** A boundary chip shows arithmetic and never predicts family choices. */
 export interface BoundaryChip {
-  /** Each touched school's kids now and next fall if every moved kid follows the new zone. */
-  seats: { school: SchoolId; before: Range; after: Range; capacity: number }[];
+  /** Each touched school's kids now, next fall if every moved kid follows the new zone, and once every zone kid in the blocks attends the new zone school. */
+  seats: { school: SchoolId; before: Range; after: Range; mature: Range; capacity: number }[];
   /** Change in PPS K-5 kids within a mile of school once every re-zoned kid attends the new zone school. */
   walk: number;
   /** K-8 kids living in the moved cells, in and out of PPS. Each household holds one kid. */
@@ -134,6 +134,8 @@ export function boundaryChip(state: GameState, edit: BoundaryEdit, plan: Policy)
   let kidsMoving = 0;
   let walk = 0;
   let mature = 0;
+  const matureDelta = new Map<SchoolId, number>();
+  const shift = (school: SchoolId, d: number) => matureDelta.set(school, (matureDelta.get(school) ?? 0) + d);
   for (const h of state.households) {
     if (!moved.has(h.cell)) continue;
     residents++;
@@ -148,6 +150,8 @@ export function boundaryChip(state: GameState, edit: BoundaryEdit, plan: Policy)
     }
     if (levelOf(g) !== level || h.school !== h.zoneSchool) continue;
     const nu = mappedZone(after.zones, h, level);
+    shift(h.school, -1);
+    shift(nu, 1);
     mature += +ridesNewBus(h, g, nu, nu) - +ridesNewBus(h, g, h.school, h.school);
     if (level === 'elementary') walk += +(milesTo(h, nu) <= M.walkDialMiles) - +(milesTo(h, h.school) <= M.walkDialMiles);
   }
@@ -157,7 +161,13 @@ export function boundaryChip(state: GameState, edit: BoundaryEdit, plan: Policy)
   return {
     seats: [...delta].map(([school, d]) => {
       const s = state.schools[school];
-      return { school, before: modeledRange(s.enrollment), after: modeledRange(s.enrollment + d), capacity: s.capacity };
+      return {
+        school,
+        before: modeledRange(s.enrollment),
+        after: modeledRange(s.enrollment + d),
+        mature: modeledRange(s.enrollment + (matureDelta.get(school) ?? 0)),
+        capacity: s.capacity,
+      };
     }),
     walk,
     residents,

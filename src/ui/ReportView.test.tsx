@@ -129,4 +129,62 @@ describe('ReportView', () => {
     expect(items[3]).toBe('▲ K-5 walkers 9,100 vs 9,000~');
     expect(items[4]).toBe('▼ New bus riders 40 vs 0~');
   });
+
+  it('reports the levy vote as totals, for you and the ghost', () => {
+    const election = { rate: 1.8, when: 'may' as const, renewal: false, yes: 0.618, passed: true };
+    const ghostElection = { rate: 1.99, when: 'may' as const, renewal: true, yes: 0.46, passed: false };
+    render(<ReportView report={{ ...FIXTURE_REPORT, election, ghostElection }} turn={1} onNext={() => {}} />);
+    const vote = screen.getByRole('region', { name: 'Levy vote' });
+    expect([...vote.querySelectorAll('li')].map((li) => li.textContent)).toEqual([
+      'You: $1.80, 62%~ yes PASSED',
+      'Ghost: $1.99, 46%~ yes FAILED',
+    ]);
+    expect([...vote.querySelectorAll('[data-source]')].map((b) => b.getAttribute('data-source'))).toEqual([
+      'model.levyRate',
+      'model.election',
+      'model.levyRate',
+      'model.election',
+    ]);
+  });
+
+  it("says you had no vote when only the ghost's levy was on the ballot", () => {
+    const ghostElection = { rate: 1.99, when: 'may' as const, renewal: true, yes: 0.83, passed: true };
+    render(<ReportView report={{ ...FIXTURE_REPORT, ghostElection }} turn={1} onNext={() => {}} />);
+    const vote = screen.getByRole('region', { name: 'Levy vote' });
+    expect([...vote.querySelectorAll('li')].map((li) => li.textContent)).toEqual([
+      'You had no levy vote this year.',
+      'Ghost: $1.99, 83%~ yes PASSED',
+    ]);
+  });
+
+  it('shows no levy vote without one', () => {
+    render(<ReportView report={FIXTURE_REPORT} turn={1} onNext={() => {}} />);
+    expect(screen.queryByRole('region', { name: 'Levy vote' })).toBeNull();
+  });
+
+  it('opens a reveal sheet for each hidden card revealed', () => {
+    const reveals = [
+      { sourceKey: 'model.followRate', value: 0.8 },
+      { sourceKey: 'model.closedZoneCapture', value: 0 },
+    ];
+    render(<ReportView report={{ ...FIXTURE_REPORT, reveals }} turn={3} onNext={() => {}} />);
+    expect(screen.getByRole('region', { name: 'Revealed: Follow a closed school' })).toBeTruthy();
+    expect(screen.getByRole('region', { name: "Revealed: Closed zone's kindergarten capture" })).toBeTruthy();
+  });
+
+  it('puts the reveals after the year results and the Bulletin', () => {
+    const reveals = [{ sourceKey: 'model.followRate', value: 0.8 }];
+    render(<ReportView report={{ ...FIXTURE_REPORT, reveals }} turn={3} onNext={() => {}} />);
+    const bulletin = screen.getByRole('region', { name: 'The Bulletin' });
+    const reveal = screen.getByRole('region', { name: 'Revealed: Follow a closed school' });
+    expect(bulletin.compareDocumentPosition(reveal) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+  });
+
+  it('sources each flow row to what it counts', () => {
+    render(<ReportView report={FIXTURE_REPORT} turn={1} onNext={() => {}} />);
+    const key = (label: string) => screen.getByText(label).closest('.flow')!.querySelector('[data-source]')!.getAttribute('data-source');
+    expect(key('New kindergartners')).toBe('model.kCapture');
+    expect(key('To high school')).toBe('model.graduates');
+    expect(key('Left PPS')).toBe('model.movingRoll');
+  });
 });

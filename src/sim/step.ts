@@ -1,7 +1,8 @@
 import { clamp } from '../clamp';
 import { ZONES, type Point } from '../data';
 import { classesFor, computeBudget, costIndex, cutCreep, legislatureVotes, stateFundingGrowth, stateFundingLevel } from './budget';
-import { samplePoint, ZoneIndex } from './geo';
+import { samplePoint } from './geo';
+import { regionOf } from './regions';
 import { cellAt, zoneGrid } from './grid';
 import { gradeOf, M, MAX_GRADE, oneKid } from './model';
 import { CITYWIDE_INTAKE, exitCapacityFor, pick, SCHOOL_INFO, voiceFor } from './population';
@@ -10,9 +11,13 @@ import { closuresTakingEffect, decideClosures, rezoneDraw, resolveSchool, type C
 import { buildSchools, computeDials } from './schools';
 import { decideRezoned, plannedRiders, planZoning, projectRiders, type RezoneMover, type RezoneTally } from './boundaries';
 import { defaultZones, homesByCell, nextZone, zoningYear, type ZoningYear } from './zones';
+import { expectedYes, levyAfter, levyBallot, levyRateFor, voteYes } from './election';
+import { meanTrust, trustAfterYear, type Trust } from './trust';
 import type {
+  Ballot,
   Budget,
   ClosedSchool,
+  ElectionOutcome,
   Flows,
   GameState,
   Household,
@@ -22,26 +27,6 @@ import type {
   SimMemory,
   ZoneLevel,
 } from './types';
-
-const HIGH = new ZoneIndex(ZONES.high);
-/** Neutral names for high school zones, so headlines never name a school. */
-const REGION: Record<string, string> = {
-  Cleveland: 'Inner Southeast',
-  Franklin: 'Outer Southeast',
-  Grant: 'Northeast',
-  'Ida B. Wells': 'Southwest',
-  'Jefferson / Grant': 'Northeast',
-  'Jefferson / McDaniel': 'Outer Northeast',
-  'Jefferson / Roosevelt': 'North',
-  Lincoln: 'Northwest',
-  McDaniel: 'Outer Northeast',
-  Roosevelt: 'North',
-};
-
-function regionOf(pos: Point): string | null {
-  const z = HIGH.find(pos);
-  return z >= 0 ? REGION[ZONES.high[z].name] : null;
-}
 
 /** Draw purposes, so each decision has its own dice. */
 const D = {
@@ -85,6 +70,9 @@ export interface YearFacts {
   rezonedCells: Record<ZoneLevel, number>;
   grandfathered: 'all' | 'some' | 'none';
   rezoned: RezoneTally;
+  election: ElectionOutcome | null;
+  /** Mean trust before and after the year, and the regions that lost trust, biggest drop first. */
+  trust: { before: number; after: number; fell: string[] };
 }
 
 /** Kindergarten capture by fall year: 74% in 2025 rising to the 79% PSU assumes by 2028. */
@@ -293,11 +281,21 @@ export function stepYear(state: GameState, policy: Policy): { next: GameState; f
   const planned = planZoning(state, closing, policy.boundaryEdits);
   const { closed, zoning } = planned;
 
+  // May: voters decide a levy measure on the spring ballot.
+  const ballot = levyBallot(mem.levy, year, policy);
+  const vote = (b: Ballot, trust: Trust, households: Household[]): ElectionOutcome => {
+    const yes = voteYes(mem.seedHash, year, b.when, expectedYes(b, mem.levy.failures, meanTrust(trust, households)));
+    return { ...b, yes, passed: yes >= 0.5 };
+  };
+  const may = ballot?.when === 'may' ? vote(ballot, mem.trust, state.households) : null;
+
   // June: the budget closes.
   const plan = computeBudget({
     year,
     schools: state.schools,
     policy,
+    levyRate: levyRateFor(mem.levy, year, policy, may?.passed ?? null),
+    election: ballot !== null,
     reserves: state.budget.reserves,
     priorSpending: mem.spending,
     cumulativeCuts: mem.cumulativeCuts,
@@ -342,16 +340,24 @@ export function stepYear(state: GameState, policy: Policy): { next: GameState; f
   const homeroomsCut = octoberCut + Math.round(midYearCuts * classroomShare);
   const reserves = plan.reservesAfter + midYearSavings;
 
-  const nextPolicy: Policy = { ...policy, reserveDraw: 0, closures: [], boundaryEdits: [] };
+  // Winter: closures and second moves cost trust, calm years earn it, and November's ballot is counted.
+  const trust = trustAfterYear(mem.trust, households, closing.map((c) => c.school));
+  const november = ballot?.when === 'november' ? vote(ballot, trust, households) : null;
+  const election = may ?? november;
+  const levy = levyAfter(mem.levy, year, policy, election?.passed ?? null);
+
+  const nextPolicy: Policy = { ...policy, levyRate: levy.rate, levyElection: 'may', reserveDraw: 0, closures: [], boundaryEdits: [] };
   const cumulativeCuts = mem.cumulativeCuts + autoCuts + midYearCuts;
   const spending = plan.spending - midYearSavings;
   const busing = -(plan.lines.find((l) => l.key === 'busing')?.amount ?? 0);
-  const sim = { ...mem, nextId, cumulativeCuts, homeroomsCut, spending, closed, busing, ghost: undefined };
+  const sim = { ...mem, nextId, cumulativeCuts, homeroomsCut, spending, closed, busing, levy, trust, ghost: undefined };
   const { zones } = zoning;
   const budget = computeBudget({
     year: year + 1,
     schools,
     policy: nextPolicy,
+    levyRate: levyRateFor(levy, year + 1, nextPolicy, null),
+    election: levyBallot(levy, year + 1, nextPolicy) !== null,
     reserves,
     priorSpending: spending,
     cumulativeCuts,
@@ -369,7 +375,7 @@ export function stepYear(state: GameState, policy: Policy): { next: GameState; f
     schools,
     households,
     budget,
-    dials: computeDials({ households, schools, budget }, autoCuts + midYearCuts),
+    dials: computeDials({ households, schools, budget }, autoCuts + midYearCuts, meanTrust(trust, households)),
     policy: nextPolicy,
     zones,
     sim,
@@ -396,6 +402,14 @@ export function stepYear(state: GameState, policy: Policy): { next: GameState; f
       rezonedCells: { elementary: zoning.changed.elementary.size, middle: zoning.changed.middle.size },
       grandfathered: grandfathering([...zoning.changed.elementary.values(), ...zoning.changed.middle.values()]),
       rezoned,
+      election,
+      trust: {
+        before: meanTrust(mem.trust, state.households),
+        after: meanTrust(trust, households),
+        fell: Object.keys(trust)
+          .filter((r) => trust[r] < mem.trust[r])
+          .sort((a, b) => trust[a] - mem.trust[a] - (trust[b] - mem.trust[b])),
+      },
     },
   };
 }

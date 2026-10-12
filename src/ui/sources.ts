@@ -10,6 +10,12 @@ export const K = {
   capture: dialSourceKey('capture'),
   classSize: 'ui.k5ClassSize',
   levy: 'model.levy',
+  levyRate: 'model.levyRate',
+  levyTerm: 'model.levyTerm',
+  election: 'model.election',
+  electionBill: 'model.electionBill',
+  bargaining: 'ui.bargaining',
+  trust: dialSourceKey('trust'),
   stateFunding: 'model.stateFunding',
   reserveDraw: 'ui.reserveDraw',
   autoCuts: 'model.autoCuts',
@@ -18,6 +24,8 @@ export const K = {
   homerooms: 'model.homerooms',
   blended: 'model.homerooms',
   flows: 'model.movingRoll',
+  kCapture: 'model.kCapture',
+  graduates: 'model.graduates',
   ghost: 'model.ghost',
   bulletin: 'ui.bulletin',
   capacity: 'field.functional_capacity_model',
@@ -45,9 +53,19 @@ export const K = {
 
 const UI_SOURCES: Source[] = [
   {
+    key: K.bargaining,
+    label: 'Teacher bargaining',
+    tag: 'N',
+    explain: 'PPS and the Portland Association of Teachers agreed a one-year contract in May 2026, so bargaining opens again in January 2027. After that the game assumes 3-year contracts [M]. Strikes are not modeled yet.',
+    links: [
+      { title: 'KPTV, May 27 2026', url: 'https://www.kptv.com/2026/05/27/pps-teachers-union-agree-1-year-collective-bargaining-agreement/' },
+      { title: 'SimPPS design (issue #1)', url: 'https://github.com/rosenhouse-bot-sandbox/SimPPS/issues/1' },
+    ],
+  },
+  {
     key: K.calendar,
     label: 'Calendar',
-    tag: 'F',
+    tag: 'I',
     explain: 'A turn follows PPS’s year: plan in January, budget in June, classes form in October.',
     links: [],
   },
@@ -61,8 +79,8 @@ const UI_SOURCES: Source[] = [
   {
     key: K.reserveDraw,
     label: 'Reserve draw',
-    tag: 'F',
-    explain: 'Dollars spent from reserves this year. A draw helps once.',
+    tag: 'M',
+    explain: 'Your choice of dollars to spend from reserves this year. A draw helps once.',
     links: [],
   },
   {

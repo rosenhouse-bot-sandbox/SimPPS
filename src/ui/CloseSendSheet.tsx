@@ -1,3 +1,4 @@
+import { SCHOOLS } from '../data';
 import { useState } from 'preact/hooks';
 import { fmtCount, fmtMiles, fmtMoney, fmtMoneyRange, fmtRange } from '../format';
 import { modeledRange, MOTHBALL_PER_YEAR, type ClosureChip } from '../sim';
@@ -110,6 +111,7 @@ export function CloseSendSheet({ draft, candidates: all, chipFor, onChange, onCo
   const [guess, setGuess] = useState<number | null>(null);
   const go = (step: CloseDraft['step']) => onChange({ ...draft, step });
   const toggle = (id: string) => onChange(toggleReceiver(draft, id));
+  const dli = SCHOOLS.find((s) => s.id === draft.school)?.dliLanguages;
 
   return (
     <Window title={`Close ${nameOf(draft.school)}`} onClose={onClose} class="panel sheet closesend">
@@ -117,6 +119,11 @@ export function CloseSendSheet({ draft, candidates: all, chipFor, onChange, onCo
         <>
           <StepHead title="Send kids to" step={1} />
           <p class="note">Pick 1 or 2. Tap the map too.</p>
+          {dli && (
+            <p class="note">
+              <Sourced k="field.dli_languages" text>{`Its ${dli} dual-language (DLI) program: moves are not modeled yet.`}</Sourced>
+            </p>
+          )}
           <ul class="picks">
             {[...extra, ...shown].map((c) => (
               <Pick key={c.id} c={c} picked={draft.receivers.includes(c.id)} onToggle={() => toggle(c.id)} />
